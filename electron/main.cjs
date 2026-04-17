@@ -920,28 +920,35 @@ async function ensurePwPage() {
     try { fsSync.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
 
     if (pwUseRealProfile) {
-      // Persistent context: launches Chrome with user's real profile (cookies, logins, extensions).
-      // No separate Browser object — pwContext owns lifecycle. Chrome must be fully closed first
-      // (Chrome refuses to share a profile across processes).
-      const userDataDir = getRealChromeUserDataDir();
-      const persistentOpts = {
-        headless: pwHeadless,
-        channel: "chrome",
-        viewport: { width: 1280, height: 800 },
-        acceptDownloads: true,
-        // Use the profile's own UA/locale/timezone — do NOT override; that defeats the purpose.
-        args: ["--profile-directory=Default"],
-      };
+      // ── CDP attach mode ──────────────────────────────────────────────
+      // Don't kill Chrome. Try to connect over the DevTools Protocol on
+      // localhost:9222. If user's Chrome was launched with
+      // --remote-debugging-port=9222, we attach and open a NEW TAB inside
+      // their existing window — no profile lock conflict.
+      const cdpEndpoint = "http://localhost:9222";
+      let attached = false;
       try {
-        pwContext = await pw.chromium.launchPersistentContext(userDataDir, persistentOpts);
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1500);
+        const probe = await fetch(`${cdpEndpoint}/json/version`, { signal: ctrl.signal }).catch(() => null);
+        clearTimeout(t);
+        if (probe && probe.ok) {
+          pwBrowser = await pw.chromium.connectOverCDP(cdpEndpoint);
+          // Reuse the first existing context (the user's real profile).
+          const ctxs = pwBrowser.contexts();
+          pwContext = ctxs.length ? ctxs[0] : await pwBrowser.newContext();
+          pwPersistent = false;
+          attached = true;
+        }
       } catch (e) {
+        // fall through to error below
+      }
+      if (!attached) {
         throw new Error(
-          `Không mở được Chrome với profile thật tại "${userDataDir}". ` +
-          `Hãy đóng hoàn toàn Chrome (Cmd+Q / Quit) rồi thử lại. Chi tiết: ${e?.message ?? e}`
+          `Chrome chưa bật DevTools Protocol port 9222. Vào Settings → "Mở lại Chrome với debug port" để app tự khởi động lại Chrome (giữ nguyên session, không mất tab). ` +
+          `Hoặc tự chạy: open -a "Google Chrome" --args --remote-debugging-port=9222 --restore-last-session`
         );
       }
-      pwBrowser = null;
-      pwPersistent = true;
     } else {
       const launchOpts = { headless: pwHeadless, channel: "chrome" };
       try {
