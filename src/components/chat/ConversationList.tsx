@@ -164,17 +164,28 @@ export function ConversationList({
   );
 
   return (
-    <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen animate-fade-in">
+    <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen">
       <div className="p-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)]">
             <Bot className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="font-serif font-semibold text-sidebar-foreground tracking-tight">
+          <div className="font-semibold text-sidebar-foreground tracking-tight">
             Ollama Cowork
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
+            {onCollapse && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={onCollapse}
+                title="Thu nhỏ sidebar (⌘/Ctrl+B)"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
         <Button onClick={onNew} className="w-full" size="sm">
