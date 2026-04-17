@@ -365,21 +365,21 @@ export function ChatView({
         const result = await executeTool(tc.function.name, args);
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
+        if (result.image) record.image = result.image;
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
 
-        // Vision: gửi screenshot lại như user message với image_url
-        if (tc.function.name === "screenshot" && result.ok && result.image) {
+        // Vision: screenshot → send back as image_url
+        const isScreenshot = tc.function.name === "computer" && args.action === "screenshot";
+        if (isScreenshot && result.ok && result.image) {
           working.push({
             role: "user",
             content: [
-              { type: "text", text: "[Screenshot result attached] Analyze what you see and continue the task." },
+              { type: "text", text: "[Screenshot attached] Analyze what you see and continue the task." },
               { type: "image_url", image_url: { url: `data:image/png;base64,${result.image}` } },
             ],
           });
-          record.result = (record.result || "") + "\n[image sent to vision model]";
-          setStreamingToolCalls([...allCalls]);
         }
       }
     }
