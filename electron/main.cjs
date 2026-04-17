@@ -607,6 +607,88 @@ ipcMain.handle("bridge:key_press", async (_e, { key }) => {
   }
 });
 
+// ----- App focus lock: list running apps + frontmost app -----
+// Per-platform helpers used by the Control-mode "App lock" dropdown so the AI
+// can be told to only interact with one specific application.
+
+async function getFrontmostAppNative() {
+  if (process.platform === "darwin") {
+    const { stdout } = await execP(
+      `osascript -e 'tell application "System Events" to get name of first application process whose frontmost is true'`,
+    );
+    return stdout.trim();
+  }
+  if (process.platform === "win32") {
+    const ps = `
+Add-Type @"
+using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+public class W {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+}
+"@
+$h = [W]::GetForegroundWindow()
+$pid = 0
+[void][W]::GetWindowThreadProcessId($h, [ref]$pid)
+try { (Get-Process -Id $pid).ProcessName } catch { "" }
+`;
+    const { stdout } = await execP(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps.replace(/"/g, '\\"')}"`);
+    return stdout.trim();
+  }
+  // Linux: try xdotool
+  const { stdout } = await execP(`xdotool getactivewindow getwindowname 2>/dev/null`);
+  return stdout.trim();
+}
+
+async function listAppsNative() {
+  if (process.platform === "darwin") {
+    const { stdout } = await execP(
+      `osascript -e 'tell application "System Events" to get name of every application process whose visible is true'`,
+    );
+    return stdout
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (process.platform === "win32") {
+    const { stdout } = await execP(
+      `powershell -NoProfile -Command "Get-Process | Where-Object {$_.MainWindowTitle -ne ''} | Select-Object -ExpandProperty ProcessName | Sort-Object -Unique"`,
+    );
+    return stdout
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  // Linux: wmctrl -l
+  const { stdout } = await execP(`wmctrl -l 2>/dev/null | awk '{$1=$2=$3=""; print substr($0,4)}'`);
+  const apps = new Set();
+  stdout.split(/\r?\n/).forEach((line) => {
+    const t = line.trim();
+    if (t) apps.add(t);
+  });
+  return Array.from(apps);
+}
+
+ipcMain.handle("bridge:get_frontmost_app", async () => {
+  try {
+    const name = await getFrontmostAppNative();
+    return { ok: !!name, output: name || "(unknown)", app: name || null };
+  } catch (e) {
+    return { ok: false, output: e.message, app: null };
+  }
+});
+
+ipcMain.handle("bridge:list_apps", async () => {
+  try {
+    const apps = await listAppsNative();
+    return { ok: true, output: `${apps.length} apps`, apps };
+  } catch (e) {
+    return { ok: false, output: e.message, apps: [] };
+  }
+});
+
 // ----- Ollama process control -----
 function checkOllamaUp(timeoutMs = 1500) {
   return new Promise((resolve) => {
