@@ -1449,7 +1449,11 @@ export function ChatView({
               setPendingPlan(null);
               executeSend(prompt, attachments);
             }}
-            onCancel={() => setPendingPlan(null)}
+            onCancel={() => {
+              // Cancel = drop the task entirely; warn so user knows
+              toast.message("Đã huỷ task. Gõ lại nếu muốn chạy.");
+              setPendingPlan(null);
+            }}
           />
         </div>
       )}
