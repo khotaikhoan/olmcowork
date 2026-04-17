@@ -6,7 +6,8 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, listModels, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
-import { TOOLS, TOOLS_BY_NAME, toOllamaTools, mockExecute, ToolDef } from "@/lib/tools";
+import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
+import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -243,7 +244,7 @@ export function ChatView({
 
         record.status = "running";
         setStreamingToolCalls([...allCalls]);
-        const result = await mockExecute(tc.function.name, args);
+        const result = await executeTool(tc.function.name, args);
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
         setStreamingToolCalls([...allCalls]);
