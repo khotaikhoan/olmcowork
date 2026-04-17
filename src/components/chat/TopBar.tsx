@@ -34,6 +34,7 @@ import { UpdateBadge } from "./UpdateBadge";
 import { TokenMeter } from "./TokenMeter";
 import { CostMeter } from "./CostMeter";
 import { ModeToggle } from "./ModeToggle";
+import { AppLockSelect } from "./AppLockSelect";
 import type { ConversationMode } from "@/lib/tools";
 
 interface Props {
@@ -66,6 +67,8 @@ interface Props {
   onToggleSidebar?: () => void;
   mode: ConversationMode;
   onModeChange: (m: ConversationMode) => void;
+  lockedApp: string | null;
+  onLockedAppChange: (app: string | null) => void;
 }
 
 
@@ -106,6 +109,8 @@ export function TopBar({
   onToggleSidebar,
   mode,
   onModeChange,
+  lockedApp,
+  onLockedAppChange,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0 overflow-x-auto">
@@ -126,6 +131,9 @@ export function TopBar({
         className="h-8 w-32 sm:max-w-xs sm:w-auto border-0 bg-transparent font-medium text-base focus-visible:ring-1 shrink"
       />
       <ModeToggle value={mode} onChange={onModeChange} />
+      {mode === "control" && (
+        <AppLockSelect value={lockedApp} onChange={onLockedAppChange} />
+      )}
       <div className="flex-1" />
 
       <Select value={model} onValueChange={onModelChange}>
