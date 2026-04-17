@@ -33,6 +33,7 @@ import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
 import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
+import { setOculoState } from "@/components/OculoLogo";
 
 interface DbMessage {
   id: string;
