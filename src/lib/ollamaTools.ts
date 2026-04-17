@@ -56,7 +56,20 @@ export async function chatOnce(
   const url = `${baseUrl.replace(/\/$/, "")}/api/chat`;
   const useTools = !!(tools && tools.length) && !modelsWithoutToolSupport.has(model);
 
-  const body: any = { model, messages, stream: false };
+  // Làm sạch messages: chỉ gửi field thật sự có giá trị, ép content luôn là string,
+  // tránh runner Ollama crash do field rỗng/null lạ.
+  const sanitized = messages.map((m) => {
+    const out: any = {
+      role: m.role,
+      content: typeof m.content === "string" ? m.content : String(m.content ?? ""),
+    };
+    if (m.images && m.images.length) out.images = m.images;
+    if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
+    if (m.tool_name) out.tool_name = m.tool_name;
+    return out;
+  });
+
+  const body: any = { model, messages: sanitized, stream: false };
   if (useTools) body.tools = tools;
 
   let res = await fetch(url, {
@@ -72,7 +85,7 @@ export async function chatOnce(
     const errMsg = extractError(txt);
     if (res.status === 400 && /does not support tools/i.test(errMsg)) {
       modelsWithoutToolSupport.add(model);
-      const retryBody = { model, messages, stream: false };
+      const retryBody = { model, messages: sanitized, stream: false };
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
