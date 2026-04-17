@@ -7,7 +7,7 @@ import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
-import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
+import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef, effectiveRisk } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -185,12 +185,12 @@ export function ChatView({
   // Ask user to approve a tool call
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>((resolve) => {
-      // skip dialog when allowed
-      if (!requireConfirm && tool.risk !== "high") {
+      const risk = effectiveRisk(tool.name, args);
+      if (!requireConfirm && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
         return;
       }
-      if (autoApprove[tool.name] && tool.risk !== "high") {
+      if (autoApprove[tool.name] && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
         return;
       }
