@@ -279,6 +279,7 @@ export function ChatView({
     if (!user) return;
     if (!model) return toast.error("Select a model first");
     if (!bridgeOnline) return toast.error("Ollama is offline. Check Settings.");
+    lastActivityRef.current = Date.now();
 
     try {
       const convId = await ensureConversation(text);
