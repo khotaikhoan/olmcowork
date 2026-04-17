@@ -15,12 +15,15 @@ import {
   XCircle,
   Loader2,
   Wrench,
+  Globe,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
 import type { VisionMark } from "@/lib/bridge";
 import { InlineDiff } from "./InlineDiff";
 import { CursorTrailOverlay, CursorPoint } from "./CursorTrailOverlay";
+import { UrlPreviewChip } from "./UrlPreviewChip";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
@@ -59,6 +62,8 @@ function variant(call: ToolCallRecord) {
     if (a === "str_replace") return { kind: "edit" as const, icon: Pencil, label: "edit file" };
     return { kind: "view" as const, icon: FileText, label: a };
   }
+  if (call.name === "fetch_url") return { kind: "url" as const, icon: Globe, label: "fetch url" };
+  if (call.name === "web_search") return { kind: "search" as const, icon: Search, label: "web search" };
   return { kind: "generic" as const, icon: Wrench, label: call.name };
 }
 
@@ -101,7 +106,22 @@ export function ToolCallCard({
       return `(${call.args.coordinate[0]}, ${call.args.coordinate[1]})`;
     if (call.name === "computer" && call.args.text)
       return `"${String(call.args.text).slice(0, 60)}"`;
+    if (call.name === "fetch_url") return String(call.args.url ?? "");
+    if (call.name === "web_search") return `"${String(call.args.query ?? "").slice(0, 60)}"`;
     return "";
+  })();
+
+  // Parse fetch_url result text (produced in src/lib/bridge.ts) into structured fields.
+  const urlInfo = (() => {
+    if (v.kind !== "url" || !call.result) return null;
+    const r = call.result;
+    const url = r.match(/^URL:\s*(.+)$/m)?.[1]?.trim() ?? String(call.args.url ?? "");
+    const title = r.match(/^Title:\s*(.+)$/m)?.[1]?.trim();
+    const description = r.match(/^Description:\s*(.+)$/m)?.[1]?.trim();
+    const image = r.match(/^Image:\s*(.+)$/m)?.[1]?.trim();
+    const bodyMatch = r.match(/\nContent[^\n]*:\n([\s\S]+)$/);
+    const body = bodyMatch?.[1]?.trim();
+    return { url, title, description, image, body };
   })();
 
   return (
@@ -233,6 +253,48 @@ export function ToolCallCard({
             </div>
           )}
 
+          {/* fetch_url → preview chip + body excerpt */}
+          {v.kind === "url" && (
+            <div className="bg-muted/20 p-3 space-y-2">
+              {urlInfo ? (
+                <>
+                  <UrlPreviewChip
+                    meta={{
+                      url: urlInfo.url,
+                      title: urlInfo.title,
+                      description: urlInfo.description,
+                      image: urlInfo.image ?? null,
+                      favicon: urlInfo.url
+                        ? `https://www.google.com/s2/favicons?domain=${(() => {
+                            try { return new URL(urlInfo.url).hostname; } catch { return ""; }
+                          })()}&sz=32`
+                        : undefined,
+                    }}
+                  />
+                  {urlInfo.body && (
+                    <div className="rounded-md border border-border bg-background p-2 max-h-72 overflow-auto text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
+                      {urlInfo.body}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground">{call.result ?? "Đang tải…"}</div>
+              )}
+            </div>
+          )}
+
+          {/* web_search → numbered list of result chips */}
+          {v.kind === "search" && (
+            <div className="bg-muted/20 p-3 space-y-2">
+              {call.result ? (
+                <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-72 whitespace-pre-wrap">
+                  {call.result}
+                </pre>
+              ) : (
+                <div className="text-xs text-muted-foreground">Đang tìm…</div>
+              )}
+            </div>
+          )}
           {v.kind === "generic" && (
             <div className="bg-muted/20 p-3 space-y-2">
               <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-40">
