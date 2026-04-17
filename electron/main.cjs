@@ -856,12 +856,32 @@ app.whenReady().then(startLocalCronTimer);
 // Single shared browser+context, multiple pages (tabs). Lazy-launched.
 // ──────────────────────────────────────────────────────────────────────────
 let pw = null;            // playwright(-extra) chromium
-let pwBrowser = null;
-let pwContext = null;
+let pwBrowser = null;      // null when running persistent-context mode
+let pwContext = null;      // BrowserContext (persistent or ephemeral)
+let pwPersistent = false;  // true if pwContext came from launchPersistentContext (no pwBrowser)
 let pwPages = [];         // ordered tabs
 let pwActiveIdx = 0;
 let pwHeadless = false;   // updated from user_settings via IPC. Default visible so user can watch automation.
+let pwUseRealProfile = false; // when true, launch with the user's actual Chrome profile (cookies/logins)
 const PW_DOWNLOAD_DIR = path.join(app.getPath("downloads"), "OllamaCowork");
+
+/**
+ * Resolve OS-specific path to the user's real Chrome user-data directory.
+ * macOS: ~/Library/Application Support/Google/Chrome
+ * Windows: %LOCALAPPDATA%/Google/Chrome/User Data
+ * Linux: ~/.config/google-chrome
+ */
+function getRealChromeUserDataDir() {
+  const home = app.getPath("home");
+  if (process.platform === "darwin") {
+    return path.join(home, "Library", "Application Support", "Google", "Chrome");
+  }
+  if (process.platform === "win32") {
+    const local = process.env.LOCALAPPDATA || path.join(home, "AppData", "Local");
+    return path.join(local, "Google", "Chrome", "User Data");
+  }
+  return path.join(home, ".config", "google-chrome");
+}
 
 function pwActivePage() {
   // Drop closed pages, clamp index.
