@@ -71,6 +71,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [browserHeadless, setBrowserHeadless] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_headless") !== "false" : true),
   );
+  const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
+    () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
+  );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
 
@@ -107,6 +110,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     localStorage.setItem(LS_PROVIDER, provider);
     localStorage.setItem(LS_OPENAI_MODEL, openaiModel);
     localStorage.setItem("chat.browser_headless", String(browserHeadless));
+    localStorage.setItem("chat.auto_install_update", autoInstallUpdate ? "1" : "0");
     // Push headless mode to Electron bridge if available; safe no-op in browser.
     try { await (window as any).bridge?.browserSetHeadless?.(browserHeadless); } catch { /* ignore */ }
     const payload = {
@@ -290,6 +294,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
               </p>
             </div>
             <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-border p-3">
+            <div>
+              <Label>Tự động cài bản update khi tải xong</Label>
+              <p className="text-xs text-muted-foreground">
+                Khi BẬT: app sẽ tự khởi động lại để cài bản mới ngay sau khi tải xong (không cần bấm nút). Có thông báo trước 5 giây để bạn huỷ. Chỉ trong ứng dụng desktop.
+              </p>
+            </div>
+            <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
           </div>
         </div>
         <DialogFooter>
