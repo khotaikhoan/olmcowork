@@ -999,3 +999,27 @@ function safeParse(s: string): Record<string, any> {
     return {};
   }
 }
+
+/**
+ * Walk through the calls collected so far in the loop and pull out every
+ * cursor waypoint (mouse_move, click, key, type) so the screenshot overlay
+ * can replay the AI's path.
+ */
+function collectTrailPoints(allCalls: ToolCallRecord[]): CursorPoint[] {
+  const pts: CursorPoint[] = [];
+  for (const c of allCalls) {
+    if (c.name !== "computer") continue;
+    const a = c.args || {};
+    const action = String(a.action ?? "");
+    const coord = Array.isArray(a.coordinate) ? a.coordinate : null;
+    if (coord && typeof coord[0] === "number" && typeof coord[1] === "number") {
+      pts.push({
+        x: coord[0],
+        y: coord[1],
+        kind: action || "move",
+      });
+    }
+  }
+  return pts;
+}
+
