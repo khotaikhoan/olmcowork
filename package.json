@@ -19,23 +19,25 @@
     "test:watch": "vitest",
     "electron:dev": "ELECTRON_DEV_URL=http://localhost:8080 electron .",
     "electron:build": "vite build && electron .",
-    "electron:package": "vite build && electron-packager . OllamaCowork --overwrite --out=electron-release --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/supabase",
+    "electron:package": "vite build && electron-packager . Oculo --overwrite --out=electron-release --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/supabase",
     "release": "vite build && electron-builder --mac --publish always"
   },
   "build": {
-    "appId": "com.ollamacowork.app",
-    "productName": "OllamaCowork",
+    "appId": "com.oculo.app",
+    "productName": "Oculo",
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "build/**/*"
     ],
     "mac": {
       "target": [
         "dmg",
         "zip"
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icon.png"
     },
     "publish": {
       "provider": "github",
