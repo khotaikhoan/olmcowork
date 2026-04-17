@@ -2,3 +2,6 @@ project_id = "fuienuoyhbmcqhauluem"
 
 [functions.fetch-meta]
 verify_jwt = false
+
+[functions.web-search]
+verify_jwt = false
