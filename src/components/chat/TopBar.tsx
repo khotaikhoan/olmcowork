@@ -9,7 +9,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel } from "@/lib/ollama";
-import { Wifi, WifiOff, Sparkles } from "lucide-react";
+import { Wifi, WifiOff, Sparkles, OctagonX } from "lucide-react";
 
 interface Props {
   title: string;
@@ -20,6 +20,8 @@ interface Props {
   onSystemPromptChange: (s: string) => void;
   bridgeOnline: boolean;
   onTitleChange: (t: string) => void;
+  onKillSwitch: () => void;
+  killArmed: boolean;
 }
 
 const PRESETS: Record<string, string> = {
@@ -38,6 +40,8 @@ export function TopBar({
   onSystemPromptChange,
   bridgeOnline,
   onTitleChange,
+  onKillSwitch,
+  killArmed,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
@@ -108,6 +112,18 @@ export function TopBar({
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
         {bridgeOnline ? "Online" : "Offline"}
       </div>
+
+      <Button
+        variant="destructive"
+        size="sm"
+        onClick={onKillSwitch}
+        disabled={!killArmed}
+        title="Stop the agent immediately and revoke all auto-approvals"
+        className="h-8 font-semibold shadow-[var(--shadow-soft)] disabled:opacity-40"
+      >
+        <OctagonX className="h-4 w-4 mr-1" />
+        Kill Switch
+      </Button>
     </header>
   );
 }
