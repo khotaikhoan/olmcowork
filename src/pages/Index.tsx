@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +14,6 @@ import {
 import { Artifact } from "@/lib/artifacts";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { GlobalDragDrop } from "@/components/chat/GlobalDragDrop";
-import { Button } from "@/components/ui/button";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 export default function Index() {
   const { user, loading } = useAuth();
