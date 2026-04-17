@@ -1141,6 +1141,81 @@ ipcMain.handle("bridge:chrome_quit", async (_e, { force } = {}) => {
 });
 
 /**
+ * Probe whether Chrome's DevTools Protocol is reachable on localhost:9222.
+ */
+ipcMain.handle("bridge:chrome_debug_probe", async () => {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 1500);
+    const r = await fetch("http://localhost:9222/json/version", { signal: ctrl.signal }).catch(() => null);
+    clearTimeout(t);
+    if (r && r.ok) {
+      const info = await r.json().catch(() => ({}));
+      return { ok: true, output: "debug port reachable", ready: true, browser: info?.Browser ?? null };
+    }
+    return { ok: true, output: "debug port not reachable", ready: false };
+  } catch (e) {
+    return { ok: false, output: String(e?.message ?? e), ready: false };
+  }
+});
+
+/**
+ * Quit Chrome gracefully (saves session) then relaunch with
+ * --remote-debugging-port=9222 + --restore-last-session. After this,
+ * Playwright attaches via CDP and opens NEW TABS in the user's real Chrome —
+ * no more "close everything first" friction for subsequent runs.
+ */
+ipcMain.handle("bridge:chrome_relaunch_with_debug", async () => {
+  try {
+    if (process.platform === "darwin") {
+      await execP(`osascript -e 'tell application "Google Chrome" to quit'`).catch(() => {});
+      for (let i = 0; i < 12; i++) {
+        const { stdout } = await execP(`pgrep -x "Google Chrome" || true`);
+        if (!stdout.trim()) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    } else if (process.platform === "win32") {
+      await execP(`taskkill /IM chrome.exe /T`).catch(() => {});
+      await new Promise((r) => setTimeout(r, 1500));
+    } else {
+      await execP(`pkill -x chrome || true`).catch(() => {});
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    const launchArgs = ["--remote-debugging-port=9222", "--restore-last-session"];
+    if (process.platform === "darwin") {
+      const argStr = launchArgs.map((a) => `"${a}"`).join(" ");
+      await execP(`open -a "Google Chrome" -n --args ${argStr}`);
+    } else if (process.platform === "win32") {
+      const cmd = `start "" "chrome.exe" ${launchArgs.join(" ")}`;
+      await execP(`cmd /c ${cmd}`).catch(async () => {
+        const candidates = [
+          `${process.env["ProgramFiles"]}\\Google\\Chrome\\Application\\chrome.exe`,
+          `${process.env["ProgramFiles(x86)"]}\\Google\\Chrome\\Application\\chrome.exe`,
+        ];
+        for (const p of candidates) {
+          try { await execP(`"${p}" ${launchArgs.join(" ")}`); return; } catch {}
+        }
+      });
+    } else {
+      const { spawn } = require("child_process");
+      spawn("google-chrome", launchArgs, { detached: true, stdio: "ignore" }).unref();
+    }
+
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      const probe = await fetch("http://localhost:9222/json/version").catch(() => null);
+      if (probe && probe.ok) {
+        return { ok: true, output: "Chrome đã khởi động lại với debug port 9222. Tabs cũ sẽ tự khôi phục." };
+      }
+    }
+    return { ok: false, output: "Đã relaunch Chrome nhưng debug port 9222 chưa lên. Mở Chrome thủ công với --remote-debugging-port=9222." };
+  } catch (e) {
+    return { ok: false, output: String(e?.message ?? e) };
+  }
+});
+
+/**
  * Resolve a Playwright Locator from one of: selector (CSS), text, role+name, label, placeholder.
  * Returns null + reason if no resolver provided.
  */
