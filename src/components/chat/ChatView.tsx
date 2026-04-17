@@ -357,6 +357,16 @@ export function ChatView({
         record.result = result.output;
         if (result.image) record.image = result.image;
         if ((result as any).marks) record.marks = (result as any).marks;
+
+        // Attach accumulated cursor trail to any screenshot result so the
+        // overlay can replay the AI's mouse path on top of it.
+        if (
+          tc.function.name === "computer" &&
+          args.action === "screenshot" &&
+          result.image
+        ) {
+          record.trailPoints = collectTrailPoints(allCalls);
+        }
         setStreamingToolCalls([...allCalls]);
 
         working.push({
