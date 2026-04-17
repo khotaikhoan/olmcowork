@@ -4,6 +4,50 @@ import { toast } from "sonner";
 import type { VisionMark } from "@/lib/bridge";
 import { isElectron } from "@/lib/bridge";
 
+/**
+ * Map an accessibility role string to a semantic color category.
+ * Returns a key used to pick HSL values from the design system.
+ */
+type RoleColor = "button" | "link" | "input" | "menu" | "checkbox" | "default";
+
+function roleToColor(role?: string): RoleColor {
+  if (!role) return "default";
+  const r = role.toLowerCase();
+  // Buttons
+  if (/(button|btn|axbutton|toolbar|tab\b)/.test(r)) return "button";
+  // Links
+  if (/(link|hyperlink|url|axlink)/.test(r)) return "link";
+  // Text inputs / editable fields
+  if (/(textfield|textarea|searchfield|combobox|edit|input|axtextfield|axtextarea)/.test(r))
+    return "input";
+  // Menus / popups
+  if (/(menu|popup|dropdown|axmenu|menuitem)/.test(r)) return "menu";
+  // Checkboxes / radios / switches
+  if (/(checkbox|radio|switch|toggle|axcheckbox|axradiobutton)/.test(r)) return "checkbox";
+  return "default";
+}
+
+/**
+ * HSL color tokens per role. We inline raw HSL (not design-token vars)
+ * because each role needs a distinct hue not present in the semantic palette.
+ * Values are tuned for readability over both light + dark screenshots.
+ */
+const ROLE_COLORS: Record<RoleColor, { border: string; fill: string; badgeBg: string; badgeFg: string; label: string }> = {
+  button:   { border: "hsl(217 91% 60%)", fill: "hsl(217 91% 60% / 0.18)", badgeBg: "hsl(217 91% 60%)", badgeFg: "hsl(0 0% 100%)", label: "btn" },
+  link:     { border: "hsl(271 81% 66%)", fill: "hsl(271 81% 66% / 0.18)", badgeBg: "hsl(271 81% 66%)", badgeFg: "hsl(0 0% 100%)", label: "link" },
+  input:    { border: "hsl(142 71% 45%)", fill: "hsl(142 71% 45% / 0.18)", badgeBg: "hsl(142 71% 45%)", badgeFg: "hsl(0 0% 100%)", label: "input" },
+  menu:     { border: "hsl(25 95% 53%)",  fill: "hsl(25 95% 53% / 0.18)",  badgeBg: "hsl(25 95% 53%)",  badgeFg: "hsl(0 0% 100%)", label: "menu" },
+  checkbox: { border: "hsl(173 80% 40%)", fill: "hsl(173 80% 40% / 0.18)", badgeBg: "hsl(173 80% 40%)", badgeFg: "hsl(0 0% 100%)", label: "check" },
+  default:  { border: "hsl(var(--primary))", fill: "hsl(var(--primary) / 0.10)", badgeBg: "hsl(var(--background))", badgeFg: "hsl(var(--primary))", label: "" },
+};
+
+/** Confidence (0..1) → opacity multiplier in [0.45, 1.0]. */
+function confidenceToOpacity(c?: number): number {
+  if (typeof c !== "number" || isNaN(c)) return 1;
+  const clamped = Math.max(0, Math.min(1, c));
+  return 0.45 + clamped * 0.55;
+}
+
 interface Props {
   image: string; // base64 png (no data: prefix)
   marks: VisionMark[];
