@@ -18,6 +18,7 @@ import {
   Globe,
   Search,
   HelpCircle,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
@@ -93,12 +94,15 @@ export function ToolCallCard({
   defaultOpen,
   onReannotate,
   precedingText,
+  onRetry,
 }: {
   call: ToolCallRecord;
   defaultOpen?: boolean;
   onReannotate?: () => void;
   /** Assistant message text immediately preceding this tool call — used by "Why?" popover */
   precedingText?: string;
+  /** When provided and call.status === 'error', renders a Retry button */
+  onRetry?: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const v = variant(call);
@@ -132,6 +136,8 @@ export function ToolCallCard({
     return { url, title, description, image, body, cached };
   })();
 
+  const showRetry = !!onRetry && call.status === "error";
+
   return (
     <div className="my-2 rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-soft)]">
       <div className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted/40 transition">
@@ -152,6 +158,21 @@ export function ToolCallCard({
             </span>
           )}
         </button>
+        {showRetry && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onRetry!();
+            }}
+            title="Chạy lại tool này với cùng tham số"
+            aria-label="Chạy lại"
+            className="h-6 px-2 rounded-md flex items-center gap-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition shrink-0 border border-destructive/30"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Thử lại
+          </button>
+        )}
         {why && (
           <Popover>
             <PopoverTrigger asChild>
