@@ -263,8 +263,10 @@ export function ChatView({
       openaiModel,
       mode,
       parentTools: toolsForMode(mode).map((t) => t.name),
+      userId: user?.id ?? null,
+      conversationId: conversationId ?? null,
     });
-  }, [provider, ollamaUrl, model, openaiModel, mode]);
+  }, [provider, ollamaUrl, model, openaiModel, mode, user?.id, conversationId]);
 
   // Load top memories once per user (and refresh when conversation changes)
   useEffect(() => {
