@@ -26,6 +26,7 @@ export interface SettingsValue {
   ollama_url: string;
   default_model: string | null;
   require_confirm: boolean;
+  auto_stop_minutes: number;
 }
 
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
@@ -33,6 +34,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [url, setUrl] = useState("http://localhost:11434");
   const [model, setModel] = useState("");
   const [requireConfirm, setRequireConfirm] = useState(true);
+  const [autoStopMinutes, setAutoStopMinutes] = useState(0);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
 
@@ -48,6 +50,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           setUrl(data.ollama_url);
           setModel(data.default_model ?? "");
           setRequireConfirm(data.require_confirm);
+          setAutoStopMinutes((data as any).auto_stop_minutes ?? 0);
         }
       });
   }, [open, user]);
@@ -69,12 +72,18 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
       ollama_url: url,
       default_model: model || null,
       require_confirm: requireConfirm,
+      auto_stop_minutes: autoStopMinutes,
     };
     const { error } = await supabase.from("user_settings").upsert(payload);
     setBusy(false);
     if (error) return toast.error(error.message);
     toast.success("Settings saved");
-    onSaved({ ollama_url: url, default_model: model || null, require_confirm: requireConfirm });
+    onSaved({
+      ollama_url: url,
+      default_model: model || null,
+      require_confirm: requireConfirm,
+      auto_stop_minutes: autoStopMinutes,
+    });
     onOpenChange(false);
   };
 
@@ -117,6 +126,20 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
               </p>
             </div>
             <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="auto-stop">Auto-stop Ollama after idle (minutes)</Label>
+            <Input
+              id="auto-stop"
+              type="number"
+              min={0}
+              max={1440}
+              value={autoStopMinutes}
+              onChange={(e) => setAutoStopMinutes(Math.max(0, Number(e.target.value) || 0))}
+            />
+            <p className="text-xs text-muted-foreground">
+              0 = disabled. Only works in the desktop app. Timer resets on each message.
+            </p>
           </div>
         </div>
         <DialogFooter>
