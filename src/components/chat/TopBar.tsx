@@ -78,6 +78,8 @@ interface Props {
   onLockedAppChange: (app: string | null) => void;
   agentId: string;
   onAgentChange: (id: string) => void;
+  /** Optional extra slot rendered after Mode/Model — used for the compact ControlBar pill. */
+  extraSlot?: React.ReactNode;
 }
 
 
@@ -122,6 +124,7 @@ export function TopBar({
   onLockedAppChange,
   agentId,
   onAgentChange,
+  extraSlot,
 }: Props) {
   const activeAgent = getAgent(agentId);
   const ActiveAgentIcon = activeAgent.icon;
@@ -172,6 +175,8 @@ export function TopBar({
       </Select>
 
       <ArmedBadge />
+
+      {extraSlot}
 
       <div className="flex-1" />
 
