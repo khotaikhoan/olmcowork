@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   PanelLeftOpen,
+  Brain,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -165,6 +166,11 @@ export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
           icon={<Scale className="h-4 w-4" />}
           label="So sánh 2 model"
           onClick={() => nav("/compare")}
+        />
+        <Item
+          icon={<Brain className="h-4 w-4" />}
+          label="Bộ nhớ dài hạn"
+          onClick={() => nav("/memories")}
         />
         <Item
           icon={<Settings className="h-4 w-4" />}

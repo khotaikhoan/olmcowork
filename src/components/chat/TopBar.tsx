@@ -29,12 +29,14 @@ import {
   Download,
   FileJson,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
 import { TokenMeter } from "./TokenMeter";
 import { CostMeter } from "./CostMeter";
 import { ModeToggle } from "./ModeToggle";
 import { AppLockSelect } from "./AppLockSelect";
+import { AGENTS, getAgent } from "@/lib/agents";
 import type { ConversationMode } from "@/lib/tools";
 
 interface Props {
@@ -69,6 +71,8 @@ interface Props {
   onModeChange: (m: ConversationMode) => void;
   lockedApp: string | null;
   onLockedAppChange: (app: string | null) => void;
+  agentId: string;
+  onAgentChange: (id: string) => void;
 }
 
 
@@ -111,7 +115,11 @@ export function TopBar({
   onModeChange,
   lockedApp,
   onLockedAppChange,
+  agentId,
+  onAgentChange,
 }: Props) {
+  const activeAgent = getAgent(agentId);
+  const ActiveAgentIcon = activeAgent.icon;
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0 overflow-x-auto">
       {onToggleSidebar && (
@@ -134,6 +142,48 @@ export function TopBar({
       {mode === "control" && (
         <AppLockSelect value={lockedApp} onChange={onLockedAppChange} />
       )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            title={`Agent: ${activeAgent.name}\n${activeAgent.description}`}
+          >
+            <ActiveAgentIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{activeAgent.name}</span>
+            <ChevronDown className="h-3 w-3 opacity-60" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          {AGENTS.map((a) => {
+            const Icon = a.icon;
+            return (
+              <DropdownMenuItem
+                key={a.id}
+                onClick={() => onAgentChange(a.id)}
+                className="gap-2 items-start py-2"
+              >
+                <Icon className="h-4 w-4 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium flex items-center gap-1.5">
+                    {a.name}
+                    {a.id === agentId && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/15 text-primary font-mono">
+                        active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground leading-snug">
+                    {a.description}
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <div className="flex-1" />
 
       <Select value={model} onValueChange={onModelChange}>
