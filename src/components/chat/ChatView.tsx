@@ -867,6 +867,7 @@ export function ChatView({
       setPending(null);
     }
     setAutoApprove({});
+    setAgentStep(null);
     setToolsEnabled(false);
     setStreamingText("");
     setStreamingToolCalls([]);
