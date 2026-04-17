@@ -53,6 +53,45 @@ export type Database = {
         }
         Relationships: []
       }
+      approved_plans: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          id: string
+          model: string | null
+          prompt: string
+          provider: string | null
+          step_count: number
+          steps: Json
+          user_id: string
+          was_early_start: boolean
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          prompt: string
+          provider?: string | null
+          step_count?: number
+          steps?: Json
+          user_id: string
+          was_early_start?: boolean
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          model?: string | null
+          prompt?: string
+          provider?: string | null
+          step_count?: number
+          steps?: Json
+          user_id?: string
+          was_early_start?: boolean
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           branch_of_message_id: string | null
