@@ -841,7 +841,158 @@ function startLocalCronTimer() {
 }
 app.whenReady().then(startLocalCronTimer);
 
-app.on("before-quit", () => {
+// ──────────────────────────────────────────────────────────────────────────
+// Phase 3: Playwright browser automation (headless Chromium)
+// Single shared browser+context+page for the session. Lazy-launched on first
+// browser:* IPC. Closed on quit. Uses playwright-core + system Chrome channel
+// to avoid bundling a 200MB Chromium with the Electron build.
+// ──────────────────────────────────────────────────────────────────────────
+let pw = null;            // playwright-core module (lazy)
+let pwBrowser = null;     // Browser instance
+let pwContext = null;     // BrowserContext
+let pwPage = null;        // active Page
+
+async function ensurePwPage() {
+  if (!pw) {
+    try {
+      pw = require("playwright-core");
+    } catch (e) {
+      throw new Error("playwright-core không có sẵn. Cài: npm i playwright-core");
+    }
+  }
+  if (!pwBrowser || !pwBrowser.isConnected()) {
+    // channel: 'chrome' uses the user's installed Chrome; falls back to executablePath if set.
+    try {
+      pwBrowser = await pw.chromium.launch({ headless: true, channel: "chrome" });
+    } catch {
+      // Last-resort: try without channel (requires bundled Chromium — usually missing).
+      pwBrowser = await pw.chromium.launch({ headless: true });
+    }
+    pwContext = await pwBrowser.newContext({
+      viewport: { width: 1280, height: 800 },
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+    });
+    pwPage = await pwContext.newPage();
+  }
+  if (!pwPage || pwPage.isClosed()) {
+    pwPage = await pwContext.newPage();
+  }
+  return pwPage;
+}
+
+async function pwShutdown() {
+  try { await pwContext?.close(); } catch {}
+  try { await pwBrowser?.close(); } catch {}
+  pwPage = null;
+  pwContext = null;
+  pwBrowser = null;
+}
+
+ipcMain.handle("bridge:browser", async (_e, payload) => {
+  const { action, ...args } = payload || {};
+  try {
+    if (action === "close") {
+      await pwShutdown();
+      return { ok: true, output: "Browser closed." };
+    }
+    const page = await ensurePwPage();
+    switch (action) {
+      case "navigate": {
+        const url = String(args.url ?? "");
+        if (!/^https?:\/\//i.test(url)) {
+          return { ok: false, output: "navigate requires absolute http(s) URL." };
+        }
+        const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+        const title = await page.title();
+        return {
+          ok: true,
+          output: `Navigated to ${page.url()} (status ${resp?.status() ?? "?"}, title "${title}")`,
+        };
+      }
+      case "click_selector": {
+        const selector = String(args.selector ?? "");
+        if (!selector) return { ok: false, output: "click_selector requires selector." };
+        await page.click(selector, { timeout: 10_000 });
+        return { ok: true, output: `Clicked ${selector}` };
+      }
+      case "fill": {
+        const selector = String(args.selector ?? "");
+        const value = String(args.value ?? "");
+        if (!selector) return { ok: false, output: "fill requires selector." };
+        await page.fill(selector, value, { timeout: 10_000 });
+        return { ok: true, output: `Filled ${selector} (${value.length} chars)` };
+      }
+      case "press": {
+        const selector = String(args.selector ?? "");
+        const key = String(args.key ?? "Enter");
+        if (selector) {
+          await page.press(selector, key, { timeout: 10_000 });
+        } else {
+          await page.keyboard.press(key);
+        }
+        return { ok: true, output: `Pressed ${key}${selector ? ` on ${selector}` : ""}` };
+      }
+      case "get_html": {
+        const selector = args.selector ? String(args.selector) : null;
+        let html = "";
+        if (selector) {
+          html = await page.locator(selector).first().innerHTML({ timeout: 10_000 });
+        } else {
+          html = await page.content();
+        }
+        // Strip <script>/<style>, collapse whitespace, cap to 16KB to fit context.
+        const cleaned = html
+          .replace(/<script[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[\s\S]*?<\/style>/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        const truncated = cleaned.length > 16_000;
+        return {
+          ok: true,
+          output:
+            `URL: ${page.url()}\nTitle: ${await page.title()}\n\nHTML${truncated ? " (truncated to 16KB)" : ""}:\n${cleaned.slice(0, 16_000)}`,
+        };
+      }
+      case "get_text": {
+        const selector = args.selector ? String(args.selector) : "body";
+        const text = await page.locator(selector).first().innerText({ timeout: 10_000 });
+        const truncated = text.length > 16_000;
+        return {
+          ok: true,
+          output: `URL: ${page.url()}\n\nText${truncated ? " (truncated to 16KB)" : ""}:\n${text.slice(0, 16_000)}`,
+        };
+      }
+      case "screenshot": {
+        const buf = await page.screenshot({ type: "png", fullPage: !!args.fullPage });
+        return {
+          ok: true,
+          output: `Screenshot ${buf.length} bytes (${page.url()})`,
+          image: buf.toString("base64"),
+        };
+      }
+      case "wait_for": {
+        const selector = String(args.selector ?? "");
+        if (!selector) return { ok: false, output: "wait_for requires selector." };
+        await page.waitForSelector(selector, { timeout: Number(args.timeout) || 15_000 });
+        return { ok: true, output: `Selector appeared: ${selector}` };
+      }
+      case "eval": {
+        const expression = String(args.expression ?? "");
+        if (!expression) return { ok: false, output: "eval requires expression." };
+        const result = await page.evaluate(expression);
+        return { ok: true, output: typeof result === "string" ? result : JSON.stringify(result).slice(0, 8000) };
+      }
+      default:
+        return { ok: false, output: `Unknown browser action: ${action}` };
+    }
+  } catch (e) {
+    return { ok: false, output: `browser.${action} failed: ${e?.message ?? String(e)}` };
+  }
+});
+
+app.on("before-quit", async () => {
   if (ollamaProc) { try { ollamaProc.kill(); } catch {} }
   if (localJobsTimer) clearInterval(localJobsTimer);
+  await pwShutdown();
 });
