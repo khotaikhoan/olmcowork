@@ -624,7 +624,13 @@ export function ChatView({
       const toolsHint = toolsEnabled
         ? "\n\nYou have access to local computer-use tools. Use them when helpful. Always explain what you're doing."
         : "";
-      const fullSystem = (baseSystem + toolsHint).trim();
+      const planHint =
+        planSteps && planSteps.length > 0
+          ? `\n\nThe user has approved the following execution plan. Follow these steps in order; announce which step you are on as you go:\n${planSteps
+              .map((s, i) => `${i + 1}. ${s.text}`)
+              .join("\n")}`
+          : "";
+      const fullSystem = (baseSystem + toolsHint + planHint).trim();
 
       const history: OllamaChatMessage[] = [];
       if (fullSystem) history.push({ role: "system", content: fullSystem });
