@@ -254,6 +254,18 @@ export function ChatView({
           tool_name: tc.function.name,
           content: result.output,
         });
+
+        // Vision flow: feed screenshot back to the model as a user image message
+        if (tc.function.name === "screenshot" && result.ok && result.image) {
+          working.push({
+            role: "user",
+            content: "[Screenshot result attached] Analyze what you see on the screen and continue the task.",
+            images: [result.image],
+          });
+          // Also surface in the UI tool card
+          record.result = (record.result || "") + "\n[image sent to vision model]";
+          setStreamingToolCalls([...allCalls]);
+        }
       }
     }
 
