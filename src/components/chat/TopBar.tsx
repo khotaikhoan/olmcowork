@@ -32,6 +32,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
+import { ArmedBadge } from "./ArmedBadge";
 import { TokenMeter } from "./TokenMeter";
 import { CostMeter } from "./CostMeter";
 import { ModeToggle } from "./ModeToggle";
@@ -185,6 +186,7 @@ export function TopBar({
       </DropdownMenu>
 
       <div className="flex-1" />
+      <ArmedBadge />
 
       <Select value={model} onValueChange={onModelChange}>
         <SelectTrigger className="h-8 w-[200px] text-sm">
