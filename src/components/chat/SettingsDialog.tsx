@@ -312,10 +312,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>
+                      {IS_DESKTOP && <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>}
                       <SelectItem value="openai">OpenAI (đám mây)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {!IS_DESKTOP && (
+                    <p className="text-xs text-muted-foreground">
+                      Ollama chỉ hoạt động trong Desktop app. Web preview chỉ hỗ trợ OpenAI.
+                    </p>
+                  )}
                 </div>
 
                 {provider === "openai" && (
