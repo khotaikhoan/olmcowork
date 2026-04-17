@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld("bridge", {
   mouseClick: (x, y, button) => invoke("bridge:mouse_click", { x, y, button }),
   typeText: (text) => invoke("bridge:type_text", { text }),
   keyPress: (key) => invoke("bridge:key_press", { key }),
+  startOllama: () => invoke("bridge:start_ollama"),
+  stopOllama: () => invoke("bridge:stop_ollama"),
+  ollamaStatus: () => invoke("bridge:ollama_status"),
 });
