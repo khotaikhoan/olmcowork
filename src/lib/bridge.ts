@@ -3,11 +3,57 @@
 import { mockExecute, ExecResult } from "./tools";
 import { supabase } from "@/integrations/supabase/client";
 
+// ---------- Generic localStorage TTL cache (used by fetch_url + web_search) ----------
+const TOOL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface CachedEntry {
+  ts: number;
+  output: string;
+}
+
+function readToolCache(key: string): string | null {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedEntry;
+    if (!parsed?.ts || Date.now() - parsed.ts > TOOL_CACHE_TTL_MS) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      return null;
+    }
+    return parsed.output;
+  } catch {
+    return null;
+  }
+}
+
+function writeToolCache(prefix: string, key: string, output: string): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const payload: CachedEntry = { ts: Date.now(), output };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // quota exceeded — best-effort prune entries with same prefix
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k?.startsWith(prefix)) localStorage.removeItem(k);
+      }
+    } catch { /* ignore */ }
+  }
+}
+
+const FETCH_URL_PREFIX = "olm:fetch_url:";
+const WEB_SEARCH_PREFIX = "olm:web_search:";
+const CACHE_HIT_MARKER = "<!--cache_hit-->\n";
+
 /** Read-only URL fetch via the public `fetch-meta` edge function. Safe in browser + Electron. */
 async function fetchUrlTool(url: string): Promise<ExecResult> {
   if (!url || !/^https?:\/\//i.test(url)) {
     return { ok: false, output: "fetch_url requires an absolute http(s) URL." };
   }
+  const cacheKey = `${FETCH_URL_PREFIX}${url.trim()}`;
+  const cached = readToolCache(cacheKey);
+  if (cached) return { ok: true, output: CACHE_HIT_MARKER + cached };
   try {
     const { data, error } = await supabase.functions.invoke("fetch-meta", { body: { url } });
     if (error) return { ok: false, output: `fetch_url failed: ${error.message}` };
@@ -30,49 +76,11 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
       d.image ? `Image: ${d.image}` : null,
       d.body ? `\nContent${d.bodyTruncated ? " (truncated to 4KB)" : ""}:\n${d.body}` : null,
     ].filter(Boolean);
-    return { ok: true, output: lines.join("\n") };
+    const output = lines.join("\n");
+    writeToolCache(FETCH_URL_PREFIX, cacheKey, output);
+    return { ok: true, output };
   } catch (e: any) {
     return { ok: false, output: `fetch_url failed: ${e?.message ?? String(e)}` };
-  }
-}
-
-/** localStorage cache key + TTL for web_search results. */
-const WEB_SEARCH_CACHE_PREFIX = "olm:web_search:";
-const WEB_SEARCH_TTL_MS = 10 * 60 * 1000; // 10 minutes
-
-interface CachedSearch {
-  ts: number;
-  output: string;
-}
-
-function readSearchCache(key: string): string | null {
-  try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as CachedSearch;
-    if (!parsed?.ts || Date.now() - parsed.ts > WEB_SEARCH_TTL_MS) {
-      try { localStorage.removeItem(key); } catch { /* ignore */ }
-      return null;
-    }
-    return parsed.output;
-  } catch {
-    return null;
-  }
-}
-
-function writeSearchCache(key: string, output: string): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    const payload: CachedSearch = { ts: Date.now(), output };
-    localStorage.setItem(key, JSON.stringify(payload));
-  } catch {
-    // quota exceeded — best-effort prune
-    try {
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k?.startsWith(WEB_SEARCH_CACHE_PREFIX)) localStorage.removeItem(k);
-      }
-    } catch { /* ignore */ }
   }
 }
 
@@ -80,11 +88,9 @@ function writeSearchCache(key: string, output: string): void {
 async function webSearchTool(query: string, limit?: number): Promise<ExecResult> {
   if (!query?.trim()) return { ok: false, output: "web_search requires a non-empty query." };
   const n = limit ?? 5;
-  const cacheKey = `${WEB_SEARCH_CACHE_PREFIX}${n}:${query.trim().toLowerCase()}`;
-  const cached = readSearchCache(cacheKey);
-  if (cached) {
-    return { ok: true, output: `<!--web_search_cache_hit-->\n${cached}` };
-  }
+  const cacheKey = `${WEB_SEARCH_PREFIX}${n}:${query.trim().toLowerCase()}`;
+  const cached = readToolCache(cacheKey);
+  if (cached) return { ok: true, output: CACHE_HIT_MARKER + cached };
   try {
     const { data, error } = await supabase.functions.invoke("web-search", {
       body: { query, limit: n },
@@ -100,7 +106,7 @@ async function webSearchTool(query: string, limit?: number): Promise<ExecResult>
       .join("\n\n");
     const marker = `<!--web_search:${JSON.stringify({ query, results })}-->\n`;
     const output = marker + text;
-    writeSearchCache(cacheKey, output);
+    writeToolCache(WEB_SEARCH_PREFIX, cacheKey, output);
     return { ok: true, output };
   } catch (e: any) {
     return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };

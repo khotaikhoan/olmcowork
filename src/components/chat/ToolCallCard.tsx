@@ -114,14 +114,15 @@ export function ToolCallCard({
   // Parse fetch_url result text (produced in src/lib/bridge.ts) into structured fields.
   const urlInfo = (() => {
     if (v.kind !== "url" || !call.result) return null;
-    const r = call.result;
+    const cached = call.result.startsWith("<!--cache_hit-->");
+    const r = call.result.replace(/^<!--cache_hit-->\n?/, "");
     const url = r.match(/^URL:\s*(.+)$/m)?.[1]?.trim() ?? String(call.args.url ?? "");
     const title = r.match(/^Title:\s*(.+)$/m)?.[1]?.trim();
     const description = r.match(/^Description:\s*(.+)$/m)?.[1]?.trim();
     const image = r.match(/^Image:\s*(.+)$/m)?.[1]?.trim();
     const bodyMatch = r.match(/\nContent[^\n]*:\n([\s\S]+)$/);
     const body = bodyMatch?.[1]?.trim();
-    return { url, title, description, image, body };
+    return { url, title, description, image, body, cached };
   })();
 
   return (
@@ -258,6 +259,11 @@ export function ToolCallCard({
             <div className="bg-muted/20 p-3 space-y-2">
               {urlInfo ? (
                 <>
+                  {urlInfo.cached && (
+                    <div className="text-[10px] font-medium text-muted-foreground">
+                      <span className="px-1.5 py-0.5 rounded bg-muted text-foreground/70">cached</span>
+                    </div>
+                  )}
                   <UrlPreviewChip
                     meta={{
                       url: urlInfo.url,
@@ -285,8 +291,8 @@ export function ToolCallCard({
 
           {/* web_search → list of result cards */}
           {v.kind === "search" && (() => {
-            const cached = !!call.result?.includes("<!--web_search_cache_hit-->");
-            const stripped = call.result?.replace(/^<!--web_search_cache_hit-->\n?/, "") ?? "";
+            const cached = !!call.result?.startsWith("<!--cache_hit-->");
+            const stripped = call.result?.replace(/^<!--cache_hit-->\n?/, "") ?? "";
             const m = stripped.match(/^<!--web_search:([\s\S]*?)-->/);
             let parsed: { query: string; results: { title: string; url: string; snippet: string }[] } | null = null;
             if (m) { try { parsed = JSON.parse(m[1]); } catch { /* ignore */ } }
