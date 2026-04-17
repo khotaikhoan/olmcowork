@@ -17,6 +17,7 @@ export default function Index() {
     default_model: null,
     require_confirm: true,
     auto_stop_minutes: 0,
+    auto_start: true,
   });
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function Index() {
             default_model: data.default_model,
             require_confirm: data.require_confirm,
             auto_stop_minutes: (data as any).auto_stop_minutes ?? 0,
+            auto_start: (data as any).auto_start ?? true,
           });
         }
       });
@@ -66,6 +68,7 @@ export default function Index() {
         defaultModel={settings.default_model}
         requireConfirm={settings.require_confirm}
         autoStopMinutes={settings.auto_stop_minutes}
+        autoStart={settings.auto_start}
         onCreated={(id) => {
           setSelectedId(id);
           setRefreshKey((k) => k + 1);
