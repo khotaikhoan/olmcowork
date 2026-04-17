@@ -156,6 +156,23 @@ export function ChatView({
     });
   }, [conversationId]);
 
+  // Shared bypass toggle — used by both ControlBarFull and ControlBarCompact.
+  const handleBypassToggle = (v: boolean) => {
+    if (!conversationId) {
+      toast.error("Cần mở 1 hội thoại trước");
+      return;
+    }
+    setBypass(conversationId, v);
+    if (v) {
+      arm(); // auto-arm so deep tools also pass
+      toast.warning("Bypass BẬT — mọi tool sẽ tự chạy không hỏi", {
+        description: "Chỉ dùng cho hội thoại này. Tắt khi xong.",
+      });
+    } else {
+      toast.success("Bypass đã tắt — quay lại chế độ duyệt thường");
+    }
+  };
+
   // Sync user's headless preference to Electron bridge on mount.
   // Default: visible window (false) so user can watch the AI driving Chrome.
   useEffect(() => {
