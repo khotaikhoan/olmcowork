@@ -26,6 +26,7 @@ import {
   Scale,
   Monitor,
   PanelLeftClose,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -263,6 +264,14 @@ export function ConversationList({
           onClick={() => nav("/compare")}
         >
           <Scale className="h-4 w-4 mr-2" /> So sánh 2 model
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => nav("/memories")}
+        >
+          <Brain className="h-4 w-4 mr-2" /> Bộ nhớ dài hạn
         </Button>
         <Button
           variant="ghost"
