@@ -16,6 +16,21 @@
     <meta name="twitter:title" content="Oculo — Trò chuyện AI cục bộ & cloud">
     <meta property="og:description" content="Trợ lý AI quan sát & cộng tác — local Ollama + cloud, điều khiển máy tính an toàn.">
     <meta name="twitter:description" content="Trợ lý AI quan sát & cộng tác — local Ollama + cloud, điều khiển máy tính an toàn.">
+
+    <!-- Anti-flash: paint background + fallback font BEFORE app/font CSS loads.
+         Without this, the browser shows a white screen until all bundled
+         @fontsource CSS files finish loading (~200-500ms on first visit). -->
+    <style>
+      html, body {
+        background: hsl(0 0% 100%);
+        color: hsl(220 13% 13%);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        margin: 0;
+      }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: hsl(220 13% 9%); color: hsl(0 0% 98%); }
+      }
+    </style>
   </head>
 
   <body>
