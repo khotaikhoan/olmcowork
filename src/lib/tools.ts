@@ -300,6 +300,49 @@ export const TOOLS: ToolDef[] = [
       required: ["text"],
     },
   },
+  // ────────────── Phase 7: sibling broadcast & shared scratchpad ──────────────
+  {
+    name: "broadcast_to_siblings",
+    risk: "low",
+    description:
+      "Send a single message to ALL sibling agents that share your same direct parent. The orchestrator relays it: each sibling receives it as an inbox message (auto-injected before its next step) AND your shared parent receives a copy as a report so it has context. You do not receive your own broadcast. Use for: 'I found X, you can stop searching for it' or coordination updates that don't fit through scratchpad.",
+    parameters: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Message body (1–3 sentences). Will be prefixed with [BROADCAST from <your-name>]." },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "scratchpad_write",
+    risk: "low",
+    description:
+      "Write a string value to the SHARED scratchpad your sibling agents (same direct parent) can read. Use this to publish partial results without spamming inbox messages — e.g. scratchpad_write({key:'hn_top_titles', value:'1. Foo\\n2. Bar'}). Limits: 10KB per value, 50 keys per scope. Overwrites if key exists. The parent agent can also read its children's scratchpads.",
+    parameters: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "Identifier for the value. Use snake_case." },
+        value: { type: "string", description: "String content (≤10KB). Stringify JSON yourself if needed." },
+        scope: { type: "string", description: "OPTIONAL — agent id whose CHILDREN-scope you want to write to. Only valid if you are the direct parent of that agent. Omit to use your own sibling-group scope." },
+      },
+      required: ["key", "value"],
+    },
+  },
+  {
+    name: "scratchpad_read",
+    risk: "low",
+    description:
+      "Read from the shared scratchpad of your sibling group (same direct parent). Omit `key` to list all keys with previews. Provide `key` to fetch the full value. Parent agents can also read their children's scratchpad via `scope=<child_id>`.",
+    parameters: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "OPTIONAL — specific key to fetch. Omit to list all keys in the scope." },
+        scope: { type: "string", description: "OPTIONAL — agent id whose CHILDREN-scope you want to read. Only valid if you are the direct parent. Omit to use your own sibling-group scope." },
+      },
+      required: [],
+    },
+  },
   {
     name: "text_editor",
     anthropic_type: "text_editor_20241022",
@@ -342,7 +385,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent", "send_to_agent", "report_to_parent"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent", "send_to_agent", "report_to_parent", "broadcast_to_siblings", "scratchpad_write", "scratchpad_read"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -381,7 +424,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent" || name === "send_to_agent" || name === "report_to_parent") return true;
+  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent" || name === "send_to_agent" || name === "report_to_parent" || name === "broadcast_to_siblings" || name === "scratchpad_write" || name === "scratchpad_read") return true;
   if (name === "browser") {
     const a = String(args.action ?? "");
     return [

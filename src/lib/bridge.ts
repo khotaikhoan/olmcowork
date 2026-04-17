@@ -215,6 +215,30 @@ export async function executeTool(
   if (name === "report_to_parent") {
     return { ok: false, output: "report_to_parent is only callable from inside a sub-agent (you are the root agent)." };
   }
+  if (name === "broadcast_to_siblings") {
+    const { broadcastToSiblings, ROOT_PARENT_ID } = await import("./agentOrchestrator");
+    const r = broadcastToSiblings(ROOT_PARENT_ID, String(args.text ?? ""));
+    return { ok: r.ok, output: r.output };
+  }
+  if (name === "scratchpad_write") {
+    const { scratchpadWrite, ROOT_PARENT_ID } = await import("./agentOrchestrator");
+    const r = scratchpadWrite(
+      ROOT_PARENT_ID,
+      String(args.key ?? ""),
+      String(args.value ?? ""),
+      args.scope ? String(args.scope) : undefined,
+    );
+    return { ok: r.ok, output: r.output };
+  }
+  if (name === "scratchpad_read") {
+    const { scratchpadRead, ROOT_PARENT_ID } = await import("./agentOrchestrator");
+    const r = scratchpadRead(
+      ROOT_PARENT_ID,
+      args.key ? String(args.key) : undefined,
+      args.scope ? String(args.scope) : undefined,
+    );
+    return { ok: r.ok, output: r.output };
+  }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
 
