@@ -74,6 +74,57 @@ export const TOOLS: ToolDef[] = [
       required: [],
     },
   },
+  {
+    name: "mouse_move",
+    description: "Move the mouse cursor to absolute screen coordinates (x, y).",
+    risk: "high",
+    parameters: {
+      type: "object",
+      properties: {
+        x: { type: "number", description: "X coordinate in pixels" },
+        y: { type: "number", description: "Y coordinate in pixels" },
+      },
+      required: ["x", "y"],
+    },
+  },
+  {
+    name: "mouse_click",
+    description: "Click the mouse at coordinates (x, y). Optional button: left|right|middle.",
+    risk: "high",
+    parameters: {
+      type: "object",
+      properties: {
+        x: { type: "number", description: "X coordinate in pixels" },
+        y: { type: "number", description: "Y coordinate in pixels" },
+        button: { type: "string", description: "left | right | middle" },
+      },
+      required: ["x", "y"],
+    },
+  },
+  {
+    name: "type_text",
+    description: "Type text using the keyboard at the current focus.",
+    risk: "high",
+    parameters: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Text to type" },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "key_press",
+    description: "Press and release a single key (e.g. 'Enter', 'Escape', 'Tab', 'A').",
+    risk: "high",
+    parameters: {
+      type: "object",
+      properties: {
+        key: { type: "string", description: "Key name (nut.js Key enum, e.g. 'Enter', 'LeftSuper')" },
+      },
+      required: ["key"],
+    },
+  },
 ];
 
 export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(

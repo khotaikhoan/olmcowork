@@ -1,8 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "ollama-cowork",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +11,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "electron:dev": "ELECTRON_DEV_URL=http://localhost:8080 electron .",
+    "electron:build": "vite build && electron .",
+    "electron:package": "vite build && electron-packager . OllamaCowork --overwrite --out=electron-release --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/supabase"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
