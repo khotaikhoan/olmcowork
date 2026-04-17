@@ -200,7 +200,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             ))}
           </div>
 
-          <Accordion type="multiple" defaultValue={["ai"]} className="space-y-2">
+          <Accordion
+            type="multiple"
+            value={openSections}
+            onValueChange={(v) => {
+              setOpenSections(v);
+              try { localStorage.setItem("chat.settings_open_sections", JSON.stringify(v)); } catch { /* ignore */ }
+            }}
+            className="space-y-2"
+          >
             {/* ── Giao diện ─────────────────────────────────────────── */}
             <AccordionItem value="appearance" className="border rounded-md px-3">
               <AccordionTrigger className="hover:no-underline py-3">
