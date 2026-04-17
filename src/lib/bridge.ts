@@ -146,6 +146,8 @@ export interface BridgeAPI {
   listApps: () => Promise<ExecResult & { apps: string[] }>;
   /** Phase 3: Playwright browser automation. Returns image base64 only for action=screenshot. */
   browser: (payload: Record<string, any>) => Promise<ExecResult & { image?: string }>;
+  /** Toggle browser headless mode. Forces relaunch on next browser call. */
+  browserSetHeadless?: (headless: boolean) => Promise<ExecResult>;
 }
 
 declare global {
