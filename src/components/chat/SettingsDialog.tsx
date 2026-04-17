@@ -86,6 +86,17 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
   );
+  const [openSections, setOpenSections] = useState<string[]>(() => {
+    if (typeof localStorage === "undefined") return ["ai"];
+    try {
+      const raw = localStorage.getItem("chat.settings_open_sections");
+      if (raw === null) return ["ai"]; // first-time default
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : ["ai"];
+    } catch {
+      return ["ai"];
+    }
+  });
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
 
