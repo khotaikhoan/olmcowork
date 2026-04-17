@@ -376,6 +376,23 @@ export function ChatView({
     }
   };
 
+  const killSwitch = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+    if (pending) {
+      pending.resolve({ approve: false, alwaysAllow: false });
+      setPending(null);
+    }
+    setAutoApprove({});
+    setToolsEnabled(false);
+    setStreamingText("");
+    setStreamingToolCalls([]);
+    toast.error("Kill switch activated — agent stopped, auto-approvals revoked, tools disabled.");
+  };
+
+  const killArmed = isStreaming || !!pending || Object.keys(autoApprove).length > 0 || toolsEnabled;
+
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">
       <TopBar
@@ -387,6 +404,8 @@ export function ChatView({
         onSystemPromptChange={handleSystemChange}
         bridgeOnline={bridgeOnline}
         onTitleChange={handleTitleChange}
+        onKillSwitch={killSwitch}
+        killArmed={killArmed}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
