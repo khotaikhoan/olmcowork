@@ -428,6 +428,7 @@ export async function mockExecute(
     return { ok: false, output: `[mock] raw_file.${args.action} ${args.path} — desktop only.` };
   }
   if (name === "computer") {
+    const action = String(args.action ?? "");
     if (action === "screenshot") {
       return {
         ok: true,
