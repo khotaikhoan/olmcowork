@@ -5,7 +5,7 @@ interface Props {
   onSwitchToChat: () => void;
 }
 
-const RELEASES_URL = "https://github.com/mrcuongnv/ollama-cowork/releases/latest";
+const RELEASES_URL = "https://github.com/khotaikhoan/olmcowork/releases/latest";
 
 /**
  * Replaces ChatInput when the user is in Control mode but running in a normal

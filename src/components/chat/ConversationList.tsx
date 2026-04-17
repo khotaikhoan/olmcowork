@@ -23,7 +23,7 @@ import {
   Pin,
   PinOff,
   Activity as ActivityIcon,
-  Scale,
+  
   Monitor,
   PanelLeftClose,
   Brain,
@@ -256,14 +256,6 @@ export function ConversationList({
           onClick={() => nav("/activity")}
         >
           <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => nav("/compare")}
-        >
-          <Scale className="h-4 w-4 mr-2" /> So sánh 2 model
         </Button>
         <Button
           variant="ghost"

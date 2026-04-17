@@ -12,7 +12,7 @@ import {
   Search,
   Clock,
   Activity as ActivityIcon,
-  Scale,
+  
   Settings,
   LogOut,
   PanelLeftOpen,
@@ -161,11 +161,6 @@ export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
           }
           onClick={() => nav("/activity")}
           badge={failedCount}
-        />
-        <Item
-          icon={<Scale className="h-4 w-4" />}
-          label="So sánh 2 model"
-          onClick={() => nav("/compare")}
         />
         <Item
           icon={<Brain className="h-4 w-4" />}

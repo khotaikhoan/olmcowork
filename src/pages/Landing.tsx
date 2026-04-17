@@ -63,7 +63,7 @@ export default function Landing() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[image:var(--gradient-primary)] shadow-[var(--shadow-soft)]">
             <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold tracking-tight" style={{ fontFamily: "var(--font-serif)" }}>
+          <span className="font-serif text-lg font-semibold tracking-tight">
             Oculo
           </span>
         </div>
@@ -90,10 +90,7 @@ export default function Landing() {
           AI agent — local, cloud, computer use
         </div>
 
-        <h1
-          className="mx-auto max-w-3xl text-balance text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl"
-          style={{ fontFamily: "var(--font-serif)" }}
-        >
+        <h1 className="mx-auto max-w-3xl text-balance font-serif text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
           AI quan sát <span className="bg-[image:var(--gradient-primary)] bg-clip-text text-transparent">&amp; cộng tác</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
@@ -130,10 +127,7 @@ export default function Landing() {
               <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-[image:var(--gradient-primary)] text-primary-foreground shadow-[var(--shadow-soft)]">
                 <Icon className="h-5 w-5" />
               </div>
-              <h3
-                className="relative mt-4 text-xl font-semibold tracking-tight"
-                style={{ fontFamily: "var(--font-serif)" }}
-              >
+              <h3 className="relative mt-4 font-serif text-xl font-semibold tracking-tight">
                 {title}
               </h3>
               <p className="relative mt-2 text-sm leading-relaxed text-muted-foreground">

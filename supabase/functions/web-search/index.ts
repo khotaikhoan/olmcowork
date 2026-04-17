@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; OllamaCowork-WebSearch/1.0; +https://olmcowork.lovable.app)",
+          "Mozilla/5.0 (compatible; Oculo-WebSearch/1.0; +https://olmcowork.lovable.app)",
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "text/html",
       },

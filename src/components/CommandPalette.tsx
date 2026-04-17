@@ -24,7 +24,7 @@ import {
   LogOut,
   HelpCircle,
   Activity as ActivityIcon,
-  Scale,
+  
 } from "lucide-react";
 
 interface CommandPaletteContextValue {
@@ -119,9 +119,6 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
             </CommandItem>
             <CommandItem onSelect={() => run(() => nav("/activity"))}>
               <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
-            </CommandItem>
-            <CommandItem onSelect={() => run(() => nav("/compare"))}>
-              <Scale className="h-4 w-4 mr-2" /> So sánh 2 model
             </CommandItem>
             <CommandItem onSelect={() => run(() => handlers.onOpenSettings())}>
               <Settings className="h-4 w-4 mr-2" /> Cài đặt
