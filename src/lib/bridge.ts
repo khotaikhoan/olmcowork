@@ -186,6 +186,19 @@ export async function executeTool(
     return b.runShell(String(args.command ?? ""));
   }
 
+  // observe_screen = screenshot + AX annotate (Phase 2 vision loop primary "eyes")
+  if (name === "observe_screen") {
+    const r = await b.visionAnnotate();
+    const marks = r.marks ?? [];
+    const summary = marks.length
+      ? `Captured screen + ${marks.length} accessible controls. Marks (id · role · label):\n${marks
+          .slice(0, 60)
+          .map((m) => `${m.id}. ${m.role ?? "?"} — ${m.label ?? "(no label)"}`)
+          .join("\n")}${marks.length > 60 ? `\n…(${marks.length - 60} more)` : ""}`
+      : "Captured screen. No accessible controls detected — may need pixel-level computer.* fallback.";
+    return { ok: r.ok, output: summary, image: r.image, marks };
+  }
+
   if (name === "vision_click") {
     const action = String(args.action ?? "");
     if (action === "annotate") {
