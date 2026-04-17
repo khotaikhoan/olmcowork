@@ -34,6 +34,8 @@ import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv
 import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
 import { setOculoState } from "@/components/OculoLogo";
+import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
+import { Zap } from "lucide-react";
 
 interface DbMessage {
   id: string;
