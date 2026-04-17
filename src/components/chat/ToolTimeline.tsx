@@ -6,6 +6,8 @@ import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
 interface Props {
   calls: ToolCallRecord[];
   onReannotate?: () => void;
+  /** Assistant message text that precedes these tool calls — used for "Why?" explainer */
+  precedingText?: string;
 }
 
 interface Group {
