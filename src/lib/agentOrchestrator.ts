@@ -529,12 +529,18 @@ export async function spawnAgent(req: SpawnRequest): Promise<{ id: string; outpu
   }
 
   // Tool subset: requested ∩ parent's allowed list. Always strip nested-spawn at max depth.
+  // Phase 6/7 messaging + scratchpad tools are always available to sub-agents.
+  const ALWAYS_AVAILABLE = new Set([
+    "spawn_agent", "report_to_parent", "send_to_agent",
+    "broadcast_to_siblings", "scratchpad_write", "scratchpad_read",
+  ]);
   const parentSet = new Set(ctx.parentTools);
   let allowed = (req.tools && req.tools.length > 0)
-    ? req.tools.filter((t) => parentSet.has(t) || t === "spawn_agent" || t === "report_to_parent")
+    ? req.tools.filter((t) => parentSet.has(t) || ALWAYS_AVAILABLE.has(t))
     : [...ctx.parentTools];
-  // Sub-agents always get report_to_parent (parent doesn't need it).
-  if (!allowed.includes("report_to_parent")) allowed.push("report_to_parent");
+  for (const t of ["report_to_parent", "broadcast_to_siblings", "scratchpad_write", "scratchpad_read"]) {
+    if (!allowed.includes(t)) allowed.push(t);
+  }
   if (depth >= MAX_DEPTH) allowed = allowed.filter((t) => t !== "spawn_agent");
 
   const id = crypto.randomUUID();
