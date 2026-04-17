@@ -1203,6 +1203,8 @@ export function ChatView({
                 onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
                 onBranch={() => handleBranch(m.id)}
                 onRetryTool={(callId) => handleRetryTool(m.id, callId)}
+                onRetryAllFailed={() => handleRetryAllFailed(m.id)}
+                bulkRetryProgress={bulkRetry[m.id] ?? null}
               />
             ))}
             {isStreaming && (
