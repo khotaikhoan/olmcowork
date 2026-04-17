@@ -177,7 +177,15 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
 
 export function useCommandPalette() {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useCommandPalette must be used within CommandPaletteProvider");
+  // Defensive fallback: avoid crashing if consumed before provider mounts (e.g. HMR or
+  // transient render order). Returns no-op handlers instead of throwing.
+  if (!ctx) {
+    return {
+      open: () => {},
+      openShortcuts: () => {},
+      setHandlers: () => {},
+    };
+  }
   return ctx;
 }
 
