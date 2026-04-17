@@ -17,6 +17,9 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { GlobalDragDrop } from "@/components/chat/GlobalDragDrop";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
+import { PanelLeftOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Index() {
   const { user, loading } = useAuth();
