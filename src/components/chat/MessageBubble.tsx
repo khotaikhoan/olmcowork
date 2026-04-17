@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Check, X } from "lucide-react";
+import { Bot, User, Check, X, RotateCw, Loader2 } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ToolTimeline } from "./ToolTimeline";
@@ -10,6 +10,7 @@ import { MessageActions } from "./MessageActions";
 import { highlightMatches } from "./ChatSearch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface Props {
