@@ -22,7 +22,7 @@ export const TOOLS: ToolDef[] = [
     anthropic_type: "computer_20241022",
     risk: "high",
     description:
-      "Control the user's computer: capture screen, move/click mouse, type text, press keys. Always call screenshot first to see what's on screen.",
+      "Low-level computer control: mouse move/click at pixel coords, type text, press keys, raw screenshot. FALLBACK ONLY — prefer observe_screen + vision_click for clicking UI controls (more accurate). Use computer.* for: typing into a focused field, hotkeys (cmd+s, ctrl+c), or clicking pixel locations no AX mark covers (canvas, image, custom widget).",
     parameters: {
       type: "object",
       properties: {
@@ -56,10 +56,17 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "observe_screen",
+    risk: "low",
+    description:
+      "PRIMARY 'eyes' for Control mode. Captures a screenshot of the frontmost app AND enumerates clickable controls via OS accessibility tree (macOS AX / Windows UIA). Returns: (1) base64 screenshot for vision reasoning, (2) numbered marks list with {id, role, label, bounds} so you can click precisely with vision_click. CALL THIS BEFORE every UI action to verify state. Cheaper and more accurate than computer.screenshot + pixel guessing.",
+    parameters: { type: "object", properties: {}, required: [] },
+  },
+  {
     name: "vision_click",
     risk: "high",
     description:
-      "Vision-guided click using OS accessibility tree (macOS AX / Windows UIA) of the FRONTMOST app, with grid fallback. action='annotate' returns numbered marks (id, role, label, bounds) for clickable controls (button, link, menu item, checkbox, text field, combo box, dropdown). Then call action='click' with mark_id to click that exact control. Pick by label/role.",
+      "PREFERRED click method. Click an accessibility-detected control by its mark_id from the most recent observe_screen call. action='annotate' re-enumerates controls if observe_screen is stale; action='click' clicks mark_id. Use this instead of computer.left_click whenever a mark exists for the target — it is pixel-exact and survives window movement.",
     parameters: {
       type: "object",
       properties: {
