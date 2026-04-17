@@ -19,6 +19,7 @@ import Activity from "./pages/Activity.tsx";
 import Compare from "./pages/Compare.tsx";
 import Memories from "./pages/Memories.tsx";
 import { OnboardingTour } from "./components/chat/OnboardingTour";
+import { OculoIntro } from "./components/OculoIntro";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               </Routes>
             </CommandPaletteProvider>
             <OnboardingTour />
+            <OculoIntro />
           </AuthProvider>
         </Router>
       </TooltipProvider>
