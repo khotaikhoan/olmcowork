@@ -142,23 +142,6 @@ export default function Index() {
     />
   );
 
-  const sidebarNode = (
-    <ConversationList
-      selectedId={(id) => id}
-      onSelect={(id) => {
-        setSelectedId(id);
-        if (isMobile) setSidebarOpen(false);
-      }}
-      onNew={() => {
-        setSelectedId(null);
-        if (isMobile) setSidebarOpen(false);
-      }}
-      refreshKey={refreshKey}
-      onOpenSettings={() => setSettingsOpen(true)}
-      {...({ selectedId } as any)}
-    />
-  );
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
       {/* Desktop sidebar */}
