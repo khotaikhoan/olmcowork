@@ -10,13 +10,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
-import { Menu } from "lucide-react";
 import {
+  Menu,
   Wifi,
   WifiOff,
   Sparkles,
@@ -30,6 +32,8 @@ import {
   FileJson,
   FileText,
   ChevronDown,
+  MoreHorizontal,
+  Activity,
 } from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
 import { ArmedBadge } from "./ArmedBadge";
@@ -121,8 +125,10 @@ export function TopBar({
 }: Props) {
   const activeAgent = getAgent(agentId);
   const ActiveAgentIcon = activeAgent.icon;
+  const totalRunningBytes = running.reduce((s, r) => s + r.size, 0);
+
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0 overflow-x-auto">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 px-3 sm:px-4 shrink-0 overflow-x-auto">
       {onToggleSidebar && (
         <Button
           variant="ghost"
@@ -134,29 +140,153 @@ export function TopBar({
           <Menu className="h-4 w-4" />
         </Button>
       )}
+
+      {/* Title */}
       <Input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="h-8 w-32 sm:max-w-xs sm:w-auto border-0 bg-transparent font-medium text-base focus-visible:ring-1 shrink"
+        className="h-8 w-32 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink-0 px-2"
       />
+
+      {/* Essentials: Mode + Model */}
       <ModeToggle value={mode} onChange={onModeChange} />
+
       {mode === "control" && (
         <AppLockSelect value={lockedApp} onChange={onLockedAppChange} />
       )}
+
+      <Select value={model} onValueChange={onModelChange}>
+        <SelectTrigger className="h-8 w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1">
+          <SelectValue placeholder="Chọn model" />
+        </SelectTrigger>
+        <SelectContent>
+          {models.length === 0 && (
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
+          )}
+          {models.map((m) => (
+            <SelectItem key={m.name} value={m.name}>
+              {m.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <ArmedBadge />
+
+      <div className="flex-1" />
+
+      {/* Subtle status pill — click for details (cost, tokens, running models, connection) */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            title="Trạng thái phiên — bấm xem chi tiết"
+            className={
+              "flex items-center gap-1.5 text-xs px-2 h-8 rounded-md transition-colors hover:bg-muted " +
+              (bridgeOnline ? "text-foreground" : "text-muted-foreground")
+            }
+          >
+            <span
+              className={
+                "w-1.5 h-1.5 rounded-full " +
+                (bridgeOnline ? "bg-[hsl(var(--success))]" : "bg-muted-foreground/50")
+              }
+            />
+            <Activity className="h-3 w-3 opacity-60" />
+            <span className="font-mono tabular-nums hidden sm:inline">
+              ${totalCostUsd.toFixed(2)}
+            </span>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-80 p-0">
+          <div className="p-3 border-b border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium">Trạng thái phiên</span>
+              <span
+                className={
+                  "flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded " +
+                  (bridgeOnline
+                    ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
+                    : "bg-muted text-muted-foreground")
+                }
+              >
+                {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+                {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <CostMeter
+                model={costModel}
+                inputTokens={inputTokens}
+                outputTokens={outputTokens}
+                totalCostUsd={totalCostUsd}
+              />
+              <TokenMeter
+                totalTokens={totalTokens}
+                lastReplyTokens={lastReplyTokens}
+                tokensPerSecond={tokensPerSecond}
+                contextWindow={contextWindow}
+                contextWindowSource={contextWindowSource}
+              />
+            </div>
+          </div>
+          {bridgeOnline && running.length > 0 && (
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium flex items-center gap-1.5">
+                  <MemoryStick className="h-3 w-3" />
+                  Model đang nạp
+                </span>
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  {formatBytes(totalRunningBytes)} · {running.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {running.map((r) => {
+                  const cpuBytes = Math.max(0, r.size - r.size_vram);
+                  const vramPct = r.size > 0 ? Math.round((r.size_vram / r.size) * 100) : 0;
+                  return (
+                    <div key={r.name} className="rounded-md border border-border p-2">
+                      <div className="font-mono text-xs font-semibold mb-1 truncate">{r.name}</div>
+                      <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+                        <span>{formatBytes(r.size)}</span>
+                        <span className="flex items-center gap-1">
+                          <Cpu className="h-3 w-3" />
+                          {vramPct}% GPU
+                        </span>
+                      </div>
+                      <div className="h-1 rounded-full bg-muted overflow-hidden flex">
+                        <div className="bg-[hsl(var(--success))]" style={{ width: `${vramPct}%` }} />
+                        <div className="bg-warning/60" style={{ width: `${100 - vramPct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          <div className="p-2 border-t border-border flex justify-end">
+            <UpdateBadge />
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Agent picker — minimal icon */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="h-8 gap-1.5"
+            className="h-8 gap-1.5 px-2"
             title={`Agent: ${activeAgent.name}\n${activeAgent.description}`}
           >
             <ActiveAgentIcon className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{activeAgent.name}</span>
             <ChevronDown className="h-3 w-3 opacity-60" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-64">
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
+            Chọn agent
+          </DropdownMenuLabel>
           {AGENTS.map((a) => {
             const Icon = a.icon;
             return (
@@ -185,122 +315,7 @@ export function TopBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="flex-1" />
-      <ArmedBadge />
-
-      <Select value={model} onValueChange={onModelChange}>
-        <SelectTrigger className="h-8 w-[200px] text-sm">
-          <SelectValue placeholder="Chọn model" />
-        </SelectTrigger>
-        <SelectContent>
-          {models.length === 0 && (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
-          )}
-          {models.map((m) => (
-            <SelectItem key={m.name} value={m.name}>
-              {m.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8">
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> Hệ thống
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-96">
-          <div className="space-y-3">
-            <Label>Lời nhắc hệ thống</Label>
-            <div className="flex flex-wrap gap-1">
-              {Object.entries(PRESETS).map(([k, v]) => (
-                <Button
-                  key={k}
-                  variant="secondary"
-                  size="sm"
-                  className="h-6 text-xs"
-                  onClick={() => onSystemPromptChange(v)}
-                >
-                  {k}
-                </Button>
-              ))}
-            </div>
-            <Textarea
-              value={systemPrompt}
-              onChange={(e) => onSystemPromptChange(e.target.value)}
-              rows={6}
-              placeholder="Định nghĩa hành vi của trợ lý…"
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
-
-      {bridgeOnline && running.length > 0 && (
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              title="Model đang nạp — bấm xem chi tiết"
-              className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-mono"
-            >
-              <MemoryStick className="h-3 w-3" />
-              {formatBytes(running.reduce((s, r) => s + r.size, 0))}
-              {running.some((r) => r.size_vram > 0) && (
-                <span className="flex items-center gap-0.5 text-[hsl(var(--success))]">
-                  <Cpu className="h-3 w-3" />
-                  GPU
-                </span>
-              )}
-              <span className="opacity-70">· {running.length}</span>
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 p-3">
-            <div className="text-xs font-medium mb-2">Model đang nạp (RAM/VRAM)</div>
-            <div className="space-y-2">
-              {running.map((r) => {
-                const cpuBytes = Math.max(0, r.size - r.size_vram);
-                const vramPct = r.size > 0 ? Math.round((r.size_vram / r.size) * 100) : 0;
-                return (
-                  <div key={r.name} className="rounded-md border border-border p-2">
-                    <div className="font-mono text-xs font-semibold mb-1 truncate">{r.name}</div>
-                    <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-                      <span>Tổng {formatBytes(r.size)}</span>
-                      <span>{vramPct}% trên GPU</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
-                      <div className="bg-[hsl(var(--success))]" style={{ width: `${vramPct}%` }} />
-                      <div className="bg-warning/60" style={{ width: `${100 - vramPct}%` }} />
-                    </div>
-                    <div className="flex justify-between text-[11px] mt-1">
-                      <span className="text-[hsl(var(--success))]">VRAM {formatBytes(r.size_vram)}</span>
-                      <span className="text-muted-foreground">RAM {formatBytes(cpuBytes)}</span>
-                    </div>
-                    {r.expires_at && (
-                      <div className="text-[10px] text-muted-foreground mt-1">
-                        Tự gỡ lúc {new Date(r.expires_at).toLocaleTimeString()}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-
-      <div
-        title={bridgeOnline ? "Đã kết nối Ollama" : "Ollama ngoại tuyến"}
-        className={
-          "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md " +
-          (bridgeOnline
-            ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]"
-            : "bg-destructive/15 text-destructive")
-        }
-      >
-        {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-        {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
-      </div>
-
+      {/* Search — keep visible (frequent) */}
       <Button
         variant="ghost"
         size="icon"
@@ -311,63 +326,83 @@ export function TopBar({
         <Search className="h-3.5 w-3.5" />
       </Button>
 
+      {/* Overflow menu: System prompt, Export, Ollama toggle */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={!canExport}
-            title="Xuất hội thoại"
-            className="h-8 w-8"
-          >
-            <Download className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Thêm">
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => onExport("markdown")}>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
+            Lời nhắc hệ thống
+          </DropdownMenuLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2">
+                <Sparkles className="h-3.5 w-3.5" /> Chỉnh hệ thống…
+              </DropdownMenuItem>
+            </PopoverTrigger>
+            <PopoverContent align="end" side="left" className="w-96">
+              <div className="space-y-3">
+                <Label>Lời nhắc hệ thống</Label>
+                <div className="flex flex-wrap gap-1">
+                  {Object.entries(PRESETS).map(([k, v]) => (
+                    <Button
+                      key={k}
+                      variant="secondary"
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => onSystemPromptChange(v)}
+                    >
+                      {k}
+                    </Button>
+                  ))}
+                </div>
+                <Textarea
+                  value={systemPrompt}
+                  onChange={(e) => onSystemPromptChange(e.target.value)}
+                  rows={6}
+                  placeholder="Định nghĩa hành vi của trợ lý…"
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
+            Xuất hội thoại
+          </DropdownMenuLabel>
+          <DropdownMenuItem disabled={!canExport} onClick={() => onExport("markdown")}>
             <FileText className="h-3.5 w-3.5 mr-2" /> Markdown (.md)
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => onExport("json")}>
+          <DropdownMenuItem disabled={!canExport} onClick={() => onExport("json")}>
             <FileJson className="h-3.5 w-3.5 mr-2" /> JSON (.json)
           </DropdownMenuItem>
+
+          {canControlOllama && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onToggleOllama} disabled={ollamaBusy}>
+                {ollamaBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                ) : (
+                  <Power className="h-3.5 w-3.5 mr-2" />
+                )}
+                {ollamaBusy
+                  ? bridgeOnline
+                    ? "Đang dừng…"
+                    : "Đang khởi động…"
+                  : bridgeOnline
+                    ? "Dừng Ollama"
+                    : "Khởi động Ollama"}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <CostMeter
-        model={costModel}
-        inputTokens={inputTokens}
-        outputTokens={outputTokens}
-        totalCostUsd={totalCostUsd}
-      />
-
-      <TokenMeter
-        totalTokens={totalTokens}
-        lastReplyTokens={lastReplyTokens}
-        tokensPerSecond={tokensPerSecond}
-        contextWindow={contextWindow}
-        contextWindowSource={contextWindowSource}
-      />
-
-      <UpdateBadge />
-
-      {canControlOllama && (
-        <Button
-          variant={bridgeOnline ? "outline" : "default"}
-          size="sm"
-          onClick={onToggleOllama}
-          disabled={ollamaBusy}
-          title={bridgeOnline ? "Dừng Ollama để giải phóng RAM" : "Khởi động Ollama"}
-          className="h-8"
-        >
-          {ollamaBusy ? (
-            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-          ) : (
-            <Power className="h-3.5 w-3.5 mr-1" />
-          )}
-          {ollamaBusy ? (bridgeOnline ? "Đang dừng…" : "Đang khởi động…") : bridgeOnline ? "Dừng Ollama" : "Khởi động Ollama"}
-        </Button>
-      )}
-
+      {/* Kill switch — keep prominent (safety critical) */}
       <Button
         variant="destructive"
         size="sm"
@@ -376,8 +411,8 @@ export function TopBar({
         title="Dừng tác nhân ngay lập tức và thu hồi mọi quyền tự duyệt"
         className="h-8 font-semibold shadow-[var(--shadow-soft)] disabled:opacity-40"
       >
-        <OctagonX className="h-4 w-4 mr-1" />
-        Dừng khẩn
+        <OctagonX className="h-4 w-4 sm:mr-1" />
+        <span className="hidden sm:inline">Dừng khẩn</span>
       </Button>
     </header>
   );
