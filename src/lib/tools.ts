@@ -82,6 +82,19 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "fetch_url",
+    risk: "low",
+    description:
+      "Fetch a public web page and return its title, description, and a short text snippet. Read-only HTTP GET via a server-side proxy — safe in both Chat and Control modes. Use this when you need to look up information from a URL the user shared or that you need to research.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Absolute http(s) URL to fetch." },
+      },
+      required: ["url"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
