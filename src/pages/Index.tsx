@@ -67,6 +67,8 @@ export default function Index() {
       />
       <ChatView
         conversationId={selectedId}
+        provider={settings.provider}
+        openaiModel={settings.openai_model}
         ollamaUrl={settings.ollama_url}
         defaultModel={settings.default_model}
         requireConfirm={settings.require_confirm}
