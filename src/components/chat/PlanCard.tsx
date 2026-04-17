@@ -146,15 +146,22 @@ export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, on
               </button>
             </li>
           ))}
-          <li>
-            <button
-              type="button"
-              onClick={add}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
-            >
-              <Plus className="h-3.5 w-3.5" /> Thêm bước
-            </button>
-          </li>
+          {loading ? (
+            <li className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground animate-in fade-in duration-300">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang viết bước tiếp theo…
+            </li>
+          ) : (
+            <li>
+              <button
+                type="button"
+                onClick={add}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
+              >
+                <Plus className="h-3.5 w-3.5" /> Thêm bước
+              </button>
+            </li>
+          )}
         </ul>
       )}
 
