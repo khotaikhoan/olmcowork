@@ -191,6 +191,10 @@ export async function streamChat(opts: StreamOptions) {
     onDone?.();
   } catch (e: any) {
     if (e.name === "AbortError") return;
+    if (e?.name === "TypeError" || /Failed to fetch|NetworkError/i.test(e?.message ?? "")) {
+      onError?.(new Error(ollamaErrorHint(baseUrl)));
+      return;
+    }
     onError?.(e);
   }
 }
