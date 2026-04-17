@@ -128,7 +128,7 @@ export function TopBar({
   const totalRunningBytes = running.reduce((s, r) => s + r.size, 0);
 
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 px-3 sm:px-4 shrink-0 overflow-x-auto relative z-20">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 shrink-0 relative z-20 min-w-0">
       {onToggleSidebar && (
         <Button
           variant="ghost"
@@ -141,11 +141,11 @@ export function TopBar({
         </Button>
       )}
 
-      {/* Title */}
+      {/* Title — hidden on very narrow screens to save space */}
       <Input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="h-8 w-32 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink-0 px-2"
+        className="h-8 w-32 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink min-w-0 px-2 hidden sm:block"
       />
 
       {/* Essentials: Mode + Model */}
@@ -156,7 +156,7 @@ export function TopBar({
       )}
 
       <Select value={model} onValueChange={onModelChange}>
-        <SelectTrigger className="h-8 w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1">
+        <SelectTrigger className="h-8 w-[110px] sm:w-[160px] lg:w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1 shrink min-w-0">
           <SelectValue placeholder="Chọn model" />
         </SelectTrigger>
         <SelectContent>
