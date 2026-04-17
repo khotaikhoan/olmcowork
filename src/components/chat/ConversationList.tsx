@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+
 import { useCommandPalette } from "@/components/CommandPalette";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getPins, togglePin } from "@/lib/pins";
@@ -60,7 +60,6 @@ export function ConversationList({
   onCollapse,
 }: Props) {
   const { signOut, user } = useAuth();
-  const nav = useNavigate();
   const cp = useCommandPalette();
   const [items, setItems] = useState<Conversation[]>([]);
   const [q, setQ] = useState("");
