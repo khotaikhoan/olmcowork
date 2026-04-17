@@ -407,16 +407,17 @@ export default function Schedules() {
 
       <ScrollArea className="h-[calc(100vh-64px)]">
         <div className="max-w-3xl mx-auto p-6 space-y-3">
-          {jobs.length === 0 && (
+          {filteredJobs.length === 0 && (
             <Card className="p-8 text-center text-muted-foreground">
-              Chưa có job nào. Tạo job đầu tiên hoặc dùng{" "}
-              <code>/schedule</code> trong chat.
+              {jobs.length === 0
+                ? <>Chưa có job nào. Tạo job đầu tiên hoặc dùng <code>/schedule</code> trong chat.</>
+                : <>Không có job nào ở mục "{filter}".</>}
             </Card>
           )}
-          {jobs.map((j) => {
+          {filteredJobs.map((j) => {
             const recent = runsByJob(j.id);
             return (
-              <Card key={j.id} className="p-4">
+              <Card key={j.id} className="p-4 hover:shadow-[var(--shadow-elevated)] transition-shadow">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -426,7 +427,13 @@ export default function Schedules() {
                       >
                         {j.name}
                       </button>
-                      <Badge variant={j.enabled ? "default" : "secondary"}>
+                      <Badge
+                        className={
+                          j.enabled
+                            ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.2)] border-0"
+                            : "bg-muted text-muted-foreground border-0"
+                        }
+                      >
                         {j.enabled ? "ON" : "OFF"}
                       </Badge>
                       <Badge variant="outline" className="gap-1">
@@ -441,6 +448,12 @@ export default function Schedules() {
                         <Clock className="h-3 w-3" />
                         {j.cron}
                       </Badge>
+                      {j.enabled && j.next_run_at && (
+                        <Badge variant="outline" className="gap-1 text-primary border-primary/30">
+                          <Timer className="h-3 w-3" />
+                          {formatCountdown(j.next_run_at)}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                       {j.prompt}
@@ -450,24 +463,18 @@ export default function Schedules() {
                         {recent.map((r) => (
                           <details
                             key={r.id}
-                            className="text-xs border border-border rounded px-2 py-1"
+                            className="text-xs border border-border rounded px-2 py-1 hover:bg-muted/30 transition-colors"
                           >
                             <summary className="cursor-pointer flex items-center gap-2">
-                              <Badge
-                                variant={
-                                  r.status === "ok"
-                                    ? "default"
-                                    : r.status === "error"
-                                      ? "destructive"
-                                      : "secondary"
-                                }
-                                className="text-[10px]"
-                              >
-                                {r.status}
-                              </Badge>
+                              <StatusPill status={r.status} />
                               <span className="text-muted-foreground">
                                 {new Date(r.started_at).toLocaleString()}
                               </span>
+                              {r.finished_at && (
+                                <span className="text-muted-foreground/70 text-[10px]">
+                                  ({Math.round((new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000)}s)
+                                </span>
+                              )}
                             </summary>
                             <pre className="mt-1 whitespace-pre-wrap break-words text-[11px]">
                               {r.error ?? r.output ?? "(no output)"}
