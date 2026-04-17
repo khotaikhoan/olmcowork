@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Bot } from "lucide-react";
+import { OculoLogo } from "@/components/OculoLogo";
 
 export default function AuthPage() {
   const { user, signIn, signUp } = useAuth();

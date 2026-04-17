@@ -6,8 +6,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { OculoLogo } from "@/components/OculoLogo";
 import {
-  Bot,
   Plus,
   Search,
   Clock,
@@ -120,7 +120,7 @@ export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
               onClick={onExpand}
               className="h-9 w-9 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)] hover:scale-105 transition-transform"
             >
-              <Bot className="h-4 w-4 text-primary-foreground" />
+              <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Mở rộng sidebar</TooltipContent>

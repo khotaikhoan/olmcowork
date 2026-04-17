@@ -19,7 +19,7 @@ import {
   Search,
   Settings,
   LogOut,
-  Bot,
+  MessageSquare,
   Clock,
   Pin,
   PinOff,
