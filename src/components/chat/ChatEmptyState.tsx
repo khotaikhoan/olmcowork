@@ -1,9 +1,16 @@
-import { MessageSquare, Monitor, Sparkles, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { MessageSquare, Monitor, Sparkles, ArrowRight, Lightbulb, ChevronDown } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { AGENT_PRESETS, AgentPreset } from "@/lib/presets";
 import { Button } from "@/components/ui/button";
 import type { ConversationMode } from "@/lib/tools";
 import { isElectron } from "@/lib/bridge";
+
+// Behavior-learning threshold: power users (≥ this many messages sent) see a
+// collapsed suggestions block by default to reduce visual noise.
+const POWER_USER_THRESHOLD = 10;
+const LS_MSG_COUNT = "chat.user_message_count";
+const LS_SHOW_SUGGESTIONS = "chat.empty_state_show_suggestions"; // "1" | "0" — manual override
 
 interface Props {
   onPickPreset: (p: AgentPreset) => void;
