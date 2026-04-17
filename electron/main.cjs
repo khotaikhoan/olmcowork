@@ -218,6 +218,88 @@ ipcMain.handle("bridge:screenshot", async () => {
   }
 });
 
+// ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----
+let lastVisionMarks = []; // [{id, x, y, w, h}]
+let lastVisionDisplay = null;
+
+function detectMarksFromBuffer(width, height) {
+  // Tối giản: chia màn hình thành lưới 6x4 = 24 ô, đánh số mỗi ô.
+  // Đây là baseline để vision model có thể chỉ "ô số mấy" nếu không
+  // tìm được element thật. Trong tương lai có thể thay bằng OS accessibility tree.
+  const cols = 6;
+  const rows = 4;
+  const marks = [];
+  let id = 1;
+  const w = Math.floor(width / cols);
+  const h = Math.floor(height / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      marks.push({
+        id: id++,
+        x: c * w,
+        y: r * h,
+        w,
+        h,
+      });
+    }
+  }
+  return marks;
+}
+
+async function annotateImage(buf, marks) {
+  // Dùng nativeImage của Electron + canvas đơn giản qua sharp nếu có,
+  // fallback: trả ảnh gốc + danh sách marks (renderer có thể tự overlay).
+  // Để gọn, ta trả ảnh gốc — vision model nhận tọa độ marks qua text mô tả.
+  return buf;
+}
+
+ipcMain.handle("bridge:vision_annotate", async () => {
+  if (!screenshotDesktop) {
+    return { ok: false, output: "screenshot-desktop not installed" };
+  }
+  try {
+    const buf = await screenshotDesktop({ format: "png" });
+    const display = screen.getPrimaryDisplay();
+    const { width, height } = display.size;
+    const marks = detectMarksFromBuffer(width, height);
+    lastVisionMarks = marks;
+    lastVisionDisplay = display;
+    const annotated = await annotateImage(buf, marks);
+    return {
+      ok: true,
+      output: `Captured ${width}x${height}. Marks (id @ x,y w×h):\n${marks
+        .map((m) => `${m.id} @ ${m.x},${m.y} ${m.w}×${m.h}`)
+        .join("\n")}\nReply with vision_click(action='click', mark_id=N).`,
+      image: annotated.toString("base64"),
+      marks,
+    };
+  } catch (e) {
+    return { ok: false, output: `Error: ${e.message}` };
+  }
+});
+
+ipcMain.handle("bridge:vision_click", async (_e, { markId, button }) => {
+  if (!nut) return { ok: false, output: "Native input module not installed." };
+  const mark = lastVisionMarks.find((m) => m.id === Number(markId));
+  if (!mark) {
+    return {
+      ok: false,
+      output: `Mark #${markId} not found. Call vision_annotate first.`,
+    };
+  }
+  const cx = Math.round(mark.x + mark.w / 2);
+  const cy = Math.round(mark.y + mark.h / 2);
+  try {
+    await nut.mouse.setPosition(new nut.Point(cx, cy));
+    const btn =
+      button === "right" ? nut.Button.RIGHT : button === "middle" ? nut.Button.MIDDLE : nut.Button.LEFT;
+    await nut.mouse.click(btn);
+    return { ok: true, output: `Clicked mark #${markId} at (${cx}, ${cy})` };
+  } catch (e) {
+    return { ok: false, output: e.message };
+  }
+});
+
 // Mouse/keyboard via @nut-tree-fork/nut-js (optional native module)
 const nut = tryRequire("@nut-tree-fork/nut-js");
 
