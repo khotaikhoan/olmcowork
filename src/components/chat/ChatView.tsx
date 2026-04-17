@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
-import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
+import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef, effectiveRisk } from "@/lib/tools";
@@ -48,6 +48,7 @@ interface Props {
   onTitleUpdated: () => void;
   onArtifactsChange?: (artifacts: Artifact[]) => void;
   onArtifactOpen?: (id: string) => void;
+  onToggleSidebar?: () => void;
 }
 
 export function ChatView({
@@ -63,6 +64,7 @@ export function ChatView({
   onTitleUpdated,
   onArtifactsChange,
   onArtifactOpen,
+  onToggleSidebar,
 }: Props) {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -87,6 +89,10 @@ export function ChatView({
   // Cost tracking — accumulated input/output tokens for the conversation
   const [costInput, setCostInput] = useState(0);
   const [costOutput, setCostOutput] = useState(0);
+
+  // Real model context window (Ollama only). Cloud models default to fallback.
+  const [contextWindow, setContextWindow] = useState<number>(128_000);
+  const [contextWindowSource, setContextWindowSource] = useState<"real" | "fallback">("fallback");
 
   // Search overlay
   const [searchOpen, setSearchOpen] = useState(false);
@@ -138,6 +144,36 @@ export function ChatView({
     const id = setInterval(tick, 5000);
     return () => { alive = false; clearInterval(id); };
   }, [bridgeOnline, ollamaUrl]);
+
+  // ----- Context window from Ollama /api/show -----
+  useEffect(() => {
+    if (provider === "openai") {
+      // Cloud models — rough fallback by family
+      const m = openaiModel.toLowerCase();
+      if (m.includes("gemini")) setContextWindow(1_000_000);
+      else if (m.includes("gpt-5")) setContextWindow(400_000);
+      else setContextWindow(128_000);
+      setContextWindowSource("fallback");
+      return;
+    }
+    if (!bridgeOnline || !model) {
+      setContextWindow(128_000);
+      setContextWindowSource("fallback");
+      return;
+    }
+    let alive = true;
+    showModel(ollamaUrl, model).then((info) => {
+      if (!alive) return;
+      if (info?.contextLength) {
+        setContextWindow(info.contextLength);
+        setContextWindowSource("real");
+      } else {
+        setContextWindow(128_000);
+        setContextWindowSource("fallback");
+      }
+    });
+    return () => { alive = false; };
+  }, [provider, model, openaiModel, bridgeOnline, ollamaUrl]);
 
   // ----- Load conversation -----
   useEffect(() => {
@@ -837,6 +873,9 @@ export function ChatView({
         onOpenSearch={() => setSearchOpen(true)}
         onExport={handleExport}
         canExport={messages.length > 0}
+        contextWindow={contextWindow}
+        contextWindowSource={contextWindowSource}
+        onToggleSidebar={onToggleSidebar}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">

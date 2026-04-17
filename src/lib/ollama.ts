@@ -49,6 +49,38 @@ export async function listRunning(baseUrl: string): Promise<RunningModel[]> {
   }
 }
 
+/** Fetch model details (incl. real context_length) via /api/show. Returns null on failure. */
+export async function showModel(
+  baseUrl: string,
+  name: string,
+): Promise<{ contextLength: number | null; family: string | null } | null> {
+  try {
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/show`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    // Ollama exposes architecture-specific keys like "llama.context_length",
+    // "qwen2.context_length", etc. Find the first *.context_length entry.
+    const info = data.model_info ?? {};
+    let ctx: number | null = null;
+    for (const k of Object.keys(info)) {
+      if (k.endsWith(".context_length") && typeof info[k] === "number") {
+        ctx = info[k];
+        break;
+      }
+    }
+    return {
+      contextLength: ctx,
+      family: data.details?.family ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function formatBytes(n: number): string {
   if (!n) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"];
