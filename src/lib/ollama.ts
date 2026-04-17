@@ -71,10 +71,19 @@ export interface StreamOptions {
 export async function streamChat(opts: StreamOptions) {
   const { baseUrl, model, messages, signal, onToken, onDone, onError } = opts;
   try {
+    // Làm sạch payload: ép content thành string, bỏ field rỗng để tránh runner Ollama crash
+    const sanitized = messages.map((m) => {
+      const out: any = {
+        role: m.role,
+        content: typeof m.content === "string" ? m.content : String(m.content ?? ""),
+      };
+      if (m.images && m.images.length) out.images = m.images;
+      return out;
+    });
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages, stream: true }),
+      body: JSON.stringify({ model, messages: sanitized, stream: true }),
       signal,
     });
     if (!res.ok || !res.body) {
