@@ -253,7 +253,50 @@ export function ToolCallCard({
             </div>
           )}
 
-          {v.kind === "generic" && (
+          {/* fetch_url → preview chip + body excerpt */}
+          {v.kind === "url" && (
+            <div className="bg-muted/20 p-3 space-y-2">
+              {urlInfo ? (
+                <>
+                  <UrlPreviewChip
+                    meta={{
+                      url: urlInfo.url,
+                      title: urlInfo.title,
+                      description: urlInfo.description,
+                      image: urlInfo.image ?? null,
+                      favicon: urlInfo.url
+                        ? `https://www.google.com/s2/favicons?domain=${(() => {
+                            try { return new URL(urlInfo.url).hostname; } catch { return ""; }
+                          })()}&sz=32`
+                        : undefined,
+                    }}
+                  />
+                  {urlInfo.body && (
+                    <div className="rounded-md border border-border bg-background p-2 max-h-72 overflow-auto text-xs leading-relaxed whitespace-pre-wrap text-foreground/90">
+                      {urlInfo.body}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-xs text-muted-foreground">{call.result ?? "Đang tải…"}</div>
+              )}
+            </div>
+          )}
+
+          {/* web_search → numbered list of result chips */}
+          {v.kind === "search" && (
+            <div className="bg-muted/20 p-3 space-y-2">
+              {call.result ? (
+                <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-72 whitespace-pre-wrap">
+                  {call.result}
+                </pre>
+              ) : (
+                <div className="text-xs text-muted-foreground">Đang tìm…</div>
+              )}
+            </div>
+          )}
+
+
             <div className="bg-muted/20 p-3 space-y-2">
               <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-40">
                 {JSON.stringify(call.args, null, 2)}
