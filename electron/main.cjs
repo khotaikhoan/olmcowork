@@ -1002,6 +1002,7 @@ async function pwShutdown() {
   pwContext = null;
   pwBrowser = null;
   pwPersistent = false;
+  emitBrowserAction(null);
   emitBrowserStatus();
 }
 
@@ -1133,8 +1134,39 @@ function resolveLocator(page, args) {
   return { loc: null, how: null };
 }
 
+// Build a short, human-readable label like "click submit button", "đang điền email"
+// from the browser-tool payload, used for the "AI is doing X" overlay.
+function describeBrowserAction(action, args) {
+  const target = args.name || args.text || args.label || args.placeholder || args.testId || args.selector;
+  const short = target ? `"${String(target).slice(0, 40)}"` : "";
+  switch (action) {
+    case "navigate": return `mở ${args.url ?? ""}`.trim();
+    case "back": return "quay lại trang trước";
+    case "forward": return "đi tới trang sau";
+    case "reload": return "tải lại trang";
+    case "new_tab": return args.url ? `mở tab mới: ${args.url}` : "mở tab mới";
+    case "list_tabs": return "liệt kê các tab";
+    case "switch_tab": return `chuyển sang tab #${args.index ?? "?"}`;
+    case "close_tab": return `đóng tab #${args.index ?? "hiện tại"}`;
+    case "click":
+    case "click_selector": return `click ${short}`.trim() || "click";
+    case "fill": return `điền ${short}`.trim() || "điền form";
+    case "press": return `nhấn phím ${args.key ?? "Enter"}`;
+    case "wait_for": return `chờ ${short}`.trim() || "chờ phần tử xuất hiện";
+    case "get_html": return short ? `đọc HTML ${short}` : "đọc HTML trang";
+    case "get_text": return short ? `đọc nội dung ${short}` : "đọc nội dung trang";
+    case "screenshot": return "chụp màn hình";
+    case "eval": return "chạy script";
+    case "download": return short ? `tải file từ ${short}` : "tải file";
+    case "upload": return `tải lên ${Array.isArray(args.files) ? args.files.length : 1} file`;
+    case "close": return "đóng trình duyệt";
+    default: return action;
+  }
+}
+
 ipcMain.handle("bridge:browser", async (_e, payload) => {
   const { action, ...args } = payload || {};
+  emitBrowserAction(describeBrowserAction(action, args));
   try {
     if (action === "close") {
       await pwShutdown();
