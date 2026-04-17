@@ -14,8 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          args: Json | null
+          conversation_id: string | null
+          created_at: string
+          id: string
+          message_id: string | null
+          output: string | null
+          risk: string
+          status: string
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          args?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          output?: string | null
+          risk?: string
+          status?: string
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          args?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          output?: string | null
+          risk?: string
+          status?: string
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
+          branch_of_message_id: string | null
           created_at: string
           id: string
           model: string | null
@@ -25,6 +65,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          branch_of_message_id?: string | null
           created_at?: string
           id?: string
           model?: string | null
@@ -34,6 +75,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          branch_of_message_id?: string | null
           created_at?: string
           id?: string
           model?: string | null
