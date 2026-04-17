@@ -26,6 +26,8 @@ interface Props {
   onBranch?: () => void;
   onReannotate?: () => void;
   onRetryTool?: (callId: string) => void;
+  onRetryAllFailed?: () => void;
+  bulkRetryProgress?: { current: number; total: number } | null;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
