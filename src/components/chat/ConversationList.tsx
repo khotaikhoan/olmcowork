@@ -9,10 +9,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MessageSquare, MoreHorizontal, Trash2, Pencil, Search, Settings, LogOut, Bot } from "lucide-react";
+import { Plus, MessageSquare, MoreHorizontal, Trash2, Pencil, Search, Settings, LogOut, Bot, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 export interface Conversation {
   id: string;
@@ -32,6 +33,7 @@ interface Props {
 
 export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOpenSettings }: Props) {
   const { signOut, user } = useAuth();
+  const nav = useNavigate();
   const [items, setItems] = useState<Conversation[]>([]);
   const [q, setQ] = useState("");
 
@@ -139,6 +141,9 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
 
       <div className="border-t border-sidebar-border p-2 space-y-1">
         <div className="px-2 py-1 text-xs text-muted-foreground truncate">{user?.email}</div>
+        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => nav("/schedules")}>
+          <Clock className="h-4 w-4 mr-2" /> Scheduled agents
+        </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onOpenSettings}>
           <Settings className="h-4 w-4 mr-2" /> Cài đặt
         </Button>
