@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("bridge", {
   listApps: () => invoke("bridge:list_apps"),
   // Phase 3: Playwright browser automation
   browser: (payload) => invoke("bridge:browser", payload),
+  browserSetHeadless: (headless) => invoke("bridge:browser_set_headless", { headless }),
   startOllama: () => invoke("bridge:start_ollama"),
   stopOllama: () => invoke("bridge:stop_ollama"),
   ollamaStatus: () => invoke("bridge:ollama_status"),
