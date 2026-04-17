@@ -16,6 +16,9 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { GlobalDragDrop } from "@/components/chat/GlobalDragDrop";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
+import { PanelLeftOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -138,21 +141,42 @@ export default function Index() {
       onTitleUpdated={() => setRefreshKey((k) => k + 1)}
       onArtifactsChange={setArtifacts}
       onArtifactOpen={openArtifact}
-      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : undefined}
+      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : () => setSidebarOpen((v) => !v)}
     />
   );
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Desktop sidebar */}
-      {!isMobile && sidebarOpen && (
-        <ConversationList
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onNew={() => setSelectedId(null)}
-          refreshKey={refreshKey}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
+      {/* Desktop sidebar — always mounted, animates width for smooth open/close */}
+      {!isMobile && (
+        <div
+          className={cn(
+            "shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
+            sidebarOpen ? "w-72" : "w-0",
+          )}
+          aria-hidden={!sidebarOpen}
+        >
+          <ConversationList
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onNew={() => setSelectedId(null)}
+            refreshKey={refreshKey}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onCollapse={() => setSidebarOpen(false)}
+          />
+        </div>
+      )}
+      {/* Floating "open sidebar" chip when collapsed (desktop only) */}
+      {!isMobile && !sidebarOpen && (
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setSidebarOpen(true)}
+          title="Mở sidebar (⌘/Ctrl+B)"
+          className="fixed top-3 left-3 z-40 h-8 w-8 shadow-[var(--shadow-soft)] animate-fade-in"
+        >
+          <PanelLeftOpen className="h-4 w-4" />
+        </Button>
       )}
       {/* Mobile sidebar in a Sheet */}
       {isMobile && (
