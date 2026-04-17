@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld("bridge", {
   browserClose: () => invoke("bridge:browser_close"),
   chromeDetect: () => invoke("bridge:chrome_detect"),
   chromeQuit: (force) => invoke("bridge:chrome_quit", { force: !!force }),
+  chromeDebugProbe: () => invoke("bridge:chrome_debug_probe"),
+  chromeRelaunchWithDebug: () => invoke("bridge:chrome_relaunch_with_debug"),
   onBrowserStatus: (cb) => {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on("browser:status", listener);
