@@ -85,6 +85,7 @@ export function ChatView({
   const [systemPrompt, setSystemPrompt] = useState("");
   const [toolsEnabled, setToolsEnabled] = useState(false);
   const [mode, setMode] = useState<ConversationMode>("chat");
+  const [lockedApp, setLockedApp] = useState<string | null>(null);
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -230,6 +231,15 @@ export function ChatView({
   const handleModeChange = async (next: ConversationMode) => {
     setMode(next);
     setToolsEnabled(next === "control");
+    // Default lock to frontmost app when entering Control mode (Electron only).
+    if (next === "control" && !lockedApp && isElectron()) {
+      try {
+        const b = (window as any).bridge;
+        const r = await b?.getFrontmostApp?.();
+        if (r?.app) setLockedApp(r.app);
+      } catch { /* ignore */ }
+    }
+    if (next === "chat") setLockedApp(null);
     if (conversationId) {
       await supabase
         .from("conversations")
@@ -630,7 +640,11 @@ export function ChatView({
               .map((s, i) => `${i + 1}. ${s.text}`)
               .join("\n")}`
           : "";
-      const fullSystem = (baseSystem + toolsHint + planHint).trim();
+      const appLockHint =
+        mode === "control" && lockedApp
+          ? `\n\n[App focus lock] You may ONLY interact with the application "${lockedApp}". Before any computer/vision_click action, verify the frontmost window belongs to "${lockedApp}". If a different app is focused, switch back (e.g. via vision_annotate then click on the "${lockedApp}" window) instead of acting on it. Never click, type, or send keystrokes into other applications.`
+          : "";
+      const fullSystem = (baseSystem + toolsHint + planHint + appLockHint).trim();
 
       const history: OllamaChatMessage[] = [];
       if (fullSystem) history.push({ role: "system", content: fullSystem });
@@ -971,6 +985,8 @@ export function ChatView({
         onToggleSidebar={onToggleSidebar}
         mode={mode}
         onModeChange={handleModeChange}
+        lockedApp={lockedApp}
+        onLockedAppChange={setLockedApp}
       />
 
       {mode === "control" ? (
