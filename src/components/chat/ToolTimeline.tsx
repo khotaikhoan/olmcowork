@@ -5,13 +5,14 @@ import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
 
 interface Props {
   calls: ToolCallRecord[];
+  onReannotate?: () => void;
 }
 
 /**
  * Vertical timeline with a connector rail + animate-in for new steps.
  * Shows expand/collapse-all when there are 2+ steps.
  */
-export function ToolTimeline({ calls }: Props) {
+export function ToolTimeline({ calls, onReannotate }: Props) {
   const [expandKey, setExpandKey] = useState(0);
   const [forceState, setForceState] = useState<"open" | "closed" | null>(null);
 
