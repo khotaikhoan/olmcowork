@@ -35,6 +35,11 @@ export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, on
   const [steps, setSteps] = useState<PlanStep[]>(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Re-sync when parent provides new steps (e.g. after retry).
+  useEffect(() => {
+    setSteps(initial);
+  }, [initial]);
+
   const update = (id: string, text: string) =>
     setSteps((s) => s.map((st) => (st.id === id ? { ...st, text } : st)));
   const remove = (id: string) => setSteps((s) => s.filter((st) => st.id !== id));
