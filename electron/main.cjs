@@ -971,6 +971,14 @@ async function ensurePwPage() {
   return page;
 }
 
+// Current human-readable action being performed by Playwright (e.g. "click submit button").
+// null/empty when idle. Streamed to the renderer over `browser:action`.
+let pwCurrentAction = null;
+function emitBrowserAction(label) {
+  pwCurrentAction = label || null;
+  try { win?.webContents.send("browser:action", { label: pwCurrentAction, ts: Date.now() }); } catch { /* ignore */ }
+}
+
 function emitBrowserStatus() {
   try {
     const active = !!pwContext;
