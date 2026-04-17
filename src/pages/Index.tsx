@@ -62,6 +62,7 @@ export default function Index() {
         conversationId={selectedId}
         ollamaUrl={settings.ollama_url}
         defaultModel={settings.default_model}
+        requireConfirm={settings.require_confirm}
         onCreated={(id) => {
           setSelectedId(id);
           setRefreshKey((k) => k + 1);
