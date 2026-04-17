@@ -17,6 +17,8 @@ import {
   Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VisionMarksOverlay } from "./VisionMarksOverlay";
+import type { VisionMark } from "@/lib/bridge";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
@@ -26,8 +28,10 @@ export interface ToolCallRecord {
   args: Record<string, any>;
   status: ToolCallStatus;
   result?: string;
-  /** base64 PNG (no data: prefix), set for computer.screenshot */
+  /** base64 PNG (no data: prefix), set for computer.screenshot or vision_click.annotate */
   image?: string;
+  /** accessibility marks, set for vision_click.annotate */
+  marks?: VisionMark[];
 }
 
 function variant(call: ToolCallRecord) {
@@ -38,6 +42,11 @@ function variant(call: ToolCallRecord) {
     if (a === "type") return { kind: "computer" as const, icon: Keyboard, label: "type text" };
     if (a === "key") return { kind: "computer" as const, icon: Keyboard, label: `key: ${call.args.key}` };
     return { kind: "computer" as const, icon: MousePointer2, label: a || "computer" };
+  }
+  if (call.name === "vision_click") {
+    if (a === "annotate") return { kind: "vision" as const, icon: Eye, label: "annotate UI" };
+    if (a === "click") return { kind: "computer" as const, icon: MousePointer2, label: `click #${call.args.mark_id}` };
+    return { kind: "computer" as const, icon: MousePointer2, label: a || "vision" };
   }
   if (call.name === "text_editor") {
     if (a === "view") return { kind: "view" as const, icon: Eye, label: "view file" };
@@ -114,6 +123,28 @@ export function ToolCallCard({ call }: { call: ToolCallRecord }) {
                 <pre className="mt-2 whitespace-pre-wrap max-h-72 overflow-auto opacity-90">
                   {call.result}
                 </pre>
+              )}
+            </div>
+          )}
+
+          {/* Vision annotate → interactive overlay */}
+          {v.kind === "vision" && (
+            <div className="p-3 space-y-2 bg-muted/20">
+              {call.image && call.marks ? (
+                <VisionMarksOverlay image={call.image} marks={call.marks} />
+              ) : call.image ? (
+                <img
+                  src={`data:image/png;base64,${call.image}`}
+                  alt="annotated"
+                  className="rounded-md border border-border max-h-96 w-auto"
+                />
+              ) : (
+                <div className="text-xs text-muted-foreground">{call.result ?? "Đang phân tích…"}</div>
+              )}
+              {call.marks && (
+                <div className="text-[11px] text-muted-foreground">
+                  Đã phát hiện <span className="font-mono text-foreground">{call.marks.length}</span> phần tử có thể tương tác. Click vào ảnh để xem nhãn.
+                </div>
               )}
             </div>
           )}
