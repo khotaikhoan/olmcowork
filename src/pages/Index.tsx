@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/chat/ConversationList";
+import { MiniRail } from "@/components/chat/MiniRail";
 import { ChatView } from "@/components/chat/ChatView";
 import { SettingsDialog, SettingsValue } from "@/components/chat/SettingsDialog";
 import { ArtifactsPanel } from "@/components/chat/ArtifactsPanel";
@@ -27,11 +28,16 @@ export default function Index() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const isMobile = useIsMobile();
-  // Desktop = open by default. On mobile, the sidebar lives in a Sheet so default-closed.
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  // Desktop sidebar has 3 states (expanded / mini / closed). Persisted to localStorage.
+  const [sidebarMode, setSidebarMode] = useState<"expanded" | "mini" | "closed">(() => {
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("ui.sidebarMode") : null;
+    return saved === "mini" || saved === "closed" || saved === "expanded" ? saved : "expanded";
+  });
   useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
+    try { localStorage.setItem("ui.sidebarMode", sidebarMode); } catch { /* ignore */ }
+  }, [sidebarMode]);
+  // Mobile sidebar lives in a Sheet — separate open/closed flag.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settings, setSettings] = useState<SettingsValue>({
     provider: (localStorage.getItem("chat.provider") as any) || "ollama",
     openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
@@ -96,12 +102,16 @@ export default function Index() {
     });
   }, [setHandlers]);
 
-  // Global Cmd+B → toggle sidebar
+  // Global Cmd+B → cycle desktop sidebar expanded → mini → closed → expanded.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
-        setSidebarOpen((v) => !v);
+        if (isMobile) setSidebarOpen((v) => !v);
+        else
+          setSidebarMode((m) =>
+            m === "expanded" ? "mini" : m === "mini" ? "closed" : "expanded",
+          );
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ",") {
         e.preventDefault();
@@ -110,7 +120,7 @@ export default function Index() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isMobile]);
 
   const handleGlobalDrop = useCallback((_files: FileList) => {
     // Drag-drop overlay shows feedback; ChatInput's own dropzone still receives the files.
@@ -141,37 +151,49 @@ export default function Index() {
       onTitleUpdated={() => setRefreshKey((k) => k + 1)}
       onArtifactsChange={setArtifacts}
       onArtifactOpen={openArtifact}
-      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : () => setSidebarOpen((v) => !v)}
+      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : () => setSidebarMode((m) => (m === "closed" ? "expanded" : m === "mini" ? "expanded" : "mini"))}
     />
   );
 
+  // Desktop sidebar width animation: 288 (expanded) | 56 (mini) | 0 (closed).
+  const desktopWidth =
+    sidebarMode === "expanded" ? "w-72" : sidebarMode === "mini" ? "w-14" : "w-0";
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {/* Desktop sidebar — always mounted, animates width for smooth open/close */}
+      {/* Desktop sidebar — animated container, switches between full list and mini-rail */}
       {!isMobile && (
         <div
           className={cn(
             "shrink-0 overflow-hidden transition-[width] duration-300 ease-in-out",
-            sidebarOpen ? "w-72" : "w-0",
+            desktopWidth,
           )}
-          aria-hidden={!sidebarOpen}
+          aria-hidden={sidebarMode === "closed"}
         >
-          <ConversationList
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onNew={() => setSelectedId(null)}
-            refreshKey={refreshKey}
-            onOpenSettings={() => setSettingsOpen(true)}
-            onCollapse={() => setSidebarOpen(false)}
-          />
+          {sidebarMode === "expanded" ? (
+            <ConversationList
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onNew={() => setSelectedId(null)}
+              refreshKey={refreshKey}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onCollapse={() => setSidebarMode("mini")}
+            />
+          ) : sidebarMode === "mini" ? (
+            <MiniRail
+              onNew={() => setSelectedId(null)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onExpand={() => setSidebarMode("expanded")}
+            />
+          ) : null}
         </div>
       )}
-      {/* Floating "open sidebar" chip when collapsed (desktop only) */}
-      {!isMobile && !sidebarOpen && (
+      {/* Floating "open" chip when desktop sidebar fully closed */}
+      {!isMobile && sidebarMode === "closed" && (
         <Button
           variant="outline"
           size="icon"
-          onClick={() => setSidebarOpen(true)}
+          onClick={() => setSidebarMode("mini")}
           title="Mở sidebar (⌘/Ctrl+B)"
           className="fixed top-3 left-3 z-40 h-8 w-8 shadow-[var(--shadow-soft)] animate-fade-in"
         >
