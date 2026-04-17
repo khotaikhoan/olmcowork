@@ -145,7 +145,7 @@ export function TopBar({
       <Input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="h-8 w-24 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink min-w-0 px-2 hidden xs:block sm:block"
+        className="h-8 w-32 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink min-w-0 px-2 hidden sm:block"
       />
 
       {/* Essentials: Mode + Model */}
