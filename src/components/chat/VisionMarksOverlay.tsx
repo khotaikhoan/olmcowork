@@ -147,7 +147,14 @@ export function VisionMarksOverlay({ image, marks, onClicked, onReannotate }: Pr
   return (
     <div
       ref={wrapRef}
-      className="relative w-full overflow-hidden rounded-md border border-border bg-muted/20"
+      tabIndex={electron ? 0 : -1}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      onKeyDown={handleKeyDown}
+      className={
+        "relative w-full overflow-hidden rounded-md border bg-muted/20 outline-none transition-shadow " +
+        (focused ? "border-primary shadow-[0_0_0_2px_hsl(var(--primary)/0.3)]" : "border-border")
+      }
     >
       <img
         ref={imgRef}
