@@ -113,6 +113,10 @@ export const TOOLS: ToolDef[] = [
         limit: {
           type: "number",
           description: "Max number of results to return (1-10, default 5).",
+        },
+      },
+      required: ["query"],
+    },
   },
   {
     name: "browser",
@@ -155,10 +159,6 @@ export const TOOLS: ToolDef[] = [
         },
       },
       required: ["action"],
-    },
-  },
-      },
-      required: ["query"],
     },
   },
   {
