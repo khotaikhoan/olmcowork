@@ -47,6 +47,7 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
                 <Route path="/activity" element={<Activity />} />
+                <Route path="/plans" element={<Plans />} />
                 
                 <Route path="/memories" element={<Memories />} />
                 <Route path="*" element={<NotFound />} />
