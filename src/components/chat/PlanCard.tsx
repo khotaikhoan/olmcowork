@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ListChecks,
   Plus,
@@ -8,6 +8,8 @@ import {
   GripVertical,
   Pencil,
   Loader2,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,16 +19,19 @@ import type { PlanStep } from "@/lib/planGen";
 interface Props {
   steps: PlanStep[];
   loading?: boolean;
+  /** True when generation finished but produced no steps. */
+  empty?: boolean;
   onApprove: (steps: PlanStep[]) => void;
   onSkip: () => void;
   onCancel: () => void;
+  onRetry?: () => void;
 }
 
 /**
  * Plan card shown in Control mode before the agent starts executing tools.
  * User can edit step text, delete steps, add new ones, or skip planning entirely.
  */
-export function PlanCard({ steps: initial, loading, onApprove, onSkip, onCancel }: Props) {
+export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, onCancel, onRetry }: Props) {
   const [steps, setSteps] = useState<PlanStep[]>(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
 
