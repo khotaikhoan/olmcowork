@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
+import { ControlBarCompact, ControlBarFull } from "./ControlBar";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
