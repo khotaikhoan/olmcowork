@@ -881,7 +881,7 @@ async function ensurePwPage() {
     }
   }
   if (!pwBrowser || !pwBrowser.isConnected()) {
-    try { fs.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
+    try { fsSync.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
     const launchOpts = { headless: pwHeadless, channel: "chrome" };
     try {
       pwBrowser = await pw.chromium.launch(launchOpts);
@@ -1079,7 +1079,7 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
       case "download": {
         // Wait for download triggered by clicking a locator (or by user-supplied URL navigation).
         const { loc, how } = resolveLocator(page, args);
-        try { fs.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
+        try { fsSync.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
         const [ download ] = await Promise.all([
           page.waitForEvent("download", { timeout: Number(args.timeout) || 30_000 }),
           loc ? loc.click() : (args.url ? page.goto(String(args.url)) : Promise.resolve()),
@@ -1096,7 +1096,7 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
         if (!files.filter(Boolean).length) return { ok: false, output: "upload requires file or files[]." };
         // Path safety: reuse the same allowlist as readFile/writeFile.
         for (const f of files) {
-          if (!isPathSafe(f)) return { ok: false, output: `upload blocked by path safety: ${f}` };
+          if (!pathAllowed(f)) return { ok: false, output: `upload blocked by path safety: ${f}` };
         }
         await loc.setInputFiles(files, { timeout: 10_000 });
         return { ok: true, output: `Uploaded ${files.length} file(s) to ${how}` };
