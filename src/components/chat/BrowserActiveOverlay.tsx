@@ -11,18 +11,40 @@ interface BrowserStatus {
   useRealProfile: boolean;
 }
 
+// Show the progress bar once an action has been running this long (ms).
+// Anything shorter is "instant" UX — a flashing bar would be more noise than help.
+const PROGRESS_THRESHOLD_MS = 2000;
+
 /**
  * Floating overlay shown only when the Playwright-controlled browser is open.
- * Gives the user a clear "AI is driving the browser" indicator + a one-click Stop,
- * and streams the *current* browser action (e.g. "click submit button") from the
- * Electron main process via the `browser:action` IPC channel.
+ * Streams the current browser action (e.g. "click submit button") and surfaces
+ * an indeterminate progress bar when the action runs longer than ~2s
+ * (download, wait_for, slow navigations…).
  */
 export function BrowserActiveOverlay() {
   const bridge = typeof window !== "undefined" ? (window as any).bridge : undefined;
   const [status, setStatus] = useState<BrowserStatus | null>(null);
   const [action, setAction] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
   const clearTimer = useRef<number | null>(null);
+  const tickTimer = useRef<number | null>(null);
+  const actionStartedAt = useRef<number | null>(null);
+
+  // ── Start/stop the elapsed-time ticker tied to the *current* action ──
+  const startTicker = () => {
+    actionStartedAt.current = Date.now();
+    setElapsedMs(0);
+    if (tickTimer.current) window.clearInterval(tickTimer.current);
+    tickTimer.current = window.setInterval(() => {
+      if (actionStartedAt.current) setElapsedMs(Date.now() - actionStartedAt.current);
+    }, 100);
+  };
+  const stopTicker = () => {
+    if (tickTimer.current) { window.clearInterval(tickTimer.current); tickTimer.current = null; }
+    actionStartedAt.current = null;
+    setElapsedMs(0);
+  };
 
   useEffect(() => {
     if (!bridge?.onBrowserStatus) return;
@@ -36,7 +58,9 @@ export function BrowserActiveOverlay() {
       if (clearTimer.current) { window.clearTimeout(clearTimer.current); clearTimer.current = null; }
       if (a.label) {
         setAction(a.label);
+        startTicker();
       } else {
+        stopTicker();
         clearTimer.current = window.setTimeout(() => setAction(null), 1200);
       }
     });
@@ -44,6 +68,7 @@ export function BrowserActiveOverlay() {
       try { offStatus?.(); } catch { /* ignore */ }
       try { offAction?.(); } catch { /* ignore */ }
       if (clearTimer.current) window.clearTimeout(clearTimer.current);
+      if (tickTimer.current) window.clearInterval(tickTimer.current);
     };
   }, [bridge]);
 
@@ -71,43 +96,60 @@ export function BrowserActiveOverlay() {
       })()
     : "about:blank";
 
+  // Show the progress bar only for actions that have been running longer than the threshold.
+  const showProgress = !!action && elapsedMs >= PROGRESS_THRESHOLD_MS;
+  const elapsedSec = (elapsedMs / 1000).toFixed(1);
+
   return (
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-4 right-4 z-[60] flex items-center gap-2 rounded-2xl border border-primary/40 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 max-w-[min(92vw,420px)]"
+      className="fixed bottom-4 right-4 z-[60] flex flex-col rounded-2xl border border-primary/40 bg-background/95 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 max-w-[min(92vw,420px)] overflow-hidden"
     >
-      <span className="relative flex h-2 w-2 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-      </span>
-      <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
-      <div className="flex flex-col leading-tight min-w-0 flex-1">
-        <span className="text-xs font-medium truncate">
-          {action ? (
-            <span className="inline-flex items-center gap-1">
-              <Sparkles className="h-3 w-3 text-primary shrink-0" />
-              <span className="truncate">đang {action}</span>
-            </span>
-          ) : (
-            "AI đang điều khiển trình duyệt"
-          )}
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
         </span>
-        <span className="text-[10px] text-muted-foreground truncate">
-          {displayUrl}{status.tabs > 1 ? ` · ${status.tabs} tabs` : ""}{status.useRealProfile ? " · profile thật" : ""}
-        </span>
+        <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
+        <div className="flex flex-col leading-tight min-w-0 flex-1">
+          <span className="text-xs font-medium truncate">
+            {action ? (
+              <span className="inline-flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary shrink-0" />
+                <span className="truncate">đang {action}</span>
+                {showProgress && (
+                  <span className="text-[10px] font-normal text-muted-foreground tabular-nums shrink-0">
+                    {elapsedSec}s
+                  </span>
+                )}
+              </span>
+            ) : (
+              "AI đang điều khiển trình duyệt"
+            )}
+          </span>
+          <span className="text-[10px] text-muted-foreground truncate">
+            {displayUrl}{status.tabs > 1 ? ` · ${status.tabs} tabs` : ""}{status.useRealProfile ? " · profile thật" : ""}
+          </span>
+        </div>
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-6 px-2 text-xs gap-1 ml-1 shrink-0"
+          onClick={handleStop}
+          disabled={closing}
+          title="Đóng trình duyệt và dừng tự động hoá"
+        >
+          {closing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+          Stop
+        </Button>
       </div>
-      <Button
-        size="sm"
-        variant="destructive"
-        className="h-6 px-2 text-xs gap-1 ml-1 shrink-0"
-        onClick={handleStop}
-        disabled={closing}
-        title="Đóng trình duyệt và dừng tự động hoá"
-      >
-        {closing ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
-        Stop
-      </Button>
+      {/* Indeterminate progress bar — animates only when the current action exceeds the threshold. */}
+      {showProgress && (
+        <div className="h-0.5 w-full bg-primary/10 overflow-hidden" aria-hidden="true">
+          <div className="h-full w-1/3 bg-primary/70 animate-progress-indeterminate" />
+        </div>
+      )}
     </div>
   );
 }
