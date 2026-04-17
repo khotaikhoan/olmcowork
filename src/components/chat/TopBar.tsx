@@ -112,7 +112,7 @@ export function TopBar({
         <Popover>
           <PopoverTrigger asChild>
             <button
-              title="Loaded models — click for details"
+              title="Model đang nạp — bấm xem chi tiết"
               className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-mono"
             >
               <MemoryStick className="h-3 w-3" />
@@ -127,7 +127,7 @@ export function TopBar({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-3">
-            <div className="text-xs font-medium mb-2">Loaded models (RAM/VRAM)</div>
+            <div className="text-xs font-medium mb-2">Model đang nạp (RAM/VRAM)</div>
             <div className="space-y-2">
               {running.map((r) => {
                 const cpuBytes = Math.max(0, r.size - r.size_vram);
@@ -136,8 +136,8 @@ export function TopBar({
                   <div key={r.name} className="rounded-md border border-border p-2">
                     <div className="font-mono text-xs font-semibold mb-1 truncate">{r.name}</div>
                     <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-                      <span>Total {formatBytes(r.size)}</span>
-                      <span>{vramPct}% on GPU</span>
+                      <span>Tổng {formatBytes(r.size)}</span>
+                      <span>{vramPct}% trên GPU</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
                       <div className="bg-[hsl(var(--success))]" style={{ width: `${vramPct}%` }} />
@@ -149,7 +149,7 @@ export function TopBar({
                     </div>
                     {r.expires_at && (
                       <div className="text-[10px] text-muted-foreground mt-1">
-                        Unloads at {new Date(r.expires_at).toLocaleTimeString()}
+                        Tự gỡ lúc {new Date(r.expires_at).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -161,7 +161,7 @@ export function TopBar({
       )}
 
       <div
-        title={bridgeOnline ? "Ollama connected" : "Ollama offline"}
+        title={bridgeOnline ? "Đã kết nối Ollama" : "Ollama ngoại tuyến"}
         className={
           "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md " +
           (bridgeOnline
@@ -170,7 +170,7 @@ export function TopBar({
         }
       >
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-        {bridgeOnline ? "Online" : "Offline"}
+        {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
 
       {canControlOllama && (
@@ -179,7 +179,7 @@ export function TopBar({
           size="sm"
           onClick={onToggleOllama}
           disabled={ollamaBusy}
-          title={bridgeOnline ? "Stop Ollama process to free RAM" : "Start Ollama process"}
+          title={bridgeOnline ? "Dừng Ollama để giải phóng RAM" : "Khởi động Ollama"}
           className="h-8"
         >
           {ollamaBusy ? (
@@ -187,7 +187,7 @@ export function TopBar({
           ) : (
             <Power className="h-3.5 w-3.5 mr-1" />
           )}
-          {ollamaBusy ? (bridgeOnline ? "Stopping…" : "Starting…") : bridgeOnline ? "Stop Ollama" : "Start Ollama"}
+          {ollamaBusy ? (bridgeOnline ? "Đang dừng…" : "Đang khởi động…") : bridgeOnline ? "Dừng Ollama" : "Khởi động Ollama"}
         </Button>
       )}
 
@@ -196,11 +196,11 @@ export function TopBar({
         size="sm"
         onClick={onKillSwitch}
         disabled={!killArmed}
-        title="Stop the agent immediately and revoke all auto-approvals"
+        title="Dừng tác nhân ngay lập tức và thu hồi mọi quyền tự duyệt"
         className="h-8 font-semibold shadow-[var(--shadow-soft)] disabled:opacity-40"
       >
         <OctagonX className="h-4 w-4 mr-1" />
-        Kill Switch
+        Dừng khẩn
       </Button>
     </header>
   );
