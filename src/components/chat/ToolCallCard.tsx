@@ -15,12 +15,15 @@ import {
   XCircle,
   Loader2,
   Wrench,
+  Globe,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
 import type { VisionMark } from "@/lib/bridge";
 import { InlineDiff } from "./InlineDiff";
 import { CursorTrailOverlay, CursorPoint } from "./CursorTrailOverlay";
+import { UrlPreviewChip } from "./UrlPreviewChip";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
