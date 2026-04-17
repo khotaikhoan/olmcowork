@@ -72,6 +72,26 @@ export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, on
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Đang phân tích goal và tạo các bước…
         </div>
+      ) : empty && steps.length === 0 ? (
+        <div className="px-4 py-5 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">Model chưa tạo được plan</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Có thể model bị quá tải hoặc không hiểu rõ goal. Thử lại, bỏ qua plan để chạy thẳng, hoặc huỷ task.
+            </div>
+            {onRetry && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetry}
+                className="mt-2.5 h-7 text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Thử tạo plan lại
+              </Button>
+            )}
+          </div>
+        </div>
       ) : (
         <ul className="px-3 py-2 space-y-1">
           {steps.map((s, i) => (
