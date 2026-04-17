@@ -173,4 +173,48 @@
   .drag-overlay-card {
     @apply rounded-2xl border-2 border-dashed border-primary bg-background/80 px-10 py-8 text-center;
   }
+
+  /* ============== Oculo animated logo ============== */
+  .oculo-logo .oculo-ring {
+    animation: oculo-ring-spin var(--oculo-ring-dur, 16s) linear infinite;
+    transform-box: fill-box;
+  }
+  .oculo-logo .oculo-pupil {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: oculo-pupil-pulse var(--oculo-pupil-dur, 3.2s) ease-in-out infinite;
+  }
+  .oculo-logo .oculo-lid {
+    transform-origin: 32px 32px;
+    transform-box: fill-box;
+    animation: oculo-blink var(--oculo-blink-dur, 9s) ease-in-out infinite;
+  }
+  .oculo-logo .oculo-lid.is-blinking {
+    animation: oculo-blink var(--oculo-blink-dur, 1.6s) ease-in-out infinite;
+  }
+  .oculo-logo .oculo-wave {
+    transform-origin: 32px 32px;
+    transform-box: fill-box;
+    opacity: 0;
+  }
+  .oculo-logo .oculo-wave.is-active {
+    animation: oculo-wave 1.4s ease-out infinite;
+  }
 }
+
+@keyframes oculo-ring-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes oculo-pupil-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(0.7); opacity: 0.85; }
+}
+@keyframes oculo-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%           { transform: scaleY(0.08); }
+}
+@keyframes oculo-wave {
+  0%   { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+

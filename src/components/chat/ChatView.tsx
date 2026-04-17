@@ -33,6 +33,7 @@ import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
 import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
+import { setOculoState } from "@/components/OculoLogo";
 
 interface DbMessage {
   id: string;
@@ -285,6 +286,16 @@ export function ChatView({
     }
     onArtifactsChange(all);
   }, [messages, streamingText, isStreaming, onArtifactsChange]);
+
+  // Drive the global Oculo logo state — thinking when streaming with no
+  // text yet, speaking once tokens arrive, idle otherwise.
+  useEffect(() => {
+    if (!isStreaming) {
+      setOculoState("idle");
+      return;
+    }
+    setOculoState(streamingText ? "speaking" : "thinking");
+  }, [isStreaming, streamingText]);
 
   const persistConv = async (id: string, patch: Partial<{ title: string; model: string; system_prompt: string }>) => {
     await supabase.from("conversations").update(patch).eq("id", id);
