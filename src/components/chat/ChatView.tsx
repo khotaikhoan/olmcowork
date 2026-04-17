@@ -318,6 +318,28 @@ export function ChatView({
   const handleModeChange = async (next: ConversationMode) => {
     setMode(next);
     setToolsEnabled(next === "control");
+    // Behavior learning: auto-collapse the control bar after the user has entered
+    // Control mode 5 times. Runs once (guarded by `chat.control_bar_auto_collapsed`)
+    // so the user keeps full control afterwards.
+    if (next === "control") {
+      try {
+        const COUNT_KEY = "chat.control_mode_enter_count";
+        const DONE_KEY = "chat.control_bar_auto_collapsed";
+        const COLLAPSED_KEY = "chat.control_bar_collapsed";
+        const count = (parseInt(localStorage.getItem(COUNT_KEY) || "0", 10) || 0) + 1;
+        localStorage.setItem(COUNT_KEY, String(count));
+        const alreadyAuto = localStorage.getItem(DONE_KEY) === "1";
+        const alreadyCollapsed = localStorage.getItem(COLLAPSED_KEY) === "1";
+        if (count >= 5 && !alreadyAuto && !alreadyCollapsed) {
+          localStorage.setItem(DONE_KEY, "1");
+          setCollapsedPersist(true);
+          toast.success("Đã thu gọn thanh điều khiển", {
+            description: "Bạn dùng Control mode khá thường xuyên — bấm icon trên TopBar để mở rộng lại.",
+            duration: 6000,
+          });
+        }
+      } catch { /* ignore */ }
+    }
     // Default lock to frontmost app when entering Control mode (Electron only).
     if (next === "control" && !lockedApp && isElectron()) {
       try {
