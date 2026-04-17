@@ -30,6 +30,34 @@ export async function pingOllama(baseUrl: string): Promise<boolean> {
   }
 }
 
+export interface RunningModel {
+  name: string;
+  model: string;
+  size: number;       // total bytes
+  size_vram: number;  // bytes loaded into VRAM (0 = pure CPU)
+  expires_at?: string;
+}
+
+export async function listRunning(baseUrl: string): Promise<RunningModel[]> {
+  try {
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/ps`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.models ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export function formatBytes(n: number): string {
+  if (!n) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 export interface StreamOptions {
   baseUrl: string;
   model: string;
