@@ -436,7 +436,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                       AI dùng cookies & đăng nhập sẵn (Gmail, Facebook…). <strong>Phải đóng hoàn toàn Chrome (Cmd+Q)</strong> trước khi bật. Profile: <code>~/Library/Application Support/Google/Chrome</code> trên macOS.
                     </p>
                   </div>
-                  <Switch checked={browserUseRealProfile} onCheckedChange={setBrowserUseRealProfile} />
+                  <Switch checked={browserUseRealProfile} onCheckedChange={handleToggleRealProfile} />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
