@@ -241,8 +241,13 @@ export function VisionMarksOverlay({ image, marks, onClicked, onReannotate }: Pr
       <div className="absolute bottom-2 right-2 px-2 py-1 rounded-md bg-background/80 backdrop-blur text-[11px] font-mono border border-border flex items-center gap-1.5">
         <span>{marks.length} marks</span>
         {electron && (
-          <span className="text-muted-foreground">
-            · click để điều khiển
+          <span className="text-muted-foreground inline-flex items-center gap-1">
+            · click hoặc <Keyboard className="h-3 w-3" /> số 1-99 / Tab
+          </span>
+        )}
+        {keyBuffer && (
+          <span className="ml-1 px-1 rounded bg-primary/20 text-primary font-bold">
+            {keyBuffer}
           </span>
         )}
       </div>
