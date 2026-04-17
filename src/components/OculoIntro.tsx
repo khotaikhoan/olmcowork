@@ -26,6 +26,9 @@ export function OculoIntro() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // ?intro=1 forces replay (handy for testing) — clears the session flag.
+    const force = new URLSearchParams(window.location.search).get("intro") === "1";
+    if (force) sessionStorage.removeItem(SESSION_KEY);
     if (sessionStorage.getItem(SESSION_KEY)) return;
     sessionStorage.setItem(SESSION_KEY, "1");
     setShow(true);
