@@ -154,6 +154,10 @@ export interface BridgeAPI {
   browserStatus?: () => Promise<ExecResult & { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }>;
   /** Force-close the Playwright browser (user-initiated stop). */
   browserClose?: () => Promise<ExecResult>;
+  /** Detect if Google Chrome is currently running on the host. */
+  chromeDetect?: () => Promise<ExecResult & { running: boolean; count: number }>;
+  /** Quit Chrome (graceful first; force=true skips graceful step and SIGKILLs). */
+  chromeQuit?: (force?: boolean) => Promise<ExecResult & { remaining?: number }>;
   /** Subscribe to browser status changes (launch/shutdown). Returns unsubscribe fn. */
   onBrowserStatus?: (cb: (s: { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }) => void) => () => void;
   /** Phase 4: sudo shell — biometric/password prompt every call, no caching. */

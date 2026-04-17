@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("bridge", {
   browserSetUseRealProfile: (enabled) => invoke("bridge:browser_set_use_real_profile", { enabled }),
   browserStatus: () => invoke("bridge:browser_status"),
   browserClose: () => invoke("bridge:browser_close"),
+  chromeDetect: () => invoke("bridge:chrome_detect"),
+  chromeQuit: (force) => invoke("bridge:chrome_quit", { force: !!force }),
   onBrowserStatus: (cb) => {
     const listener = (_e, payload) => cb(payload);
     ipcRenderer.on("browser:status", listener);
