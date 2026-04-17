@@ -254,98 +254,132 @@
   .oculo-logo .oculo-glow { animation: none !important; }
 }
 
-/* ============== Oculo intro overlay ============== */
+/* ============== Oculo intro overlay (Apple-style) ============== */
+/* Apple's signature spring easing — used across iOS for natural deceleration */
 .oculo-intro-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
   background: hsl(var(--background));
-  transition: opacity 480ms ease, backdrop-filter 480ms ease;
   opacity: 1;
+  transition:
+    opacity 500ms cubic-bezier(0.32, 0.72, 0, 1),
+    filter 500ms cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: opacity, filter;
 }
 .oculo-intro-overlay[data-fading="true"] {
   opacity: 0;
+  filter: blur(8px);
   pointer-events: none;
 }
-.oculo-intro-mark {
-  filter: drop-shadow(0 8px 30px hsl(var(--primary) / 0.35));
-}
-/* Pupil: starts as a tiny dot, expands to full size */
-.oculo-intro-mark .oculo-intro-pupil {
-  transform-origin: 32px 32px;
-  transform-box: fill-box;
-  animation: oculo-intro-pupil 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-/* Iris ring: appears after pupil, scales + rotates in */
-.oculo-intro-mark .oculo-intro-ring {
-  transform-origin: 32px 32px;
-  transform-box: fill-box;
+
+/* Soft radial spotlight — fades in first, hints at depth */
+.oculo-intro-spotlight {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      hsl(var(--primary) / 0.18) 0%,
+      hsl(var(--primary) / 0.06) 25%,
+      transparent 55%
+    );
   opacity: 0;
-  animation: oculo-intro-ring 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.30s;
-}
-/* Lid sweeps open (vertical scale) */
-.oculo-intro-mark .oculo-intro-lid {
-  transform-origin: 32px 32px;
-  transform-box: fill-box;
-  animation: oculo-intro-lid 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 0.45s;
-}
-.oculo-intro-mark .oculo-intro-glow {
-  transform-origin: 32px 32px;
-  transform-box: fill-box;
-  opacity: 0;
-  animation: oculo-intro-glow 1.0s ease-out both;
-  animation-delay: 0.55s;
-}
-.oculo-intro-mark .oculo-intro-catch {
-  opacity: 0;
-  animation: oculo-intro-fade 0.5s ease-out both;
-  animation-delay: 0.85s;
-}
-.oculo-intro-word {
-  font-family: var(--font-serif);
-  font-size: 1.75rem;
-  letter-spacing: 0.02em;
-  color: hsl(var(--foreground));
-  opacity: 0;
-  transform: translateY(6px);
-  animation: oculo-intro-word 0.6s ease-out both;
-  animation-delay: 0.95s;
+  animation: oculo-intro-spotlight 1.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+  filter: blur(40px);
 }
 
-@keyframes oculo-intro-pupil {
-  0%   { transform: scale(0.05); opacity: 0; }
-  25%  { transform: scale(0.18); opacity: 1; }
-  60%  { transform: scale(1.25); }
-  100% { transform: scale(1); }
+.oculo-intro-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
 }
-@keyframes oculo-intro-ring {
-  0%   { transform: scale(0.4) rotate(-90deg); opacity: 0; }
-  60%  { transform: scale(1.1) rotate(20deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+
+/* Mark: blur-to-focus reveal, like iOS app launch */
+.oculo-intro-mark {
+  filter: drop-shadow(0 12px 40px hsl(var(--primary) / 0.28)) blur(14px);
+  opacity: 0;
+  transform: scale(1.18);
+  animation: oculo-intro-focus 1.1s cubic-bezier(0.32, 0.72, 0, 1) 0.1s forwards;
+  will-change: filter, opacity, transform;
 }
-@keyframes oculo-intro-lid {
-  0%   { transform: scaleY(0.04); opacity: 0; }
-  40%  { opacity: 1; }
-  100% { transform: scaleY(1); opacity: 1; }
+
+/* Wordmark: per-letter stagger, settles from below with kerning ease */
+.oculo-intro-word {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: hsl(var(--foreground));
+  display: flex;
+  /* Compensate for trailing letter-spacing so text appears centered */
+  padding-left: 0.18em;
 }
-@keyframes oculo-intro-glow {
-  0%   { transform: scale(0.5); opacity: 0; }
-  60%  { opacity: 0.9; }
-  100% { transform: scale(1); opacity: 0.6; }
+.oculo-intro-letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  filter: blur(6px);
+  animation: oculo-intro-letter 0.7s cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: opacity, transform, filter;
 }
-@keyframes oculo-intro-fade {
-  to { opacity: 0.9; }
+
+@keyframes oculo-intro-spotlight {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
 }
-@keyframes oculo-intro-word {
-  to { opacity: 1; transform: translateY(0); }
+
+@keyframes oculo-intro-focus {
+  0% {
+    opacity: 0;
+    transform: scale(1.18);
+    filter: drop-shadow(0 12px 40px hsl(var(--primary) / 0)) blur(14px);
+  }
+  60% {
+    opacity: 1;
+    filter: drop-shadow(0 12px 40px hsl(var(--primary) / 0.3)) blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 12px 40px hsl(var(--primary) / 0.28)) blur(0);
+  }
 }
+
+@keyframes oculo-intro-letter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Reduced motion: simple fade, no blur/scale */
+@media (prefers-reduced-motion: reduce) {
+  .oculo-intro-mark,
+  .oculo-intro-letter,
+  .oculo-intro-spotlight {
+    animation: oculo-intro-simple-fade 0.4s ease-out both !important;
+    filter: none !important;
+    transform: none !important;
+  }
+  .oculo-intro-overlay[data-fading="true"] { filter: none; }
+}
+@keyframes oculo-intro-simple-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 
 @media (prefers-reduced-motion: reduce) {
   .oculo-intro-overlay { transition: opacity 200ms ease; }
