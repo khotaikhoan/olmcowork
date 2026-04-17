@@ -56,13 +56,86 @@ function setupAutoUpdate() {
 
 ipcMain.handle("bridge:updater_state", async () => updaterState);
 
-ipcMain.handle("bridge:check_updates", async () => {
-  if (!autoUpdater) return { ok: false, output: "electron-updater not installed" };
-  if (!app.isPackaged) return { ok: false, output: "Auto-update only works in packaged builds" };
+// Compare semver-ish strings: returns 1 if a>b, -1 if a<b, 0 equal.
+function cmpVersion(a, b) {
+  const pa = String(a || "0").replace(/^v/, "").split(/[.\-+]/).map((x) => parseInt(x, 10) || 0);
+  const pb = String(b || "0").replace(/^v/, "").split(/[.\-+]/).map((x) => parseInt(x, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const da = pa[i] ?? 0, db = pb[i] ?? 0;
+    if (da > db) return 1;
+    if (da < db) return -1;
+  }
+  return 0;
+}
+
+// Fallback: query GitHub Releases directly. Works in dev mode too so the user
+// always gets feedback when clicking "Check for updates".
+async function checkGithubLatest() {
+  // Try to read repo from package.json `repository` or `build.publish`
+  let owner = "", repo = "";
   try {
-    emitUpdater({ state: "checking" });
-    const r = await autoUpdater.checkForUpdates();
-    return { ok: true, output: r?.updateInfo?.version ? `Latest: ${r.updateInfo.version}` : "No update info" };
+    const pkg = require(path.join(__dirname, "..", "package.json"));
+    const pub = pkg?.build?.publish;
+    const arr = Array.isArray(pub) ? pub : pub ? [pub] : [];
+    const gh = arr.find((p) => p?.provider === "github");
+    if (gh?.owner && gh?.repo) { owner = gh.owner; repo = gh.repo; }
+    if (!owner && typeof pkg?.repository === "string") {
+      const m = pkg.repository.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+      if (m) { owner = m[1]; repo = m[2]; }
+    } else if (!owner && pkg?.repository?.url) {
+      const m = pkg.repository.url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+      if (m) { owner = m[1]; repo = m[2]; }
+    }
+  } catch {}
+  if (!owner || !repo) throw new Error("GitHub repo not configured in package.json");
+
+  const https = require("https");
+  return await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: "api.github.com",
+      path: `/repos/${owner}/${repo}/releases/latest`,
+      headers: { "User-Agent": "ollama-cowork-updater", Accept: "application/vnd.github+json" },
+    }, (res) => {
+      let body = "";
+      res.on("data", (c) => (body += c));
+      res.on("end", () => {
+        try {
+          const j = JSON.parse(body);
+          if (res.statusCode && res.statusCode >= 400) return reject(new Error(j.message || `HTTP ${res.statusCode}`));
+          resolve({ tag: j.tag_name, name: j.name, prerelease: j.prerelease, draft: j.draft, url: j.html_url });
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+ipcMain.handle("bridge:check_updates", async () => {
+  emitUpdater({ state: "checking" });
+
+  // Packaged build: use electron-updater (handles download + install).
+  if (autoUpdater && app.isPackaged) {
+    try {
+      const r = await autoUpdater.checkForUpdates();
+      return { ok: true, output: r?.updateInfo?.version ? `Latest: ${r.updateInfo.version}` : "No update info" };
+    } catch (e) {
+      emitUpdater({ state: "error", message: String(e?.message || e) });
+      return { ok: false, output: String(e?.message || e) };
+    }
+  }
+
+  // Dev mode (or updater missing): fall back to GitHub API so the user gets feedback.
+  try {
+    const latest = await checkGithubLatest();
+    const current = app.getVersion();
+    const cmp = cmpVersion(latest.tag, current);
+    if (cmp > 0 && !latest.draft) {
+      emitUpdater({ state: "available", version: String(latest.tag).replace(/^v/, "") });
+      return { ok: true, output: `New version available: ${latest.tag}` };
+    }
+    emitUpdater({ state: "none" });
+    return { ok: true, output: `Up to date (current v${current}, latest ${latest.tag})` };
   } catch (e) {
     emitUpdater({ state: "error", message: String(e?.message || e) });
     return { ok: false, output: String(e?.message || e) };
