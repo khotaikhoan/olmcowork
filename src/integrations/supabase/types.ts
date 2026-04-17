@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      job_runs: {
+        Row: {
+          error: string | null
+          finished_at: string | null
+          id: string
+          job_id: string
+          output: string | null
+          started_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_id: string
+          output?: string | null
+          started_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          job_id?: string
+          output?: string | null
+          started_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: Json | null
@@ -84,6 +125,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduled_jobs: {
+        Row: {
+          created_at: string
+          cron: string
+          enabled: boolean
+          id: string
+          job_type: Database["public"]["Enums"]["job_type"]
+          last_run_at: string | null
+          model: string | null
+          name: string
+          next_run_at: string | null
+          prompt: string
+          tools_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cron: string
+          enabled?: boolean
+          id?: string
+          job_type?: Database["public"]["Enums"]["job_type"]
+          last_run_at?: string | null
+          model?: string | null
+          name: string
+          next_run_at?: string | null
+          prompt: string
+          tools_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cron?: string
+          enabled?: boolean
+          id?: string
+          job_type?: Database["public"]["Enums"]["job_type"]
+          last_run_at?: string | null
+          model?: string | null
+          name?: string
+          next_run_at?: string | null
+          prompt?: string
+          tools_enabled?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_settings: {
         Row: {
@@ -126,7 +215,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      job_type: "local" | "cloud"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -253,6 +342,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      job_type: ["local", "cloud"],
+    },
   },
 } as const
