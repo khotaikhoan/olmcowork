@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Bot, Wrench } from "lucide-react";
+import { Artifact, extractArtifacts } from "@/lib/artifacts";
 
 interface DbMessage {
   id: string;
@@ -37,6 +38,8 @@ interface Props {
   autoStart: boolean;
   onCreated: (id: string) => void;
   onTitleUpdated: () => void;
+  onArtifactsChange?: (artifacts: Artifact[]) => void;
+  onArtifactOpen?: (id: string) => void;
 }
 
 export function ChatView({
@@ -50,6 +53,8 @@ export function ChatView({
   autoStart,
   onCreated,
   onTitleUpdated,
+  onArtifactsChange,
+  onArtifactOpen,
 }: Props) {
   const { user } = useAuth();
   const [models, setModels] = useState<OllamaModel[]>([]);
