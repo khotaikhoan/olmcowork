@@ -14,13 +14,21 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
     if (!data || (data as any).error) {
       return { ok: false, output: `fetch_url failed: ${(data as any)?.error ?? "no data"}` };
     }
-    const d = data as { url: string; title?: string; description?: string; image?: string | null; favicon?: string };
+    const d = data as {
+      url: string;
+      title?: string;
+      description?: string;
+      image?: string | null;
+      favicon?: string;
+      body?: string;
+      bodyTruncated?: boolean;
+    };
     const lines = [
       `URL: ${d.url}`,
       d.title ? `Title: ${d.title}` : null,
       d.description ? `Description: ${d.description}` : null,
       d.image ? `Image: ${d.image}` : null,
-      d.favicon ? `Favicon: ${d.favicon}` : null,
+      d.body ? `\nContent${d.bodyTruncated ? " (truncated to 4KB)" : ""}:\n${d.body}` : null,
     ].filter(Boolean);
     return { ok: true, output: lines.join("\n") };
   } catch (e: any) {
