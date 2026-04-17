@@ -33,6 +33,10 @@ import {
   Clock,
   CloudCog,
   Monitor,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { isElectron } from "@/lib/bridge";
@@ -46,6 +50,7 @@ interface Job {
   job_type: "local" | "cloud";
   enabled: boolean;
   last_run_at: string | null;
+  next_run_at: string | null;
   tools_enabled: boolean;
 }
 
