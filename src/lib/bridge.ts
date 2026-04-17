@@ -148,6 +148,8 @@ export interface BridgeAPI {
   browser: (payload: Record<string, any>) => Promise<ExecResult & { image?: string }>;
   /** Toggle browser headless mode. Forces relaunch on next browser call. */
   browserSetHeadless?: (headless: boolean) => Promise<ExecResult>;
+  /** Toggle whether Playwright launches with the user's real Chrome profile (cookies/logins). */
+  browserSetUseRealProfile?: (enabled: boolean) => Promise<ExecResult>;
   /** Phase 4: sudo shell — biometric/password prompt every call, no caching. */
   sudoShell?: (command: string) => Promise<ExecResult>;
   /** Phase 4: AppleScript / PowerShell / bash. */

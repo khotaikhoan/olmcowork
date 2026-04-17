@@ -80,6 +80,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [browserHeadless, setBrowserHeadless] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_headless") === "true" : false),
   );
+  const [browserUseRealProfile, setBrowserUseRealProfile] = useState<boolean>(
+    () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_use_real_profile") === "1" : false),
+  );
   const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
   );
@@ -119,9 +122,11 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     localStorage.setItem(LS_PROVIDER, provider);
     localStorage.setItem(LS_OPENAI_MODEL, openaiModel);
     localStorage.setItem("chat.browser_headless", String(browserHeadless));
+    localStorage.setItem("chat.browser_use_real_profile", browserUseRealProfile ? "1" : "0");
     localStorage.setItem("chat.auto_install_update", autoInstallUpdate ? "1" : "0");
-    // Push headless mode to Electron bridge if available; safe no-op in browser.
+    // Push browser settings to Electron bridge if available; safe no-op in browser.
     try { await (window as any).bridge?.browserSetHeadless?.(browserHeadless); } catch { /* ignore */ }
+    try { await (window as any).bridge?.browserSetUseRealProfile?.(browserUseRealProfile); } catch { /* ignore */ }
     const payload = {
       user_id: user.id,
       ollama_url: url,
@@ -350,6 +355,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                     </p>
                   </div>
                   <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
+                </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 p-2">
+                  <div className="min-w-0">
+                    <Label>Dùng profile Chrome thật của bạn</Label>
+                    <p className="text-xs text-muted-foreground">
+                      AI dùng cookies & đăng nhập sẵn (Gmail, Facebook…). <strong>Phải đóng hoàn toàn Chrome (Cmd+Q)</strong> trước khi bật. Profile: <code>~/Library/Application Support/Google/Chrome</code> trên macOS.
+                    </p>
+                  </div>
+                  <Switch checked={browserUseRealProfile} onCheckedChange={setBrowserUseRealProfile} />
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
