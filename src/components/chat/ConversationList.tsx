@@ -9,11 +9,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MessageSquare, MoreHorizontal, Trash2, Pencil, Search, Settings, LogOut, Bot, Clock } from "lucide-react";
+import {
+  Plus,
+  MessageSquare,
+  MoreHorizontal,
+  Trash2,
+  Pencil,
+  Search,
+  Settings,
+  LogOut,
+  Bot,
+  Clock,
+  Pin,
+  PinOff,
+  Command,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { useCommandPalette } from "@/components/CommandPalette";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { getPins, isPinned, togglePin } from "@/lib/pins";
 
 export interface Conversation {
   id: string;
@@ -31,11 +48,19 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOpenSettings }: Props) {
+export function ConversationList({
+  selectedId,
+  onSelect,
+  onNew,
+  refreshKey,
+  onOpenSettings,
+}: Props) {
   const { signOut, user } = useAuth();
   const nav = useNavigate();
+  const cp = useCommandPalette();
   const [items, setItems] = useState<Conversation[]>([]);
   const [q, setQ] = useState("");
+  const [pinSet, setPinSet] = useState<Set<string>>(new Set(getPins()));
 
   const load = async () => {
     const { data, error } = await supabase
@@ -60,35 +85,115 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
   const rename = async (id: string, current: string) => {
     const t = window.prompt("Đổi tên cuộc trò chuyện", current);
     if (!t) return;
-    const { error } = await supabase.from("conversations").update({ title: t }).eq("id", id);
+    const { error } = await supabase
+      .from("conversations")
+      .update({ title: t })
+      .eq("id", id);
     if (error) return toast.error(error.message);
     load();
   };
 
+  const handlePin = (id: string) => {
+    togglePin(id);
+    setPinSet(new Set(getPins()));
+  };
+
   const filtered = items.filter((i) => i.title.toLowerCase().includes(q.toLowerCase()));
+  const pinned = filtered.filter((i) => pinSet.has(i.id));
+  const others = filtered.filter((i) => !pinSet.has(i.id));
+
+  const renderItem = (c: Conversation) => (
+    <div
+      key={c.id}
+      onClick={() => onSelect(c.id)}
+      className={cn(
+        "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer text-sm transition-all duration-150",
+        selectedId === c.id
+          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+      )}
+    >
+      {pinSet.has(c.id) ? (
+        <Pin className="h-3.5 w-3.5 shrink-0 text-primary fill-primary/30" />
+      ) : (
+        <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
+      )}
+      <span className="flex-1 truncate">{c.title}</span>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-sidebar-border transition"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onClick={() => handlePin(c.id)}>
+            {pinSet.has(c.id) ? (
+              <>
+                <PinOff className="h-3.5 w-3.5 mr-2" /> Bỏ ghim
+              </>
+            ) : (
+              <>
+                <Pin className="h-3.5 w-3.5 mr-2" /> Ghim
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => rename(c.id, c.title)}>
+            <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => remove(c.id)}
+            className="text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 
   return (
-    <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen">
+    <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen animate-fade-in">
       <div className="p-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2 mb-3">
-          <div className="h-8 w-8 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)]">
             <Bot className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="font-semibold text-sidebar-foreground">Ollama Cowork</div>
+          <div className="font-serif font-semibold text-sidebar-foreground tracking-tight">
+            Ollama Cowork
+          </div>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </div>
         <Button onClick={onNew} className="w-full" size="sm">
           <Plus className="h-4 w-4 mr-1" /> Cuộc trò chuyện mới
         </Button>
       </div>
 
-      <div className="p-3">
+      <div className="px-3 pt-3">
+        <button
+          onClick={() => cp.open()}
+          className="w-full flex items-center gap-2 h-8 px-2.5 text-xs rounded-md border border-sidebar-border bg-sidebar-accent/40 hover:bg-sidebar-accent text-muted-foreground transition-colors"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left">Tìm kiếm hoặc lệnh…</span>
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-background/60 border border-sidebar-border">
+            ⌘K
+          </kbd>
+        </button>
+      </div>
+
+      <div className="p-3 pt-2">
         <div className="relative">
           <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Tìm kiếm…"
-            className="pl-8 h-8 text-sm bg-sidebar-accent border-sidebar-border"
+            placeholder="Lọc nhanh…"
+            className="pl-8 h-8 text-sm bg-sidebar-accent/40 border-sidebar-border"
           />
         </div>
       </div>
@@ -100,52 +205,37 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
               Chưa có cuộc trò chuyện nào
             </p>
           )}
-          {filtered.map((c) => (
-            <div
-              key={c.id}
-              onClick={() => onSelect(c.id)}
-              className={cn(
-                "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer text-sm transition-colors",
-                selectedId === c.id
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-              )}
-            >
-              <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
-              <span className="flex-1 truncate">{c.title}</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    onClick={(e) => e.stopPropagation()}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-sidebar-border transition"
-                  >
-                    <MoreHorizontal className="h-3.5 w-3.5" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={() => rename(c.id, c.title)}>
-                    <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => remove(c.id)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ))}
+          {pinned.length > 0 && (
+            <>
+              <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Đã ghim
+              </div>
+              {pinned.map(renderItem)}
+              {others.length > 0 && <div className="h-px bg-sidebar-border my-2 mx-2" />}
+            </>
+          )}
+          {others.map(renderItem)}
         </div>
       </ScrollArea>
 
       <div className="border-t border-sidebar-border p-2 space-y-1">
         <div className="px-2 py-1 text-xs text-muted-foreground truncate">{user?.email}</div>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={() => nav("/schedules")}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => nav("/schedules")}
+        >
           <Clock className="h-4 w-4 mr-2" /> Scheduled agents
         </Button>
-        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onOpenSettings}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={onOpenSettings}
+        >
           <Settings className="h-4 w-4 mr-2" /> Cài đặt
+          <span className="ml-auto text-[10px] font-mono text-muted-foreground">⌘,</span>
         </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
           <LogOut className="h-4 w-4 mr-2" /> Đăng xuất

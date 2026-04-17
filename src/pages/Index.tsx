@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { ChatView } from "@/components/chat/ChatView";
+import { ChatView, ChatViewHandle } from "@/components/chat/ChatView";
 import { SettingsDialog, SettingsValue } from "@/components/chat/SettingsDialog";
 import { ArtifactsPanel } from "@/components/chat/ArtifactsPanel";
 import {
@@ -12,6 +12,10 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { Artifact } from "@/lib/artifacts";
+import { useCommandPalette } from "@/components/CommandPalette";
+import { GlobalDragDrop } from "@/components/chat/GlobalDragDrop";
+import { Button } from "@/components/ui/button";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -19,6 +23,7 @@ export default function Index() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settings, setSettings] = useState<SettingsValue>({
     provider: (localStorage.getItem("chat.provider") as any) || "ollama",
     openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
@@ -33,6 +38,9 @@ export default function Index() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+
+  const { setHandlers } = useCommandPalette();
+  const chatRef = useRef<ChatViewHandle>(null);
 
   useEffect(() => {
     if (!loading && !user) nav("/auth", { replace: true });
@@ -72,6 +80,35 @@ export default function Index() {
     setPanelOpen(true);
   };
 
+  // Wire command palette → app actions
+  useEffect(() => {
+    setHandlers({
+      onNewChat: () => setSelectedId(null),
+      onSelectConversation: (id) => setSelectedId(id),
+      onOpenSettings: () => setSettingsOpen(true),
+    });
+  }, [setHandlers]);
+
+  // Global Cmd+B → toggle sidebar
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setSidebarOpen((v) => !v);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        setSettingsOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const handleGlobalDrop = useCallback((files: FileList) => {
+    chatRef.current?.attachFiles(files);
+  }, []);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -82,6 +119,7 @@ export default function Index() {
 
   const chatNode = (
     <ChatView
+      ref={chatRef}
       conversationId={selectedId}
       provider={settings.provider}
       openaiModel={settings.openai_model}
@@ -97,18 +135,35 @@ export default function Index() {
       onTitleUpdated={() => setRefreshKey((k) => k + 1)}
       onArtifactsChange={setArtifacts}
       onArtifactOpen={openArtifact}
+      sidebarToggle={
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => setSidebarOpen((v) => !v)}
+          title={sidebarOpen ? "Ẩn sidebar (⌘B)" : "Hiện sidebar (⌘B)"}
+        >
+          {sidebarOpen ? (
+            <PanelLeftClose className="h-4 w-4" />
+          ) : (
+            <PanelLeftOpen className="h-4 w-4" />
+          )}
+        </Button>
+      }
     />
   );
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      <ConversationList
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onNew={() => setSelectedId(null)}
-        refreshKey={refreshKey}
-        onOpenSettings={() => setSettingsOpen(true)}
-      />
+      {sidebarOpen && (
+        <ConversationList
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onNew={() => setSelectedId(null)}
+          refreshKey={refreshKey}
+          onOpenSettings={() => setSettingsOpen(true)}
+        />
+      )}
 
       {panelOpen && artifacts.length > 0 ? (
         <ResizablePanelGroup direction="horizontal" className="flex-1">
@@ -134,6 +189,8 @@ export default function Index() {
         onOpenChange={setSettingsOpen}
         onSaved={setSettings}
       />
+
+      <GlobalDragDrop onDrop={handleGlobalDrop} />
     </div>
   );
 }

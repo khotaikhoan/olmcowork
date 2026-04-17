@@ -4,6 +4,7 @@ import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
 import { ThinkingBlock, splitThinking } from "./ThinkingBlock";
 import { ArtifactChip } from "./ArtifactsPanel";
 import { extractArtifacts } from "@/lib/artifacts";
+import { MessageActions } from "./MessageActions";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,19 +15,23 @@ interface Props {
   streaming?: boolean;
   messageId?: string;
   onArtifactOpen?: (id: string) => void;
+  onRegenerate?: () => void;
 }
 
-// Strip code-fence blocks that have already been turned into artifacts
-function stripExtractedFences(content: string, fenceCount: number): string {
-  if (!content || fenceCount <= 0) return content;
-  const re = /```[\w+-]*\n[\s\S]*?```/g;
-  // We don't actually know which specific fences became artifacts vs which
-  // were too small; leaving inline code blocks in place keeps Markdown
-  // chat-readable and avoids surprising removal. So just return content.
+function stripExtractedFences(content: string, _fenceCount: number): string {
   return content;
 }
 
-export function MessageBubble({ role, content, attachments, toolCalls, streaming, messageId, onArtifactOpen }: Props) {
+export function MessageBubble({
+  role,
+  content,
+  attachments,
+  toolCalls,
+  streaming,
+  messageId,
+  onArtifactOpen,
+  onRegenerate,
+}: Props) {
   if (role === "system" || role === "tool") return null;
   const isUser = role === "user";
 
@@ -34,10 +39,10 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
   const artifacts = !isUser && messageId ? extractArtifacts(messageId, content || "") : [];
 
   return (
-    <div className={cn("flex gap-3 py-4", isUser && "flex-row-reverse")}>
+    <div className={cn("group flex gap-3 py-4 animate-fade-in", isUser && "flex-row-reverse")}>
       <div
         className={cn(
-          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0",
+          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
           isUser
             ? "bg-secondary text-secondary-foreground"
             : "bg-[image:var(--gradient-primary)] text-primary-foreground",
@@ -59,19 +64,25 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
           </div>
         )}
         {toolCalls && toolCalls.length > 0 && (
-          <div className="w-full min-w-[300px]">
-            {toolCalls.map((tc) => (
-              <ToolCallCard key={tc.id} call={tc} />
+          <div className="w-full min-w-[300px] relative">
+            {/* timeline rail */}
+            {toolCalls.length > 1 && (
+              <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
+            )}
+            {toolCalls.map((tc, i) => (
+              <div key={tc.id} className="relative">
+                <ToolCallCard call={tc} stepIndex={i + 1} />
+              </div>
             ))}
           </div>
         )}
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
-              "rounded-2xl px-4 py-2.5",
+              "rounded-2xl px-4 py-2.5 transition-shadow",
               isUser
                 ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border shadow-[var(--shadow-soft)]",
+                : "bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]",
             )}
           >
             {isUser ? (
@@ -85,20 +96,32 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
                     <Markdown key={i} content={stripExtractedFences(seg.content, artifacts.length)} />
                   ),
                 )}
-                {streaming && !content && <span className="text-muted-foreground">…</span>}
-                {streaming && (
-                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary animate-pulse rounded-sm align-middle" />
+                {streaming && !content && (
+                  <div className="flex gap-1 py-1" aria-label="Đang suy nghĩ">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "0ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "180ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "360ms" }} />
+                  </div>
                 )}
+                {streaming && content && <span className="stream-cursor" />}
               </>
             ) : (
               <>
-                <Markdown content={stripExtractedFences(content || (streaming ? "…" : ""), artifacts.length)} />
-                {streaming && (
-                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary animate-pulse rounded-sm align-middle" />
+                <Markdown content={stripExtractedFences(content || "", artifacts.length)} />
+                {streaming && !content && (
+                  <div className="flex gap-1 py-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "180ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-pulse" style={{ animationDelay: "360ms" }} />
+                  </div>
                 )}
+                {streaming && content && <span className="stream-cursor" />}
               </>
             )}
           </div>
+        )}
+        {!isUser && !streaming && content && (
+          <MessageActions content={content} onRegenerate={onRegenerate} />
         )}
         {!isUser && artifacts.length > 0 && onArtifactOpen && (
           <div className="w-full min-w-[300px]">
