@@ -302,7 +302,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -341,7 +341,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url" || name === "web_search") return true;
+  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent") return true;
   if (name === "browser") {
     const a = String(args.action ?? "");
     return [
