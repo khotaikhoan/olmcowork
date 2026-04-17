@@ -502,6 +502,7 @@ export function ChatView({
       setIsStreaming(true);
       setStreamingText("");
       setStreamingToolCalls([]);
+      streamStartRef.current = performance.now();
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -572,6 +573,9 @@ export function ChatView({
 
       setIsStreaming(false);
       abortRef.current = null;
+      const elapsedSec = Math.max(0.001, (performance.now() - streamStartRef.current) / 1000);
+      const replyTokens = estimateTokens(finalContent);
+      setLastReplyStats({ tokens: replyTokens, tps: replyTokens / elapsedSec });
 
       if (finalContent || savedCalls.length) {
         const { data: aMsg } = await supabase
