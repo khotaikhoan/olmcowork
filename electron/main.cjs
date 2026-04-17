@@ -115,18 +115,20 @@ async function checkGithubLatest() {
 ipcMain.handle("bridge:check_updates", async () => {
   emitUpdater({ state: "checking" });
 
-  // Packaged build: use electron-updater (handles download + install).
+  // Packaged build: try electron-updater first (handles download + install).
   if (autoUpdater && app.isPackaged) {
     try {
       const r = await autoUpdater.checkForUpdates();
       return { ok: true, output: r?.updateInfo?.version ? `Latest: ${r.updateInfo.version}` : "No update info" };
     } catch (e) {
-      emitUpdater({ state: "error", message: String(e?.message || e) });
-      return { ok: false, output: String(e?.message || e) };
+      // Fall through to GitHub API fallback so the user still sees whether
+      // a newer release exists (electron-updater commonly fails when
+      // app-update.yml is missing in @electron/packager builds).
+      console.warn("autoUpdater failed, falling back to GitHub API:", e?.message || e);
     }
   }
 
-  // Dev mode (or updater missing): fall back to GitHub API so the user gets feedback.
+  // Dev mode (or updater missing/failed): fall back to GitHub Releases API.
   try {
     const latest = await checkGithubLatest();
     const current = app.getVersion();
