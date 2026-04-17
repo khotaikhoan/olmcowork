@@ -852,8 +852,18 @@ export function ChatView({
         </span>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div ref={scrollRef} className="h-full">
+      <div className="flex-1 relative min-h-0">
+        <ChatSearch
+          open={searchOpen}
+          onClose={() => { setSearchOpen(false); setSearchQuery(""); }}
+          query={searchQuery}
+          onQueryChange={(q) => { setSearchQuery(q); setSearchIndex(0); }}
+          matchCount={searchMatches.length}
+          currentIndex={searchIndex}
+          onNavigate={navigateSearch}
+        />
+        <ScrollArea className="h-full">
+          <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
             {messages.length === 0 && !streamingText && !streamingToolCalls.length && (
               <ChatEmptyState
