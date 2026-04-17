@@ -4,6 +4,11 @@
   "version": "0.1.11",
   "type": "module",
   "main": "electron/main.cjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khotaikhoan/olmcowork.git"
+  },
+  "homepage": "https://github.com/khotaikhoan/olmcowork",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
