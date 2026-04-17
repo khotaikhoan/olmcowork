@@ -128,7 +128,7 @@ export function TopBar({
   const totalRunningBytes = running.reduce((s, r) => s + r.size, 0);
 
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 px-3 sm:px-4 shrink-0 overflow-x-auto">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 px-3 sm:px-4 shrink-0 overflow-x-auto relative z-20">
       {onToggleSidebar && (
         <Button
           variant="ghost"
