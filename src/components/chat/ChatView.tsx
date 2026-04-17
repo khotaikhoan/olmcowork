@@ -141,6 +141,11 @@ export function ChatView({
 
   // ----- Load conversation -----
   useEffect(() => {
+    setCostInput(0);
+    setCostOutput(0);
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchIndex(0);
     if (!conversationId) {
       setMessages([]);
       setTitle("New chat");
