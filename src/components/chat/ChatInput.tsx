@@ -239,12 +239,21 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           onPaste={onPaste}
-          placeholder="Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh, paste URL)"
+          placeholder={
+            listening
+              ? "🎙 Đang nghe… nói thoải mái, bấm mic lần nữa để dừng"
+              : "Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh, paste URL)"
+          }
           disabled={disabled}
           className="min-h-[52px] max-h-60 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
         />
+        {interim && (
+          <div className="px-3 pb-1 text-xs text-muted-foreground italic truncate">
+            {interim}
+          </div>
+        )}
         <div className="flex items-center justify-between p-2 pt-0">
-          <div>
+          <div className="flex items-center gap-1">
             <input
               ref={fileRef}
               type="file"
@@ -262,6 +271,23 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
               <ImagePlus className="h-4 w-4 mr-1" />
               Ảnh
             </Button>
+            {voiceSupported && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleVoice}
+                disabled={disabled}
+                title={listening ? "Dừng nghe" : "Nhập bằng giọng nói (vi-VN)"}
+                className={cn(
+                  listening && "bg-destructive/15 text-destructive hover:bg-destructive/20",
+                )}
+              >
+                <Mic
+                  className={cn("h-4 w-4 mr-1", listening && "animate-pulse")}
+                />
+                {listening ? "Đang nghe" : "Giọng nói"}
+              </Button>
+            )}
           </div>
           {isStreaming ? (
             <Button onClick={onStop} variant="destructive" size="sm">
