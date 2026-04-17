@@ -24,6 +24,7 @@ import {
   PinOff,
   Activity as ActivityIcon,
   Scale,
+  Monitor,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ import { useNavigate } from "react-router-dom";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getPins, togglePin } from "@/lib/pins";
+import type { ConversationMode } from "@/lib/tools";
 
 export interface Conversation {
   id: string;
@@ -39,6 +41,7 @@ export interface Conversation {
   model: string | null;
   system_prompt: string | null;
   updated_at: string;
+  mode: ConversationMode;
 }
 
 interface Props {
@@ -66,10 +69,10 @@ export function ConversationList({
   const load = async () => {
     const { data, error } = await supabase
       .from("conversations")
-      .select("id,title,model,system_prompt,updated_at")
+      .select("id,title,model,system_prompt,updated_at,mode")
       .order("updated_at", { ascending: false });
     if (error) toast.error(error.message);
-    else setItems(data ?? []);
+    else setItems((data ?? []) as unknown as Conversation[]);
   };
 
   useEffect(() => {
@@ -116,6 +119,8 @@ export function ConversationList({
     >
       {pinSet.has(c.id) ? (
         <Pin className="h-3.5 w-3.5 shrink-0 text-primary fill-primary/30" />
+      ) : c.mode === "control" ? (
+        <Monitor className="h-3.5 w-3.5 shrink-0 text-warning" />
       ) : (
         <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
       )}

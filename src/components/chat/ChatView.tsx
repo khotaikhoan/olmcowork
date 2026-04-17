@@ -960,11 +960,12 @@ export function ChatView({
               <ChatEmptyState
                 bridgeOnline={bridgeOnline}
                 ollamaUrl={ollamaUrl}
+                mode={mode}
+                onModeChange={handleModeChange}
                 onPickPrompt={(p) => send(p, [])}
                 onPickPreset={(preset: AgentPreset) => {
                   setSystemPrompt(preset.systemPrompt);
-                  setToolsEnabled(preset.toolsEnabled);
-                  // Pick model: prefer preset's first matching available model
+                  setToolsEnabled(preset.toolsEnabled && mode === "control");
                   if (provider === "ollama" && preset.preferOllama) {
                     const m = models.find((x) => x.name.includes(preset.preferOllama!));
                     if (m) setModel(m.name);
