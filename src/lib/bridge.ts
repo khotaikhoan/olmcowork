@@ -85,6 +85,10 @@ export async function executeTool(
   name: string,
   args: Record<string, any>,
 ): Promise<ToolExecResult> {
+  // fetch_url is browser-safe (server-side proxy) and works without Electron.
+  if (name === "fetch_url") {
+    return fetchUrlTool(String(args.url ?? ""));
+  }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
 
