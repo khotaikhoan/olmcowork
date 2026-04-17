@@ -82,6 +82,19 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "fetch_url",
+    risk: "low",
+    description:
+      "Fetch a public web page and return its title, description, and a short text snippet. Read-only HTTP GET via a server-side proxy — safe in both Chat and Control modes. Use this when you need to look up information from a URL the user shared or that you need to research.",
+    parameters: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Absolute http(s) URL to fetch." },
+      },
+      required: ["url"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
@@ -136,7 +149,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -175,6 +188,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
+  if (name === "fetch_url") return true;
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
   return a === "view" || a === "list_dir";

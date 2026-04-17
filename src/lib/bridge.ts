@@ -1,6 +1,32 @@
 // Bridge — dispatch Anthropic-style tools (computer / bash / text_editor)
 // xuống Electron IPC, hoặc fallback mock trong browser.
 import { mockExecute, ExecResult } from "./tools";
+import { supabase } from "@/integrations/supabase/client";
+
+/** Read-only URL fetch via the public `fetch-meta` edge function. Safe in browser + Electron. */
+async function fetchUrlTool(url: string): Promise<ExecResult> {
+  if (!url || !/^https?:\/\//i.test(url)) {
+    return { ok: false, output: "fetch_url requires an absolute http(s) URL." };
+  }
+  try {
+    const { data, error } = await supabase.functions.invoke("fetch-meta", { body: { url } });
+    if (error) return { ok: false, output: `fetch_url failed: ${error.message}` };
+    if (!data || (data as any).error) {
+      return { ok: false, output: `fetch_url failed: ${(data as any)?.error ?? "no data"}` };
+    }
+    const d = data as { url: string; title?: string; description?: string; image?: string | null; favicon?: string };
+    const lines = [
+      `URL: ${d.url}`,
+      d.title ? `Title: ${d.title}` : null,
+      d.description ? `Description: ${d.description}` : null,
+      d.image ? `Image: ${d.image}` : null,
+      d.favicon ? `Favicon: ${d.favicon}` : null,
+    ].filter(Boolean);
+    return { ok: true, output: lines.join("\n") };
+  } catch (e: any) {
+    return { ok: false, output: `fetch_url failed: ${e?.message ?? String(e)}` };
+  }
+}
 
 export interface VisionMark {
   id: number;
@@ -59,6 +85,10 @@ export async function executeTool(
   name: string,
   args: Record<string, any>,
 ): Promise<ToolExecResult> {
+  // fetch_url is browser-safe (server-side proxy) and works without Electron.
+  if (name === "fetch_url") {
+    return fetchUrlTool(String(args.url ?? ""));
+  }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
 
