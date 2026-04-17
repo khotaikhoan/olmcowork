@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("bridge", {
   // Phase 3: Playwright browser automation
   browser: (payload) => invoke("bridge:browser", payload),
   browserSetHeadless: (headless) => invoke("bridge:browser_set_headless", { headless }),
+  browserSetUseRealProfile: (enabled) => invoke("bridge:browser_set_use_real_profile", { enabled }),
   // Phase 4: Deep system access (armed-mode required at the renderer layer)
   sudoShell: (command) => invoke("bridge:sudo_shell", { command }),
   runScript: (language, script) => invoke("bridge:run_script", { language, script }),
