@@ -205,7 +205,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url") return true;
+  if (name === "fetch_url" || name === "web_search") return true;
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
   return a === "view" || a === "list_dir";
