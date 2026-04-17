@@ -221,6 +221,10 @@ export function VisionMarksOverlay({ image, marks, onClicked, onReannotate }: Pr
           const isHover = hover === m.id;
           const isBusy = busy === m.id;
           const interactive = electron;
+          const colorKey = roleToColor(m.role);
+          const colors = ROLE_COLORS[colorKey];
+          const conf = (m as VisionMark & { confidence?: number }).confidence;
+          const opacity = confidenceToOpacity(conf);
           return (
             <button
               type="button"
@@ -236,41 +240,52 @@ export function VisionMarksOverlay({ image, marks, onClicked, onReannotate }: Pr
                   ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   : "cursor-not-allowed")
               }
-              style={{ left, top, width, height }}
+              style={{ left, top, width, height, opacity }}
               title={
                 interactive
-                  ? `Click để gửi vision_click #${m.id} (Shift = right, Alt = middle) — ${m.role ?? ""} ${m.label ?? ""}`
+                  ? `#${m.id} · ${m.role ?? ""} ${m.label ?? ""}${typeof conf === "number" ? ` (conf ${(conf * 100).toFixed(0)}%)` : ""} — click (Shift=right, Alt=middle)`
                   : `${m.role ?? ""} ${m.label ?? ""} (chỉ click được trong app desktop)`
               }
             >
               <div
-                className={
-                  "absolute inset-0 rounded-sm border-2 transition-all " +
-                  (isBusy
-                    ? "border-[hsl(var(--success))] bg-[hsl(var(--success))]/20 animate-pulse"
+                className={"absolute inset-0 rounded-sm transition-all " + (isBusy ? "animate-pulse" : "")}
+                style={{
+                  border: `2px solid ${isBusy ? "hsl(var(--success))" : colors.border}`,
+                  background: isBusy
+                    ? "hsl(var(--success) / 0.20)"
                     : isHover
-                      ? "border-primary bg-primary/15"
-                      : "border-primary/60 bg-primary/5")
-                }
+                      ? colors.fill.replace("0.18", "0.28")
+                      : colors.fill,
+                  boxShadow: isHover ? `0 0 0 1px ${colors.border}` : undefined,
+                }}
               />
               <div
                 className={
-                  "absolute -top-1.5 -left-1.5 min-w-[20px] h-5 px-1 rounded-md flex items-center justify-center font-mono text-[11px] font-bold shadow-md transition-all " +
-                  (isBusy
-                    ? "bg-[hsl(var(--success))] text-background"
-                    : isHover
-                      ? "bg-primary text-primary-foreground scale-110"
-                      : "bg-background text-primary border border-primary/60")
+                  "absolute top-0 left-0 min-w-[16px] h-4 px-1 rounded-br-md rounded-tl-sm flex items-center justify-center font-mono text-[10px] font-bold shadow-sm transition-all " +
+                  (isHover ? "scale-110" : "")
                 }
+                style={{
+                  background: isBusy ? "hsl(var(--success))" : colors.badgeBg,
+                  color: isBusy ? "hsl(var(--background))" : colors.badgeFg,
+                }}
               >
-                {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : m.id}
+                {isBusy ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : m.id}
               </div>
               {isHover && !isBusy && (
                 <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded-md bg-popover border border-border text-[11px] shadow-lg whitespace-nowrap z-10 max-w-[260px] truncate flex items-center gap-1.5">
-                  <span className="font-mono text-muted-foreground">
-                    {m.role}
-                  </span>
+                  {colors.label && (
+                    <span
+                      className="font-mono text-[10px] px-1 rounded"
+                      style={{ background: colors.badgeBg, color: colors.badgeFg }}
+                    >
+                      {colors.label}
+                    </span>
+                  )}
+                  <span className="font-mono text-muted-foreground">{m.role}</span>
                   <span>{m.label}</span>
+                  {typeof conf === "number" && (
+                    <span className="text-muted-foreground">· {(conf * 100).toFixed(0)}%</span>
+                  )}
                   {interactive && (
                     <span className="ml-1 inline-flex items-center gap-0.5 text-primary">
                       <MousePointerClick className="h-3 w-3" />
