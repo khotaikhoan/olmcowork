@@ -1317,59 +1317,33 @@ export function ChatView({
           }
           if (id !== "default") toast.success(`Đang dùng agent: ${a.name}`);
         }}
+        extraSlot={
+          mode === "control" && controlBarCollapsed ? (
+            <ControlBarCompact
+              toolsEnabled={toolsEnabled}
+              onToolsEnabledChange={setToolsEnabled}
+              bypass={bypass}
+              onBypassChange={handleBypassToggle}
+              requireConfirm={requireConfirm}
+              collapsed={controlBarCollapsed}
+              onCollapsedChange={setCollapsedPersist}
+            />
+          ) : null
+        }
       />
 
       {mode === "control" ? (
-        <div className="border-b border-border bg-[hsl(var(--warning)/0.08)] px-4 py-2 flex items-center gap-3 flex-wrap relative z-10">
-          <Wrench className="h-3.5 w-3.5 text-warning" />
-          <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
-            Công cụ điều khiển máy {isElectron() ? "(thật)" : "(giả lập — mở trong desktop app để dùng thật)"}
-          </Label>
-          <Switch id="tools-switch" checked={toolsEnabled} onCheckedChange={setToolsEnabled} />
-          <span className="text-xs text-muted-foreground">
-            {toolsEnabled
-              ? `${toolsForMode("control").length} công cụ • ${bypass ? "Bypass: tự duyệt mọi lệnh" : requireConfirm ? "Xác nhận trước khi chạy" : "Tự chạy mức thấp/trung bình"}`
-              : "Bật để cho phép AI yêu cầu công cụ"}
-          </span>
-          {toolsEnabled && (
-            <div
-              className={
-                "ml-auto flex items-center gap-2 px-2.5 py-1 rounded-md border transition-colors " +
-                (bypass
-                  ? "bg-destructive/10 border-destructive/40 text-destructive"
-                  : "bg-background/60 border-border hover:bg-muted/50")
-              }
-            >
-              <ShieldOff className={"h-3.5 w-3.5 " + (bypass ? "" : "opacity-60")} />
-              <Label
-                htmlFor="bypass-switch"
-                className="text-xs font-medium cursor-pointer select-none"
-                title="Tự động duyệt MỌI tool call (kể cả high-risk + sudo) — chỉ dùng khi tin tưởng prompt"
-              >
-                Bypass duyệt
-              </Label>
-              <Switch
-                id="bypass-switch"
-                checked={bypass}
-                onCheckedChange={(v) => {
-                  if (!conversationId) {
-                    toast.error("Cần mở 1 hội thoại trước");
-                    return;
-                  }
-                  setBypass(conversationId, v);
-                  if (v) {
-                    arm(); // auto-arm so deep tools also pass
-                    toast.warning("Bypass BẬT — mọi tool sẽ tự chạy không hỏi", {
-                      description: "Chỉ dùng cho hội thoại này. Tắt khi xong.",
-                    });
-                  } else {
-                    toast.success("Bypass đã tắt — quay lại chế độ duyệt thường");
-                  }
-                }}
-              />
-            </div>
-          )}
-        </div>
+        controlBarCollapsed ? null : (
+          <ControlBarFull
+            toolsEnabled={toolsEnabled}
+            onToolsEnabledChange={setToolsEnabled}
+            bypass={bypass}
+            onBypassChange={handleBypassToggle}
+            requireConfirm={requireConfirm}
+            collapsed={controlBarCollapsed}
+            onCollapsedChange={setCollapsedPersist}
+          />
+        )
       ) : (
         <div className="border-b border-border bg-muted/30 px-4 py-1.5 flex items-center gap-2 text-xs text-muted-foreground">
           <MessageSquare className="h-3.5 w-3.5" />
