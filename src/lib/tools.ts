@@ -344,6 +344,15 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
     if (a === "view" || a === "list_dir") return "low";
     return "high"; // create/str_replace mutate files
   }
+  if (name === "sudo_shell") {
+    return { ok: false, output: `[mock] sudo $ ${args.command}\n(would prompt biometric/password)` };
+  }
+  if (name === "run_script") {
+    return { ok: false, output: `[mock] run_script(${args.language}) — desktop only.` };
+  }
+  if (name === "raw_file") {
+    return { ok: false, output: `[mock] raw_file.${args.action} ${args.path} — desktop only.` };
+  }
   if (name === "computer") {
     const a = String(args.action ?? "");
     if (a === "screenshot") return "medium";
