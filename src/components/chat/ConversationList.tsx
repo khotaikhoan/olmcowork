@@ -25,6 +25,7 @@ import {
   Activity as ActivityIcon,
   Scale,
   Monitor,
+  PanelLeftClose,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ interface Props {
   onNew: () => void;
   refreshKey: number;
   onOpenSettings: () => void;
+  onCollapse?: () => void;
 }
 
 export function ConversationList({
@@ -58,6 +60,7 @@ export function ConversationList({
   onNew,
   refreshKey,
   onOpenSettings,
+  onCollapse,
 }: Props) {
   const { signOut, user } = useAuth();
   const nav = useNavigate();
