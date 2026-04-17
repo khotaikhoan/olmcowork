@@ -28,6 +28,28 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
   }
 }
 
+/** Read-only web search via the public `web-search` edge function (DuckDuckGo). */
+async function webSearchTool(query: string, limit?: number): Promise<ExecResult> {
+  if (!query?.trim()) return { ok: false, output: "web_search requires a non-empty query." };
+  try {
+    const { data, error } = await supabase.functions.invoke("web-search", {
+      body: { query, limit: limit ?? 5 },
+    });
+    if (error) return { ok: false, output: `web_search failed: ${error.message}` };
+    if (!data || (data as any).error) {
+      return { ok: false, output: `web_search failed: ${(data as any)?.error ?? "no data"}` };
+    }
+    const results = ((data as any).results ?? []) as { title: string; url: string; snippet: string }[];
+    if (!results.length) return { ok: true, output: `No results for "${query}".` };
+    const text = results
+      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+      .join("\n\n");
+    return { ok: true, output: text };
+  } catch (e: any) {
+    return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };
+  }
+}
+
 export interface VisionMark {
   id: number;
   x: number;
