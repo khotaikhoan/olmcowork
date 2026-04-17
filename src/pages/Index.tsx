@@ -14,6 +14,8 @@ import {
 import { Artifact } from "@/lib/artifacts";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { GlobalDragDrop } from "@/components/chat/GlobalDragDrop";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -21,7 +23,12 @@ export default function Index() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = useIsMobile();
+  // Desktop = open by default. On mobile, the sidebar lives in a Sheet so default-closed.
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
   const [settings, setSettings] = useState<SettingsValue>({
     provider: (localStorage.getItem("chat.provider") as any) || "ollama",
     openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
