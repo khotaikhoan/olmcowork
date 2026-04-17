@@ -89,6 +89,9 @@ interface OrchestratorContext {
   mode: ConversationMode;
   /** parent's full tool list — sub-agent can inherit from this */
   parentTools: string[];
+  /** Phase 7: optional user id + conversation id used to log scratchpad ops to activity_log. */
+  userId?: string | null;
+  conversationId?: string | null;
 }
 
 let ctx: OrchestratorContext | null = null;
@@ -99,6 +102,23 @@ const listeners = new Set<() => void>();
 
 /** Reports addressed to the user's main (root) agent — drained by ChatView each step. */
 const rootReports: AgentMessage[] = [];
+
+/**
+ * Phase 7: per-parent scratchpad. Key = parent agent id (or ROOT_PARENT_ID for
+ * top-level siblings). Value = Map<key, value>. Children of the same parent
+ * share one scratchpad; the parent itself can also read/write its children's
+ * scratchpad (hierarchical visibility).
+ */
+const scratchpads = new Map<string, Map<string, string>>();
+
+function getScratchpad(parentKey: string): Map<string, string> {
+  let m = scratchpads.get(parentKey);
+  if (!m) {
+    m = new Map();
+    scratchpads.set(parentKey, m);
+  }
+  return m;
+}
 
 export function configureOrchestrator(next: OrchestratorContext): void {
   ctx = next;
