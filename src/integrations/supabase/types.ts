@@ -219,6 +219,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_memories: {
+        Row: {
+          created_at: string
+          fact: string
+          id: string
+          importance: number
+          source_conversation_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fact: string
+          id?: string
+          importance?: number
+          source_conversation_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fact?: string
+          id?: string
+          importance?: number
+          source_conversation_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           allowed_paths: Json
