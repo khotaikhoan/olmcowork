@@ -16,7 +16,7 @@ import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
-import Compare from "./pages/Compare.tsx";
+
 import Memories from "./pages/Memories.tsx";
 import Landing from "./pages/Landing.tsx";
 import { useAuth } from "@/hooks/useAuth";
@@ -46,7 +46,7 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
                 <Route path="/activity" element={<Activity />} />
-                <Route path="/compare" element={<Compare />} />
+                
                 <Route path="/memories" element={<Memories />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
