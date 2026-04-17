@@ -8,7 +8,7 @@ import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
-import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef, effectiveRisk } from "@/lib/tools";
+import { TOOLS, TOOLS_BY_NAME, toOllamaTools, toolsForMode, isActionAllowedInMode, ToolDef, effectiveRisk, type ConversationMode } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -81,6 +81,7 @@ export function ChatView({
   const [model, setModel] = useState<string>("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [toolsEnabled, setToolsEnabled] = useState(false);
+  const [mode, setMode] = useState<ConversationMode>("chat");
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -188,6 +189,8 @@ export function ChatView({
       setMessages([]);
       setTitle("New chat");
       setSystemPrompt("");
+      setMode("chat");
+      setToolsEnabled(false);
       if (defaultModel) setModel(defaultModel);
       return;
     }
@@ -204,10 +207,26 @@ export function ChatView({
         setTitle(conv.title);
         setSystemPrompt(conv.system_prompt ?? "");
         if (conv.model) setModel(conv.model);
+        const m = ((conv as any).mode as ConversationMode) ?? "chat";
+        setMode(m);
+        // In control mode the tools toggle is on by default; chat mode keeps it off.
+        setToolsEnabled(m === "control");
       }
       setMessages((msgs ?? []) as unknown as DbMessage[]);
     })();
   }, [conversationId, defaultModel]);
+
+  const handleModeChange = async (next: ConversationMode) => {
+    setMode(next);
+    setToolsEnabled(next === "control");
+    if (conversationId) {
+      await supabase
+        .from("conversations")
+        .update({ mode: next } as any)
+        .eq("id", conversationId);
+      onTitleUpdated();
+    }
+  };
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -255,7 +274,8 @@ export function ChatView({
         title: autoTitle,
         model: provider === "openai" ? openaiModel : model,
         system_prompt: systemPrompt || null,
-      })
+        mode,
+      } as any)
       .select("id")
       .single();
     if (error || !data) throw new Error(error?.message ?? "create failed");
@@ -286,7 +306,7 @@ export function ChatView({
     signal: AbortSignal,
   ): Promise<{ finalText: string; allCalls: ToolCallRecord[] }> => {
     const allCalls: ToolCallRecord[] = [];
-    const ollamaTools = toOllamaTools();
+    const ollamaTools = toOllamaTools(mode);
     let working = [...history];
     const MAX_STEPS = 8;
 
@@ -322,9 +342,11 @@ export function ChatView({
         allCalls.push(record);
         setStreamingToolCalls([...allCalls]);
 
-        if (!def) {
+        if (!def || !isActionAllowedInMode(mode, tc.function.name, args)) {
           record.status = "error";
-          record.result = `Unknown tool: ${tc.function.name}`;
+          record.result = !def
+            ? `Unknown tool: ${tc.function.name}`
+            : `Tool '${tc.function.name}' (action=${args.action ?? "?"}) is not allowed in Chat mode. Switch to Control mode for full computer use.`;
           setStreamingToolCalls([...allCalls]);
           working.push({
             role: "tool",
@@ -396,7 +418,7 @@ export function ChatView({
     signal: AbortSignal,
   ): Promise<{ finalText: string; allCalls: ToolCallRecord[] }> => {
     const allCalls: ToolCallRecord[] = [];
-    const oaiTools: OpenAITool[] = TOOLS.map((t) => ({
+    const oaiTools: OpenAITool[] = toolsForMode(mode).map((t) => ({
       type: "function",
       function: { name: t.name, description: t.description, parameters: t.parameters },
     }));
