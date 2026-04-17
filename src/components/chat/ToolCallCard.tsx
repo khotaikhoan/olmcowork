@@ -295,9 +295,16 @@ export function ToolCallCard({
               <div className="bg-muted/20 p-3 space-y-2">
                 {parsed && parsed.results.length > 0 ? (
                   <>
-                    <div className="text-[11px] text-muted-foreground">
-                      {parsed.results.length} kết quả cho{" "}
-                      <span className="font-mono text-foreground">"{parsed.query}"</span>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>
+                        {parsed.results.length} kết quả cho{" "}
+                        <span className="font-mono text-foreground">"{parsed.query}"</span>
+                      </span>
+                      {cached && (
+                        <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground/70">
+                          cached
+                        </span>
+                      )}
                     </div>
                     <ul className="space-y-1.5">
                       {parsed.results.map((r, i) => {
