@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/chat/ConversationList";
 import { ChatView } from "@/components/chat/ChatView";
 import { SettingsDialog, SettingsValue } from "@/components/chat/SettingsDialog";
+import { ArtifactsPanel } from "@/components/chat/ArtifactsPanel";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
+import { Artifact } from "@/lib/artifacts";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -21,6 +28,11 @@ export default function Index() {
     auto_stop_minutes: 0,
     auto_start: true,
   });
+
+  // Artifacts state — lifted from ChatView so the side panel can render them
+  const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+  const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) nav("/auth", { replace: true });
@@ -48,6 +60,18 @@ export default function Index() {
       });
   }, [user]);
 
+  // Reset panel when switching conversation
+  useEffect(() => {
+    setPanelOpen(false);
+    setActiveArtifactId(null);
+    setArtifacts([]);
+  }, [selectedId]);
+
+  const openArtifact = (id: string) => {
+    setActiveArtifactId(id);
+    setPanelOpen(true);
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -55,6 +79,26 @@ export default function Index() {
       </div>
     );
   }
+
+  const chatNode = (
+    <ChatView
+      conversationId={selectedId}
+      provider={settings.provider}
+      openaiModel={settings.openai_model}
+      ollamaUrl={settings.ollama_url}
+      defaultModel={settings.default_model}
+      requireConfirm={settings.require_confirm}
+      autoStopMinutes={settings.auto_stop_minutes}
+      autoStart={settings.auto_start}
+      onCreated={(id) => {
+        setSelectedId(id);
+        setRefreshKey((k) => k + 1);
+      }}
+      onTitleUpdated={() => setRefreshKey((k) => k + 1)}
+      onArtifactsChange={setArtifacts}
+      onArtifactOpen={openArtifact}
+    />
+  );
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
@@ -65,21 +109,26 @@ export default function Index() {
         refreshKey={refreshKey}
         onOpenSettings={() => setSettingsOpen(true)}
       />
-      <ChatView
-        conversationId={selectedId}
-        provider={settings.provider}
-        openaiModel={settings.openai_model}
-        ollamaUrl={settings.ollama_url}
-        defaultModel={settings.default_model}
-        requireConfirm={settings.require_confirm}
-        autoStopMinutes={settings.auto_stop_minutes}
-        autoStart={settings.auto_start}
-        onCreated={(id) => {
-          setSelectedId(id);
-          setRefreshKey((k) => k + 1);
-        }}
-        onTitleUpdated={() => setRefreshKey((k) => k + 1)}
-      />
+
+      {panelOpen && artifacts.length > 0 ? (
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={55} minSize={30}>
+            {chatNode}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel defaultSize={45} minSize={25} maxSize={70}>
+            <ArtifactsPanel
+              artifacts={artifacts}
+              activeId={activeArtifactId}
+              onSelect={setActiveArtifactId}
+              onClose={() => setPanelOpen(false)}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      ) : (
+        chatNode
+      )}
+
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

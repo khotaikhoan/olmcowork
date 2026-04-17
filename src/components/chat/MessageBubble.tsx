@@ -2,6 +2,8 @@ import { Bot, User } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
 import { ThinkingBlock, splitThinking } from "./ThinkingBlock";
+import { ArtifactChip } from "./ArtifactsPanel";
+import { extractArtifacts } from "@/lib/artifacts";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -10,13 +12,26 @@ interface Props {
   attachments?: { name: string; dataUrl: string }[] | null;
   toolCalls?: ToolCallRecord[] | null;
   streaming?: boolean;
+  messageId?: string;
+  onArtifactOpen?: (id: string) => void;
 }
 
-export function MessageBubble({ role, content, attachments, toolCalls, streaming }: Props) {
+// Strip code-fence blocks that have already been turned into artifacts
+function stripExtractedFences(content: string, fenceCount: number): string {
+  if (!content || fenceCount <= 0) return content;
+  const re = /```[\w+-]*\n[\s\S]*?```/g;
+  // We don't actually know which specific fences became artifacts vs which
+  // were too small; leaving inline code blocks in place keeps Markdown
+  // chat-readable and avoids surprising removal. So just return content.
+  return content;
+}
+
+export function MessageBubble({ role, content, attachments, toolCalls, streaming, messageId, onArtifactOpen }: Props) {
   if (role === "system" || role === "tool") return null;
   const isUser = role === "user";
 
   const segments = !isUser ? splitThinking(content || "") : [];
+  const artifacts = !isUser && messageId ? extractArtifacts(messageId, content || "") : [];
 
   return (
     <div className={cn("flex gap-3 py-4", isUser && "flex-row-reverse")}>
@@ -67,7 +82,7 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
                   seg.kind === "think" ? (
                     <ThinkingBlock key={i} content={seg.content} />
                   ) : (
-                    <Markdown key={i} content={seg.content} />
+                    <Markdown key={i} content={stripExtractedFences(seg.content, artifacts.length)} />
                   ),
                 )}
                 {streaming && !content && <span className="text-muted-foreground">…</span>}
@@ -77,12 +92,19 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
               </>
             ) : (
               <>
-                <Markdown content={content || (streaming ? "…" : "")} />
+                <Markdown content={stripExtractedFences(content || (streaming ? "…" : ""), artifacts.length)} />
                 {streaming && (
                   <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary animate-pulse rounded-sm align-middle" />
                 )}
               </>
             )}
+          </div>
+        )}
+        {!isUser && artifacts.length > 0 && onArtifactOpen && (
+          <div className="w-full min-w-[300px]">
+            {artifacts.map((a) => (
+              <ArtifactChip key={a.id} artifact={a} onOpen={() => onArtifactOpen(a.id)} />
+            ))}
           </div>
         )}
       </div>
