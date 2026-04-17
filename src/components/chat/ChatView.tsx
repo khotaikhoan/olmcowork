@@ -15,8 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bot, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
+import { ChatEmptyState } from "./ChatEmptyState";
+import { AgentPreset } from "@/lib/presets";
 
 interface DbMessage {
   id: string;
@@ -293,6 +295,7 @@ export function ChatView({
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
         if (result.image) record.image = result.image;
+        if ((result as any).marks) record.marks = (result as any).marks;
         setStreamingToolCalls([...allCalls]);
 
         working.push({
@@ -385,6 +388,7 @@ export function ChatView({
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
         if (result.image) record.image = result.image;
+        if ((result as any).marks) record.marks = (result as any).marks;
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
@@ -703,22 +707,21 @@ export function ChatView({
         <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
             {messages.length === 0 && !streamingText && !streamingToolCalls.length && (
-              <div className="flex flex-col items-center justify-center text-center py-24">
-                <div className="h-14 w-14 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-4">
-                  <Bot className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">Trò chuyện với AI cục bộ</h2>
-                <p className="text-muted-foreground max-w-md">
-                  Chọn model ở khung phía trên và bắt đầu cuộc trò chuyện. Bật công cụ điều khiển máy
-                  để cho phép AI đọc tệp, chạy lệnh và nhiều hơn nữa.
-                </p>
-                {!bridgeOnline && (
-                  <p className="text-sm text-destructive mt-4 max-w-md">
-                    Không kết nối được Ollama tại <code className="px-1 bg-muted rounded">{ollamaUrl}</code>.
-                    Hãy đảm bảo nó đang chạy với <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code>.
-                  </p>
-                )}
-              </div>
+              <ChatEmptyState
+                bridgeOnline={bridgeOnline}
+                ollamaUrl={ollamaUrl}
+                onPickPrompt={(p) => send(p, [])}
+                onPickPreset={(preset: AgentPreset) => {
+                  setSystemPrompt(preset.systemPrompt);
+                  setToolsEnabled(preset.toolsEnabled);
+                  // Pick model: prefer preset's first matching available model
+                  if (provider === "ollama" && preset.preferOllama) {
+                    const m = models.find((x) => x.name.includes(preset.preferOllama!));
+                    if (m) setModel(m.name);
+                  }
+                  toast.success(`Đã chọn preset: ${preset.name}`);
+                }}
+              />
             )}
             {messages.map((m) => (
               <MessageBubble
