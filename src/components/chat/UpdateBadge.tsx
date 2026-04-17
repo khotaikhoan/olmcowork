@@ -15,15 +15,38 @@ import {
   Sparkles,
 } from "lucide-react";
 
+function fmtBytes(n: number): string {
+  if (!n || n < 0) return "0 B";
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(v >= 100 ? 0 : 1)} ${u[i]}`;
+}
+
+function fmtEta(bytesLeft: number, bps: number): string {
+  if (!bps || bps <= 0 || !bytesLeft) return "—";
+  const s = Math.round(bytesLeft / bps);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}m ${ss}s`;
+}
+
 export function UpdateBadge() {
   const { status, busy, check, install, available } = useUpdater();
   if (!available) return null;
 
   const v = status.currentVersion;
+  const dl = status.state === "downloading" ? status : null;
+  const pct = dl?.percent ?? 0;
+  const bps = dl?.bytesPerSecond ?? 0;
+  const transferred = dl?.transferred ?? 0;
+  const total = dl?.total ?? 0;
+
   let icon = <Sparkles className="h-3 w-3" />;
   let label = v ? `v${v}` : "App";
-  let tone =
-    "bg-muted text-muted-foreground hover:bg-muted/80";
+  let tone = "bg-muted text-muted-foreground hover:bg-muted/80";
   let pulse = false;
 
   switch (status.state) {
@@ -37,13 +60,11 @@ export function UpdateBadge() {
       tone = "bg-primary/15 text-primary hover:bg-primary/25";
       pulse = true;
       break;
-    case "downloading": {
-      const pct = (status as any).percent ?? 0;
+    case "downloading":
       icon = <Loader2 className="h-3 w-3 animate-spin" />;
       label = `Đang tải ${pct}%`;
       tone = "bg-primary/15 text-primary hover:bg-primary/25";
       break;
-    }
     case "ready":
       icon = <CheckCircle2 className="h-3 w-3" />;
       label = `Cài ${status.version ?? ""}`.trim();
@@ -56,9 +77,6 @@ export function UpdateBadge() {
       label = "Lỗi update";
       tone = "bg-destructive/15 text-destructive hover:bg-destructive/25";
       break;
-    case "none":
-    case "idle":
-    case "disabled":
     default:
       break;
   }
@@ -68,36 +86,63 @@ export function UpdateBadge() {
       <PopoverTrigger asChild>
         <button
           className={
-            "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors " +
+            "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors relative overflow-hidden " +
             tone +
             (pulse ? " animate-pulse" : "")
           }
           title="Trạng thái cập nhật"
         >
-          {icon}
-          <span className="font-mono">{label}</span>
+          {/* Inline progress fill bar (downloading state) */}
+          {dl && (
+            <span
+              className="absolute inset-y-0 left-0 bg-primary/20 transition-[width]"
+              style={{ width: `${pct}%` }}
+              aria-hidden
+            />
+          )}
+          <span className="relative flex items-center gap-1.5">
+            {icon}
+            <span className="font-mono">{label}</span>
+          </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 p-3 space-y-3">
+      <PopoverContent align="end" className="w-80 p-3 space-y-3">
         <div>
           <div className="text-xs font-medium">Phiên bản hiện tại</div>
           <div className="font-mono text-sm">{v ? `v${v}` : "—"}</div>
         </div>
 
         {status.state === "available" && (
-          <div className="text-xs text-muted-foreground">
-            Đã phát hiện bản mới <span className="font-mono">{status.version}</span>. Đang tải xuống nền…
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">
+              Đã phát hiện bản mới{" "}
+              <span className="font-mono text-foreground">{status.version}</span>. Đang chuẩn bị tải xuống…
+            </div>
+            <Progress value={undefined as any} className="h-1.5 animate-pulse" />
           </div>
         )}
 
         {status.state === "downloading" && (
           <div className="space-y-1.5">
-            <div className="text-xs text-muted-foreground">
-              Đang tải bản mới…
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                Đang tải bản{" "}
+                <span className="font-mono text-foreground">{status.version ?? ""}</span>
+              </span>
+              <span className="font-mono tabular-nums text-foreground">{pct}%</span>
             </div>
-            <Progress value={(status as any).percent ?? 0} className="h-1.5" />
-            <div className="text-[11px] font-mono text-right text-muted-foreground">
-              {(status as any).percent ?? 0}%
+            <Progress value={pct} className="h-1.5" />
+            <div className="flex items-center justify-between text-[11px] font-mono tabular-nums text-muted-foreground">
+              <span>
+                {fmtBytes(transferred)}
+                {total > 0 && ` / ${fmtBytes(total)}`}
+              </span>
+              <span>
+                {bps > 0 ? `${fmtBytes(bps)}/s` : ""}
+                {total > 0 && bps > 0 && (
+                  <span className="ml-2">· còn {fmtEta(total - transferred, bps)}</span>
+                )}
+              </span>
             </div>
           </div>
         )}
@@ -105,7 +150,7 @@ export function UpdateBadge() {
         {status.state === "ready" && (
           <>
             <div className="text-xs text-muted-foreground">
-              Bản <span className="font-mono">{status.version}</span> đã sẵn sàng. App sẽ khởi động lại để cài đặt.
+              Bản <span className="font-mono text-foreground">{status.version}</span> đã sẵn sàng. App sẽ khởi động lại để cài đặt.
             </div>
             <Button size="sm" className="w-full" onClick={install}>
               <Download className="h-3.5 w-3.5 mr-1" />
