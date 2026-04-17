@@ -95,6 +95,23 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "web_search",
+    risk: "low",
+    description:
+      "Search the web (DuckDuckGo) and return a list of results with title, url, and snippet. Read-only — safe in Chat and Control modes. Use this to find pages relevant to a question, then optionally call fetch_url on a promising result to read its content.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The search query." },
+        limit: {
+          type: "number",
+          description: "Max number of results to return (1-10, default 5).",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
