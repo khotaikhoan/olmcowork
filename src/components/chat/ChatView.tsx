@@ -131,6 +131,12 @@ export function ChatView({
     loading: boolean;
   } | null>(null);
 
+  // Full Auto mode — synced from localStorage via subscribeFullAuto
+  const [fullAuto, setFullAutoState] = useState<boolean>(getFullAuto());
+  // Agent step counter (visible in topbar badge while looping)
+  const [agentStep, setAgentStep] = useState<{ current: number; max: number } | null>(null);
+  useEffect(() => subscribeFullAuto(setFullAutoState), []);
+
   // ----- Ollama health + models -----
   useEffect(() => {
     let alive = true;
