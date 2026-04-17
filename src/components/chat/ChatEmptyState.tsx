@@ -162,24 +162,48 @@ export function ChatEmptyState({
         </div>
       )}
 
-      {/* ── Prompt suggestions ─────────────────────────────────────────── */}
+      {/* ── Prompt suggestions — auto-collapsed for power users (10+ msgs) ── */}
       <div className="w-full">
-        <div className="text-[11px] font-medium text-muted-foreground mb-2 uppercase tracking-wider">
-          Gợi ý cho {mode === "chat" ? "Chat" : "Control"}
-        </div>
-        <div className="grid sm:grid-cols-2 gap-2">
-          {SUGGESTIONS_BY_MODE[mode].map((s) => (
-            <Button
-              key={s}
-              variant="outline"
-              className="group justify-between h-auto py-2.5 text-sm font-normal text-left whitespace-normal hover:border-primary/40 hover:bg-accent/30 gap-2"
-              onClick={() => onPickPrompt(s)}
-            >
-              <span className="flex-1 min-w-0 text-left">{s}</span>
-              <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-            </Button>
-          ))}
-        </div>
+        {showSuggestions ? (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                Gợi ý cho {mode === "chat" ? "Chat" : "Control"}
+              </div>
+              {isPowerUser && (
+                <button
+                  onClick={toggleSuggestions}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+                  title="Ẩn các gợi ý này"
+                >
+                  Ẩn <ChevronDown className="h-3 w-3 rotate-180" />
+                </button>
+              )}
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {SUGGESTIONS_BY_MODE[mode].map((s) => (
+                <Button
+                  key={s}
+                  variant="outline"
+                  className="group justify-between h-auto py-2.5 text-sm font-normal text-left whitespace-normal hover:border-primary/40 hover:bg-accent/30 gap-2"
+                  onClick={() => onPickPrompt(s)}
+                >
+                  <span className="flex-1 min-w-0 text-left">{s}</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <button
+            onClick={toggleSuggestions}
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full border border-dashed border-border hover:border-primary/40 hover:bg-accent/20"
+            title={`Bạn đã gửi ${messageCount} tin nhắn — gợi ý đã được ẩn để gọn gàng hơn.`}
+          >
+            <Lightbulb className="h-3 w-3" />
+            Hiện gợi ý cho {mode === "chat" ? "Chat" : "Control"}
+          </button>
+        )}
       </div>
 
       {!bridgeOnline && (
