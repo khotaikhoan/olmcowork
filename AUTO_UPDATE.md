@@ -1,35 +1,26 @@
-# Auto-Update Setup (electron-updater + GitHub Releases)
+# Auto-Release Setup (GitHub Actions + electron-updater)
 
-App desktop sẽ tự kiểm tra & cài bản mới mỗi khi khởi động (và mỗi 30 phút).
-Cơ chế: app đọc file `latest-mac.yml` từ GitHub Releases mới nhất, so version,
-download `.dmg/.zip` và hỏi user có muốn cài + restart không.
+Mỗi lần Lovable push code mới → GitHub Actions tự build .dmg → publish Release → app desktop tự thấy bản mới và hiện nút "Cài bản mới".
 
----
+## Setup 1 lần duy nhất trên MacBook
 
-## Bước 1 — Cài dependencies trên máy (1 lần duy nhất)
+### Bước 1 — Cài deps
 
 ```bash
+cd <repo>
+git pull
 npm install --save-dev electron-updater electron-builder
 ```
 
-> `electron-updater` là runtime, `electron-builder` là tool đóng gói + tạo
-> file `latest-mac.yml` mà updater cần đọc.
+### Bước 2 — Sửa `package.json`
 
-## Bước 2 — Sửa `package.json` (làm thủ công, vì Lovable không edit được lockfile)
-
-Mở `package.json` trên máy, **đổi `version` thật sự** (vd `0.1.0` → `0.1.1` mỗi lần release),
-và thêm 2 thứ:
-
-### 2a. Thêm script
+Mở `package.json`, thêm script `release` vào block `scripts`:
 
 ```json
-"scripts": {
-  ...
-  "release": "vite build && electron-builder --mac --publish always"
-}
+"release": "vite build && electron-builder --mac --publish always"
 ```
 
-### 2b. Thêm block `build` (cấu hình cho electron-builder)
+Thêm block `build` cùng cấp với `dependencies` (thay `<USERNAME>` và `<REPO>`):
 
 ```json
 "build": {
@@ -42,63 +33,54 @@ và thêm 2 thứ:
   },
   "publish": {
     "provider": "github",
-    "owner": "<GITHUB_USERNAME_CỦA_BẠN>",
-    "repo": "<TÊN_REPO_CỦA_BẠN>"
+    "owner": "<USERNAME>",
+    "repo": "<REPO>"
   }
 }
 ```
 
-⚠️ Thay `<GITHUB_USERNAME>` và `<TÊN_REPO>` bằng giá trị thật.
-
-## Bước 3 — Tạo GitHub Personal Access Token
-
-1. https://github.com/settings/tokens → **Generate new token (classic)**
-2. Scope: chỉ cần **`repo`** (tick toàn bộ ô repo)
-3. Copy token, lưu lại
-
-## Bước 4 — Release lần đầu
+### Bước 3 — Commit & push
 
 ```bash
-cd <project-folder>
-git pull                              # lấy code mới nhất từ Lovable
-
-# Tăng version trong package.json (vd 0.1.0 → 0.1.1)
-# Rồi:
-export GH_TOKEN="ghp_xxx_token_vừa_tạo"
-npm run release
+git add package.json package-lock.json
+git commit -m "setup electron-builder"
+git push
 ```
 
-Sau ~2 phút:
-- Bản build `.dmg` + `.zip` + `latest-mac.yml` được upload lên GitHub Releases
-- Vào tab **Releases** trên repo, **publish** draft release mà electron-builder tạo
+### Bước 4 — Cấp quyền Actions ghi vào repo
 
-## Bước 5 — Cài app lần đầu
+1. Mở `https://github.com/<USERNAME>/<REPO>/settings/actions`
+2. Cuộn xuống **Workflow permissions**
+3. Chọn **Read and write permissions** → Save
 
-Tải `.dmg` từ GitHub Releases, kéo vào Applications, mở lên.
-**Từ giờ trở đi, app sẽ tự cập nhật.**
+### Bước 5 — Trigger build lần đầu
+
+Vào tab **Actions** trong repo → chọn workflow **"Release Electron App"** → bấm **Run workflow**.
+
+Đợi ~5-8 phút. Khi xong → tab **Releases** sẽ có `v0.1.1` với file `.dmg`, `.zip`, `latest-mac.yml`.
+
+### Bước 6 — Cài app
+
+Tải `.dmg` từ release → kéo vào Applications → mở app.
+(Lần đầu macOS chặn → System Settings → Privacy & Security → Open Anyway)
 
 ---
 
-## Quy trình release các lần sau
+## Từ giờ về sau (hoàn toàn tự động)
 
-```bash
-git pull                                    # code mới từ Lovable
-# tăng version trong package.json (vd 0.1.1 → 0.1.2)
-export GH_TOKEN="ghp_xxx"
-npm run release
-# → vào GitHub Releases publish draft
-```
+1. Bạn chat với Lovable → Lovable sửa code → push lên GitHub
+2. GitHub Actions tự bump version + build + publish Release (~5 phút)
+3. App desktop của bạn check mỗi 30 phút (hoặc khi khởi động) → tải bản mới về background
+4. Popup hiện ra: **"Có bản v0.1.x đã tải xong, cài & restart?"** → bấm OK → xong
 
-User đang chạy app cũ sẽ:
-1. Khởi động app → updater check → thấy version mới
-2. Background download
-3. Popup "Có bản cập nhật v0.1.2 đã tải xong, cài & khởi động lại?"
-4. Bấm OK → app restart với code mới
+Bạn không cần `git pull` hay chạy lệnh gì thêm.
 
 ---
 
 ## Troubleshooting
 
-- **App không tự update?** Mở DevTools, xem console log từ updater. Trong dev mode (`npm run electron:dev`) updater bị tắt — chỉ hoạt động trên file `.app` đã được package qua `npm run release`.
-- **"Code signature invalid" trên macOS?** Lần đầu phải cho phép trong **System Settings → Privacy & Security → Open Anyway**. Nếu muốn không hiện cảnh báo, cần Apple Developer ID ($99/năm) và sign + notarize — bảo tôi setup nếu cần.
-- **Update không chạy do repo private?** GitHub Releases public mới đọc được không cần token. Nếu repo private, user phải có `GH_TOKEN` trong env — dùng repo public cho đơn giản.
+- **Workflow fail "Resource not accessible by integration"** → chưa làm Bước 4 (cấp quyền write).
+- **App không thấy update** → mở DevTools, xem console. Updater chỉ chạy trong file `.app` đã đóng gói, không chạy ở `npm run electron:dev`.
+- **Muốn force check ngay** → quit app, mở lại (sẽ check ngay khi khởi động).
+- **Build trên Actions chậm** → bình thường ~5-8 phút trên macos-latest. Có thể tăng tốc bằng cache node_modules (đã enable).
+- **Repo private** → vẫn chạy được, nhưng user cài app cần `GH_TOKEN` env var. Để repo public cho đơn giản.
