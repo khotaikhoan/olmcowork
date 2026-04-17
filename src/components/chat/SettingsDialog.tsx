@@ -460,6 +460,40 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Quit-Chrome confirmation — shown when user enables "real profile" while Chrome is running. */}
+      <AlertDialog open={chromeDialogOpen} onOpenChange={(o) => !quittingChrome && setChromeDialogOpen(o)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Chrome đang chạy
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Phát hiện <strong>{chromeCount}</strong> tiến trình Chrome đang mở. Playwright cần truy cập độc quyền vào profile để dùng cookies & đăng nhập sẵn của bạn.
+              <br /><br />
+              Nhấn <strong>Quit Chrome</strong> để thoát êm (lưu phiên làm việc), hoặc <strong>Force quit</strong> nếu Chrome không phản hồi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={quittingChrome}>Huỷ</AlertDialogCancel>
+            <Button
+              variant="outline"
+              disabled={quittingChrome}
+              onClick={() => handleQuitChrome(true)}
+            >
+              {quittingChrome ? <Loader2 className="h-4 w-4 animate-spin" /> : "Force quit"}
+            </Button>
+            <AlertDialogAction
+              disabled={quittingChrome}
+              onClick={(e) => { e.preventDefault(); handleQuitChrome(false); }}
+            >
+              {quittingChrome ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Quit Chrome
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
