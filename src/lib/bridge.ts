@@ -24,10 +24,15 @@ declare global {
 export const isElectron = (): boolean =>
   typeof window !== "undefined" && !!window.bridge?.isElectron;
 
+export interface ToolExecResult extends ExecResult {
+  /** Base64-encoded PNG (no data: prefix), present for screenshot tool. */
+  image?: string;
+}
+
 export async function executeTool(
   name: string,
   args: Record<string, any>,
-): Promise<ExecResult> {
+): Promise<ToolExecResult> {
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) {
     // Browser → mock
@@ -44,7 +49,7 @@ export async function executeTool(
       return b.runShell(String(args.command ?? ""));
     case "screenshot": {
       const r = await b.screenshot();
-      return { ok: r.ok, output: r.output };
+      return { ok: r.ok, output: r.output, image: r.image };
     }
     case "mouse_move":
       return b.mouseMove(Number(args.x), Number(args.y));
