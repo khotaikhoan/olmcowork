@@ -39,7 +39,6 @@ import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap } from "lucide-react";
 import { configureOrchestrator } from "@/lib/agentOrchestrator";
-import { toolsForMode } from "@/lib/tools";
 
 interface DbMessage {
   id: string;
