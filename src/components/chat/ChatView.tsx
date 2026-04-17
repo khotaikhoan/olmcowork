@@ -82,6 +82,8 @@ export function ChatView({
           setModels(m);
           setModel((prev) => prev || defaultModel || m[0]?.name || "");
         } catch {}
+      } else {
+        setRunning([]);
       }
     };
     refresh();
@@ -91,6 +93,19 @@ export function ChatView({
       clearInterval(interval);
     };
   }, [ollamaUrl, defaultModel]);
+
+  // ----- Running models (RAM/VRAM) poll -----
+  useEffect(() => {
+    if (!bridgeOnline) return;
+    let alive = true;
+    const tick = async () => {
+      const r = await listRunning(ollamaUrl);
+      if (alive) setRunning(r);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(id); };
+  }, [bridgeOnline, ollamaUrl]);
 
   // ----- Load conversation -----
   useEffect(() => {
