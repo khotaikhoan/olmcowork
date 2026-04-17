@@ -83,7 +83,7 @@ export async function streamChat(opts: StreamOptions) {
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages: sanitized, stream: true }),
+      body: JSON.stringify({ model, messages: sanitized, stream: true, options: { num_ctx: 2048 } }),
       signal,
     });
     if (!res.ok || !res.body) {
