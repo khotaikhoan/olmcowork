@@ -460,6 +460,13 @@ export function ChatView({
         record.result = result.output;
         if (result.image) record.image = result.image;
         if ((result as any).marks) record.marks = (result as any).marks;
+        if (
+          tc.function.name === "computer" &&
+          args.action === "screenshot" &&
+          result.image
+        ) {
+          record.trailPoints = collectTrailPoints(allCalls);
+        }
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
@@ -663,6 +670,8 @@ export function ChatView({
       setStreamingToolCalls([]);
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
       onTitleUpdated();
+      // Native notification when tab is in background
+      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
     } catch (e: any) {
       setIsStreaming(false);
       if (e.name !== "AbortError") toast.error(e.message);
