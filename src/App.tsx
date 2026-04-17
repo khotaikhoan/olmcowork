@@ -16,6 +16,7 @@ import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
+import Compare from "./pages/Compare.tsx";
 import { OnboardingTour } from "./components/chat/OnboardingTour";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
                 <Route path="/activity" element={<Activity />} />
+                <Route path="/compare" element={<Compare />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CommandPaletteProvider>

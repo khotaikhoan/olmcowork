@@ -25,6 +25,8 @@ import { ChatSearch } from "./ChatSearch";
 import { estimateCostUsd } from "@/lib/pricing";
 import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
+import { notifyDone } from "@/lib/notifications";
+import type { CursorPoint } from "./CursorTrailOverlay";
 
 interface DbMessage {
   id: string;
@@ -355,6 +357,16 @@ export function ChatView({
         record.result = result.output;
         if (result.image) record.image = result.image;
         if ((result as any).marks) record.marks = (result as any).marks;
+
+        // Attach accumulated cursor trail to any screenshot result so the
+        // overlay can replay the AI's mouse path on top of it.
+        if (
+          tc.function.name === "computer" &&
+          args.action === "screenshot" &&
+          result.image
+        ) {
+          record.trailPoints = collectTrailPoints(allCalls);
+        }
         setStreamingToolCalls([...allCalls]);
 
         working.push({
@@ -448,6 +460,13 @@ export function ChatView({
         record.result = result.output;
         if (result.image) record.image = result.image;
         if ((result as any).marks) record.marks = (result as any).marks;
+        if (
+          tc.function.name === "computer" &&
+          args.action === "screenshot" &&
+          result.image
+        ) {
+          record.trailPoints = collectTrailPoints(allCalls);
+        }
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
@@ -651,6 +670,8 @@ export function ChatView({
       setStreamingToolCalls([]);
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
       onTitleUpdated();
+      // Native notification when tab is in background
+      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
     } catch (e: any) {
       setIsStreaming(false);
       if (e.name !== "AbortError") toast.error(e.message);
@@ -978,3 +999,27 @@ function safeParse(s: string): Record<string, any> {
     return {};
   }
 }
+
+/**
+ * Walk through the calls collected so far in the loop and pull out every
+ * cursor waypoint (mouse_move, click, key, type) so the screenshot overlay
+ * can replay the AI's path.
+ */
+function collectTrailPoints(allCalls: ToolCallRecord[]): CursorPoint[] {
+  const pts: CursorPoint[] = [];
+  for (const c of allCalls) {
+    if (c.name !== "computer") continue;
+    const a = c.args || {};
+    const action = String(a.action ?? "");
+    const coord = Array.isArray(a.coordinate) ? a.coordinate : null;
+    if (coord && typeof coord[0] === "number" && typeof coord[1] === "number") {
+      pts.push({
+        x: coord[0],
+        y: coord[1],
+        kind: action || "move",
+      });
+    }
+  }
+  return pts;
+}
+

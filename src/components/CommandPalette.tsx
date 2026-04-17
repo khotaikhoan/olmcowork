@@ -24,6 +24,7 @@ import {
   LogOut,
   HelpCircle,
   Activity as ActivityIcon,
+  Scale,
 } from "lucide-react";
 
 interface CommandPaletteContextValue {
@@ -119,6 +120,9 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
             <CommandItem onSelect={() => run(() => nav("/activity"))}>
               <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
             </CommandItem>
+            <CommandItem onSelect={() => run(() => nav("/compare"))}>
+              <Scale className="h-4 w-4 mr-2" /> So sánh 2 model
+            </CommandItem>
             <CommandItem onSelect={() => run(() => handlers.onOpenSettings())}>
               <Settings className="h-4 w-4 mr-2" /> Cài đặt
               <span className="ml-auto text-xs text-muted-foreground">⌘,</span>
@@ -190,10 +194,14 @@ import {
 
 const SHORTCUTS: { keys: string; label: string }[] = [
   { keys: "⌘ K", label: "Mở Command Palette" },
+  { keys: "⌘ B", label: "Bật/tắt sidebar" },
+  { keys: "⌘ F", label: "Tìm trong cuộc trò chuyện" },
+  { keys: "⌘ ,", label: "Mở Cài đặt" },
   { keys: "?", label: "Hiện phím tắt này" },
-  { keys: "⌘ Enter", label: "Gửi tin nhắn" },
+  { keys: "Enter", label: "Gửi tin nhắn" },
   { keys: "Shift + Enter", label: "Xuống dòng trong ô chat" },
   { keys: "Esc", label: "Đóng dialog / dừng streaming" },
+  { keys: "/schedule", label: "Tạo nhanh job định kỳ trong khung chat" },
 ];
 
 function ShortcutsDialog({

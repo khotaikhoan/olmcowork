@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
 import type { VisionMark } from "@/lib/bridge";
+import { InlineDiff } from "./InlineDiff";
+import { CursorTrailOverlay, CursorPoint } from "./CursorTrailOverlay";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
@@ -32,6 +34,8 @@ export interface ToolCallRecord {
   image?: string;
   /** accessibility marks, set for vision_click.annotate */
   marks?: VisionMark[];
+  /** ordered cursor waypoints when this call is part of a computer-use sequence */
+  trailPoints?: CursorPoint[];
 }
 
 function variant(call: ToolCallRecord) {
@@ -157,15 +161,19 @@ export function ToolCallCard({
             </div>
           )}
 
-          {/* Screenshot → thumbnail */}
+          {/* Screenshot → thumbnail (with cursor trail overlay if any) */}
           {v.kind === "screenshot" && (
             <div className="p-3 space-y-2 bg-muted/20">
               {call.image ? (
-                <img
-                  src={`data:image/png;base64,${call.image}`}
-                  alt="screenshot"
-                  className="rounded-md border border-border max-h-96 w-auto"
-                />
+                call.trailPoints && call.trailPoints.length > 0 ? (
+                  <CursorTrailOverlay image={call.image} points={call.trailPoints} />
+                ) : (
+                  <img
+                    src={`data:image/png;base64,${call.image}`}
+                    alt="screenshot"
+                    className="rounded-md border border-border max-h-96 w-auto"
+                  />
+                )
               ) : (
                 <div className="text-xs text-muted-foreground">{call.result ?? "Đang chụp…"}</div>
               )}
@@ -187,21 +195,14 @@ export function ToolCallCard({
             </div>
           )}
 
-          {/* File edit → mini diff */}
+          {/* File edit → unified inline diff */}
           {v.kind === "edit" && (
             <div className="bg-muted/20 p-3 space-y-2">
-              <div>
-                <div className="text-[11px] font-medium text-destructive mb-1">- Cũ</div>
-                <pre className="p-2 rounded-md border border-destructive/30 bg-destructive/5 text-xs font-mono overflow-auto max-h-40 whitespace-pre">
-                  {String(call.args.old_str ?? "")}
-                </pre>
-              </div>
-              <div>
-                <div className="text-[11px] font-medium text-[hsl(var(--success))] mb-1">+ Mới</div>
-                <pre className="p-2 rounded-md border border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5 text-xs font-mono overflow-auto max-h-40 whitespace-pre">
-                  {String(call.args.new_str ?? "")}
-                </pre>
-              </div>
+              <InlineDiff
+                oldStr={String(call.args.old_str ?? "")}
+                newStr={String(call.args.new_str ?? "")}
+                label={String(call.args.path ?? "str_replace")}
+              />
               {call.result && (
                 <div className="text-[11px] text-muted-foreground">{call.result}</div>
               )}

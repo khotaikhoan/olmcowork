@@ -1,10 +1,11 @@
-import { useRef, useState, KeyboardEvent, useEffect } from "react";
+import { useRef, useState, KeyboardEvent, useEffect, ClipboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePlus, Send, Square, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { UrlPreviewChip, UrlMeta } from "./UrlPreviewChip";
 
 export interface PendingAttachment {
   file: File;
@@ -19,15 +20,17 @@ interface Props {
   disabled?: boolean;
 }
 
+const URL_RE = /^https?:\/\/[^\s]+$/i;
+
 export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
+  const [urlPreviews, setUrlPreviews] = useState<UrlMeta[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
 
   // Slash command: /schedule "<name>" <cron> -- <prompt>
-  // Ví dụ: /schedule "morning brief" 0 8 * * * -- Tóm tắt tin tức công nghệ hôm nay
   const trySlashCommand = async (raw: string): Promise<boolean> => {
     if (!raw.startsWith("/schedule")) return false;
     if (!user) {
@@ -78,21 +81,71 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
     setAttachments((p) => [...p, ...list]);
   };
 
+  // Smart paste: detect URL → fetch metadata → show chip
+  const fetchMeta = async (url: string) => {
+    setUrlPreviews((p) => [...p, { url, loading: true }]);
+    try {
+      const { data, error } = await supabase.functions.invoke("fetch-meta", {
+        body: { url },
+      });
+      if (error) throw error;
+      setUrlPreviews((p) =>
+        p.map((m) =>
+          m.url === url
+            ? {
+                ...m,
+                loading: false,
+                title: data?.title,
+                description: data?.description,
+                favicon: data?.favicon,
+                image: data?.image,
+              }
+            : m,
+        ),
+      );
+    } catch (e: any) {
+      setUrlPreviews((p) =>
+        p.map((m) => (m.url === url ? { ...m, loading: false, error: e?.message } : m)),
+      );
+    }
+  };
+
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData("text").trim();
+    if (URL_RE.test(pasted) && !pasted.includes("\n")) {
+      // Don't intercept — let the URL be inserted normally, but also fetch meta in parallel
+      if (!urlPreviews.some((m) => m.url === pasted)) fetchMeta(pasted);
+    }
+  };
+
   const submit = async () => {
     if (isStreaming) return;
     const trimmed = text.trim();
     if (!trimmed && attachments.length === 0) return;
     if (await trySlashCommand(trimmed)) {
       setText("");
+      setUrlPreviews([]);
       return;
     }
-    onSend(trimmed, attachments);
+    // Augment prompt with URL metadata so the model has context
+    let augmented = trimmed;
+    const ready = urlPreviews.filter((m) => !m.loading && (m.title || m.description));
+    if (ready.length > 0) {
+      const ctx = ready
+        .map(
+          (m) =>
+            `[Đính kèm URL] ${m.url}\nTiêu đề: ${m.title ?? "?"}\nMô tả: ${m.description ?? ""}`,
+        )
+        .join("\n\n");
+      augmented = `${trimmed}\n\n---\n${ctx}`;
+    }
+    onSend(augmented, attachments);
     setText("");
     setAttachments([]);
+    setUrlPreviews([]);
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Bỏ qua Enter khi đang gõ IME (vd. tiếng Việt) để không bị submit + thừa ký tự
     if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -110,10 +163,10 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           addFiles(e.dataTransfer.files);
         }}
       >
-        {attachments.length > 0 && (
+        {(attachments.length > 0 || urlPreviews.length > 0) && (
           <div className="flex gap-2 flex-wrap p-3 pb-0">
             {attachments.map((a, i) => (
-              <div key={i} className="relative">
+              <div key={`img-${i}`} className="relative">
                 <img
                   src={a.dataUrl}
                   alt={a.file.name}
@@ -127,6 +180,13 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
                 </button>
               </div>
             ))}
+            {urlPreviews.map((m) => (
+              <UrlPreviewChip
+                key={m.url}
+                meta={m}
+                onRemove={() => setUrlPreviews((p) => p.filter((x) => x.url !== m.url))}
+              />
+            ))}
           </div>
         )}
         <Textarea
@@ -134,7 +194,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh để đính kèm)"
+          onPaste={onPaste}
+          placeholder="Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh, paste URL)"
           disabled={disabled}
           className="min-h-[52px] max-h-60 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
         />
