@@ -62,6 +62,7 @@ export function ToolTimeline({ calls, onReannotate }: Props) {
             key={`${tc.id}-${expandKey}`}
             call={tc}
             defaultOpen={forceState === "open" ? true : forceState === "closed" ? false : undefined}
+            onReannotate={onReannotate}
           />
         </div>
       ))}

@@ -24,6 +24,7 @@ interface Props {
   onRegenerate?: () => void;
   onEditSubmit?: (newContent: string) => void;
   onBranch?: () => void;
+  onReannotate?: () => void;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -42,6 +43,7 @@ export function MessageBubble({
   onRegenerate,
   onEditSubmit,
   onBranch,
+  onReannotate,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -88,7 +90,7 @@ export function MessageBubble({
             ))}
           </div>
         )}
-        {toolCalls && toolCalls.length > 0 && <ToolTimeline calls={toolCalls} />}
+        {toolCalls && toolCalls.length > 0 && <ToolTimeline calls={toolCalls} onReannotate={onReannotate} />}
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
