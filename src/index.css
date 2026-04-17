@@ -62,6 +62,17 @@
     --font-serif: "Fraunces", ui-serif, Georgia, "Iowan Old Style", serif;
     --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, "Cascadia Code", Consolas, monospace;
+
+    /* ==== Apple-style motion tokens ====
+       --ease-spring: signature iOS spring (decelerating, never bouncy).
+       --ease-emphasized: enter w/ slight overshoot for hero elements.
+       --ease-standard: short utility transitions (hover, focus). */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-emphasized: cubic-bezier(0.2, 0.9, 0.1, 1.05);
+    --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --dur-fast: 180ms;
+    --dur-base: 280ms;
+    --dur-slow: 420ms;
   }
 
   .dark {
@@ -123,6 +134,22 @@
 
 @layer base {
   * { @apply border-border; }
+
+  /* === Global Apple-spring easing ===
+     Override default ease-in-out / ease-out used by:
+     - Tailwind `transition-*` utilities (color, opacity, transform...)
+     - tailwindcss-animate (Radix dialog/sheet/popover/dropdown/tooltip)
+     - Custom keyframe animations (fade-in, scale-in, slide-in-bottom...) */
+  *, *::before, *::after {
+    transition-timing-function: var(--ease-spring);
+  }
+  .animate-in,
+  .animate-out,
+  [data-state="open"],
+  [data-state="closed"] {
+    animation-timing-function: var(--ease-spring);
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
