@@ -18,6 +18,15 @@ import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
 import Compare from "./pages/Compare.tsx";
 import Memories from "./pages/Memories.tsx";
+import Landing from "./pages/Landing.tsx";
+import { useAuth } from "@/hooks/useAuth";
+
+/** Route "/" — Landing for guests, chat (Index) for signed-in users. */
+function Root() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  return user ? <Index /> : <Landing />;
+}
 import { OnboardingTour } from "./components/chat/OnboardingTour";
 import { OculoIntro } from "./components/OculoIntro";
 
@@ -33,7 +42,7 @@ const App = () => (
           <AuthProvider>
             <CommandPaletteProvider>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Root />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
                 <Route path="/activity" element={<Activity />} />
