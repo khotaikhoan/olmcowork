@@ -20,6 +20,8 @@ import { Wrench, MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ControlModeBlocker } from "./ControlModeBlocker";
+import { PlanCard } from "./PlanCard";
+import { generatePlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
 import { AgentPreset } from "@/lib/presets";
 import { estimateTokens } from "./TokenMeter";
 import { ChatSearch } from "./ChatSearch";
