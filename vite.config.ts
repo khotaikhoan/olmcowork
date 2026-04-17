@@ -5,6 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Use relative paths so the build also works under file:// (Electron production)
+  base: mode === "production" ? "./" : "/",
   server: {
     host: "::",
     port: 8080,
