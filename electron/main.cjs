@@ -908,27 +908,56 @@ async function ensurePwPage() {
       }
     }
   }
-  if (!pwBrowser || !pwBrowser.isConnected()) {
+  if (!pwContext || (pwBrowser && !pwBrowser.isConnected())) {
     try { fsSync.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
-    const launchOpts = { headless: pwHeadless, channel: "chrome" };
-    try {
-      pwBrowser = await pw.chromium.launch(launchOpts);
-    } catch {
-      pwBrowser = await pw.chromium.launch({ headless: pwHeadless });
+
+    if (pwUseRealProfile) {
+      // Persistent context: launches Chrome with user's real profile (cookies, logins, extensions).
+      // No separate Browser object — pwContext owns lifecycle. Chrome must be fully closed first
+      // (Chrome refuses to share a profile across processes).
+      const userDataDir = getRealChromeUserDataDir();
+      const persistentOpts = {
+        headless: pwHeadless,
+        channel: "chrome",
+        viewport: { width: 1280, height: 800 },
+        acceptDownloads: true,
+        // Use the profile's own UA/locale/timezone — do NOT override; that defeats the purpose.
+        args: ["--profile-directory=Default"],
+      };
+      try {
+        pwContext = await pw.chromium.launchPersistentContext(userDataDir, persistentOpts);
+      } catch (e) {
+        throw new Error(
+          `Không mở được Chrome với profile thật tại "${userDataDir}". ` +
+          `Hãy đóng hoàn toàn Chrome (Cmd+Q / Quit) rồi thử lại. Chi tiết: ${e?.message ?? e}`
+        );
+      }
+      pwBrowser = null;
+      pwPersistent = true;
+    } else {
+      const launchOpts = { headless: pwHeadless, channel: "chrome" };
+      try {
+        pwBrowser = await pw.chromium.launch(launchOpts);
+      } catch {
+        pwBrowser = await pw.chromium.launch({ headless: pwHeadless });
+      }
+      pwContext = await pwBrowser.newContext({
+        viewport: { width: 1280, height: 800 },
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+        locale: "en-US",
+        timezoneId: "America/Los_Angeles",
+        acceptDownloads: true,
+      });
+      pwPersistent = false;
     }
-    pwContext = await pwBrowser.newContext({
-      viewport: { width: 1280, height: 800 },
-      userAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
-      locale: "en-US",
-      timezoneId: "America/Los_Angeles",
-      acceptDownloads: true,
-    });
     // Track new tabs (popups, target=_blank).
     pwContext.on("page", (p) => {
       if (!pwPages.includes(p)) pwPages.push(p);
     });
-    const first = await pwContext.newPage();
+    // Persistent context already has a default about:blank page — reuse it.
+    const existing = pwContext.pages();
+    const first = existing.length ? existing[0] : await pwContext.newPage();
     pwPages = [first];
     pwActiveIdx = 0;
   }
@@ -948,6 +977,7 @@ async function pwShutdown() {
   pwActiveIdx = 0;
   pwContext = null;
   pwBrowser = null;
+  pwPersistent = false;
 }
 
 ipcMain.handle("bridge:browser_set_headless", async (_e, { headless }) => {
@@ -957,6 +987,20 @@ ipcMain.handle("bridge:browser_set_headless", async (_e, { headless }) => {
   // Force relaunch on next call so the new mode takes effect.
   await pwShutdown();
   return { ok: true, output: `Browser will relaunch in headless=${pwHeadless} on next use.` };
+});
+
+ipcMain.handle("bridge:browser_set_use_real_profile", async (_e, { enabled }) => {
+  const next = !!enabled;
+  if (next === pwUseRealProfile) return { ok: true, output: `use_real_profile=${pwUseRealProfile}` };
+  pwUseRealProfile = next;
+  await pwShutdown();
+  const dir = getRealChromeUserDataDir();
+  return {
+    ok: true,
+    output: next
+      ? `Sẽ dùng profile Chrome thật ở "${dir}" lần kế tiếp. Đảm bảo Chrome đã thoát hoàn toàn.`
+      : `Đã tắt profile thật — quay lại profile sạch (ephemeral) lần kế tiếp.`,
+  };
 });
 
 /**
