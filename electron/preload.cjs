@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld("bridge", {
   // Local scheduled jobs (Electron-only)
   runLocalJob: (job) => invoke("bridge:run_local_job", job),
   reloadLocalJobs: () => invoke("bridge:reload_local_jobs"),
+  // Focus app lock (Control mode)
+  getFrontmostApp: () => invoke("bridge:get_frontmost_app"),
+  listApps: () => invoke("bridge:list_apps"),
   startOllama: () => invoke("bridge:start_ollama"),
   stopOllama: () => invoke("bridge:stop_ollama"),
   ollamaStatus: () => invoke("bridge:ollama_status"),

@@ -142,6 +142,8 @@ export interface BridgeAPI {
   startOllama: () => Promise<ExecResult & { running?: boolean }>;
   stopOllama: () => Promise<ExecResult & { running?: boolean }>;
   ollamaStatus: () => Promise<ExecResult & { running: boolean; managed: boolean }>;
+  getFrontmostApp: () => Promise<ExecResult & { app: string | null }>;
+  listApps: () => Promise<ExecResult & { apps: string[] }>;
 }
 
 declare global {
