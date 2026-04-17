@@ -118,17 +118,43 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     if (!next) { setBrowserUseRealProfile(false); return; }
     const bridge = (window as any).bridge;
     // Web preview (no Electron) — just flip the switch; bridge call is a no-op on save.
-    if (!bridge?.chromeDetect) { setBrowserUseRealProfile(true); return; }
+    if (!bridge?.chromeDebugProbe) { setBrowserUseRealProfile(true); return; }
     try {
-      const r = await bridge.chromeDetect();
-      if (r?.running) {
-        setChromeCount(Number(r.count) || 0);
-        setChromeDialogOpen(true);
-        return; // wait for user decision in the dialog
+      // Probe CDP debug port first. If Chrome was already started with
+      // --remote-debugging-port=9222, we can attach without touching it.
+      const probe = await bridge.chromeDebugProbe();
+      if (probe?.ready) {
+        setBrowserUseRealProfile(true);
+        toast.success("Đã kết nối CDP — AI sẽ mở tab mới trong Chrome đang chạy.");
+        return;
       }
-      setBrowserUseRealProfile(true);
+      // Chrome may or may not be running, but debug port is OFF.
+      // Show the relaunch dialog (graceful quit + restart with debug flag).
+      const det = await bridge.chromeDetect?.();
+      setChromeCount(Number(det?.count) || 0);
+      setChromeDialogOpen(true);
     } catch {
       setBrowserUseRealProfile(true);
+    }
+  };
+
+  const handleRelaunchChrome = async () => {
+    const bridge = (window as any).bridge;
+    if (!bridge?.chromeRelaunchWithDebug) return;
+    setQuittingChrome(true);
+    try {
+      const r = await bridge.chromeRelaunchWithDebug();
+      if (r?.ok) {
+        toast.success("Chrome đã restart với debug port — tabs cũ đang khôi phục.");
+        setBrowserUseRealProfile(true);
+        setChromeDialogOpen(false);
+      } else {
+        toast.error(r?.output ?? "Không relaunch được Chrome.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Không relaunch được Chrome.");
+    } finally {
+      setQuittingChrome(false);
     }
   };
 
@@ -428,18 +454,23 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
         </DialogFooter>
       </DialogContent>
 
-      {/* Quit-Chrome confirmation — shown when user enables "real profile" while Chrome is running. */}
+      {/* Relaunch-Chrome dialog — shown when "real profile" is enabled but CDP debug port is OFF. */}
       <AlertDialog open={chromeDialogOpen} onOpenChange={(o) => !quittingChrome && setChromeDialogOpen(o)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
-              Chrome đang chạy
+              Cần bật DevTools Protocol
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Phát hiện <strong>{chromeCount}</strong> tiến trình Chrome đang mở. Playwright cần truy cập độc quyền vào profile để dùng cookies & đăng nhập sẵn của bạn.
+              {chromeCount > 0 ? (
+                <>Phát hiện <strong>{chromeCount}</strong> tiến trình Chrome đang mở nhưng chưa bật debug port 9222.<br /><br /></>
+              ) : null}
+              Để AI mở <strong>tab mới trong Chrome thật</strong> của bạn (không phải đóng Chrome mỗi lần), cần khởi động Chrome một lần với cờ <code>--remote-debugging-port=9222</code>.
               <br /><br />
-              Nhấn <strong>Quit Chrome</strong> để thoát êm (lưu phiên làm việc), hoặc <strong>Force quit</strong> nếu Chrome không phản hồi.
+              Nhấn <strong>Mở lại Chrome</strong> để app tự đóng êm Chrome (lưu phiên), khởi động lại với debug port + tự khôi phục mọi tab cũ. Chỉ cần làm 1 lần.
+              <br /><br />
+              Nếu Chrome treo, dùng <strong>Force quit</strong> (sẽ mất tab chưa lưu).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-2">
@@ -453,10 +484,10 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             </Button>
             <AlertDialogAction
               disabled={quittingChrome}
-              onClick={(e) => { e.preventDefault(); handleQuitChrome(false); }}
+              onClick={(e) => { e.preventDefault(); handleRelaunchChrome(); }}
             >
               {quittingChrome ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Quit Chrome
+              Mở lại Chrome (debug port)
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
