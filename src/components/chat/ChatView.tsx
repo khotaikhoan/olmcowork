@@ -936,20 +936,27 @@ export function ChatView({
     }
   };
 
-  // ----- Retry a failed tool call -----
-  const handleRetryTool = async (messageId: string, callId: string) => {
+  // ----- Retry tool calls (single + bulk) -----
+  // Progress map for bulk retry — keyed by messageId so the bubble can show "Đang thử lại 2/5".
+  const [bulkRetry, setBulkRetry] = useState<Record<string, { current: number; total: number }>>({});
+
+  /**
+   * Re-run a single tool call by id. Updates local state, persists to DB, and logs activity.
+   * Returns whether the retry succeeded so callers (bulk) can decide what to do next.
+   */
+  const retrySingleCall = async (messageId: string, callId: string, opts: { silent?: boolean } = {}): Promise<boolean> => {
     const msg = messages.find((m) => m.id === messageId);
-    if (!msg || !msg.tool_calls) return;
+    if (!msg || !msg.tool_calls) return false;
     const call = msg.tool_calls.find((c) => c.id === callId);
-    if (!call) return;
+    if (!call) return false;
     const tool = TOOLS_BY_NAME[call.name];
     if (!tool) {
-      toast.error(`Không tìm thấy định nghĩa tool: ${call.name}`);
-      return;
+      if (!opts.silent) toast.error(`Không tìm thấy định nghĩa tool: ${call.name}`);
+      return false;
     }
     if (mode === "control" && !isActionAllowedInMode(mode, call.name, call.args)) {
-      toast.error("Hành động này không được phép trong chế độ hiện tại");
-      return;
+      if (!opts.silent) toast.error("Hành động này không được phép trong chế độ hiện tại");
+      return false;
     }
     const setStatus = (status: ToolCallRecord["status"], extra: Partial<ToolCallRecord> = {}) => {
       setMessages((prev) =>
@@ -967,7 +974,7 @@ export function ChatView({
       );
     };
     setStatus("running");
-    toast.info(`Đang chạy lại: ${call.name}`);
+    if (!opts.silent) toast.info(`Đang chạy lại: ${call.name}`);
     try {
       const r = await executeTool(call.name, call.args);
       const updated: Partial<ToolCallRecord> = {
@@ -994,10 +1001,42 @@ export function ChatView({
         conversation_id: conversationId ?? null,
         message_id: messageId,
       });
-      toast[r.ok ? "success" : "error"](r.ok ? "Chạy lại thành công" : "Vẫn lỗi");
+      if (!opts.silent) toast[r.ok ? "success" : "error"](r.ok ? "Chạy lại thành công" : "Vẫn lỗi");
+      return r.ok;
     } catch (e: any) {
       setStatus("error", { result: String(e?.message || e) });
-      toast.error(`Lỗi: ${e?.message || e}`);
+      if (!opts.silent) toast.error(`Lỗi: ${e?.message || e}`);
+      return false;
+    }
+  };
+
+  const handleRetryTool = (messageId: string, callId: string) => {
+    void retrySingleCall(messageId, callId);
+  };
+
+  /** Retry every failed tool call in a message, sequentially with progress feedback. */
+  const handleRetryAllFailed = async (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || !msg.tool_calls) return;
+    const failedIds = msg.tool_calls.filter((c) => c.status === "error").map((c) => c.id);
+    if (failedIds.length === 0) return;
+    let okCount = 0;
+    setBulkRetry((p) => ({ ...p, [messageId]: { current: 0, total: failedIds.length } }));
+    toast.info(`Bắt đầu chạy lại ${failedIds.length} tool lỗi…`);
+    try {
+      for (let i = 0; i < failedIds.length; i++) {
+        setBulkRetry((p) => ({ ...p, [messageId]: { current: i + 1, total: failedIds.length } }));
+        const ok = await retrySingleCall(messageId, failedIds[i], { silent: true });
+        if (ok) okCount++;
+      }
+      const failed = failedIds.length - okCount;
+      if (failed === 0) toast.success(`Tất cả ${okCount} tool đã chạy lại thành công`);
+      else toast.warning(`${okCount}/${failedIds.length} thành công, ${failed} vẫn lỗi`);
+    } finally {
+      setBulkRetry((p) => {
+        const { [messageId]: _omit, ...rest } = p;
+        return rest;
+      });
     }
   };
 
