@@ -189,6 +189,19 @@ export async function executeTool(
   if (name === "web_search") {
     return webSearchTool(String(args.query ?? ""), Number(args.limit) || undefined);
   }
+  if (name === "spawn_agent") {
+    // Lazy import to avoid circular dep (orchestrator imports tools).
+    const { spawnAgent } = await import("./agentOrchestrator");
+    const r = await spawnAgent({
+      name: String(args.name ?? "Sub-agent"),
+      goal: String(args.goal ?? ""),
+      tools: Array.isArray(args.tools) ? args.tools.map(String) : undefined,
+      model: args.model ? String(args.model) : undefined,
+      parentId: null,
+      depth: 0,
+    });
+    return { ok: r.ok, output: `[agent ${r.id.slice(0, 8)}] ${r.ok ? "completed" : "failed"}\n\n${r.output}` };
+  }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
 
