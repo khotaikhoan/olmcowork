@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useUpdater } from "@/hooks/useUpdater";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { toast } from "sonner";
 
 function fmtBytes(n: number): string {
   if (!n || n < 0) return "0 B";
@@ -35,6 +37,31 @@ function fmtEta(bytesLeft: number, bps: number): string {
 
 export function UpdateBadge() {
   const { status, busy, check, install, available } = useUpdater();
+  const autoInstalledRef = useRef(false);
+
+  // Auto-install when ready if user opted in (Settings → "Tự động cài bản update khi tải xong")
+  useEffect(() => {
+    if (status.state !== "ready" || autoInstalledRef.current) return;
+    const optedIn =
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("chat.auto_install_update") === "1";
+    if (!optedIn) return;
+    autoInstalledRef.current = true;
+    let cancelled = false;
+    const t = toast("Bản mới đã sẵn sàng", {
+      description: "App sẽ tự khởi động lại sau 5 giây để cài đặt…",
+      duration: 5000,
+      action: {
+        label: "Huỷ",
+        onClick: () => { cancelled = true; },
+      },
+    });
+    const timer = setTimeout(() => {
+      if (!cancelled) install();
+    }, 5000);
+    return () => { clearTimeout(timer); toast.dismiss(t); };
+  }, [status.state, install]);
+
   if (!available) return null;
 
   const v = status.currentVersion;
