@@ -7,7 +7,8 @@
 // skip planning entirely.
 
 import { chatOnce } from "./ollamaTools";
-import { chatOnceOpenAI, OpenAIMessage } from "./openai";
+import { streamChat } from "./ollama";
+import { chatOnceOpenAI, streamOpenAI, OpenAIMessage } from "./openai";
 
 export interface PlanStep {
   id: string;
