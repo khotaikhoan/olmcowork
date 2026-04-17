@@ -55,6 +55,8 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   };
 
   const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Bỏ qua Enter khi đang gõ IME (vd. tiếng Việt) để không bị submit + thừa ký tự
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return;
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
