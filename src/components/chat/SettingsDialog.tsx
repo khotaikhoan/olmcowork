@@ -156,6 +156,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             {[
               { icon: Clock, label: "Scheduled agents", desc: "Lên lịch tác nhân tự động", path: "/schedules" },
               { icon: ActivityIcon, label: "Nhật ký hoạt động", desc: "Lịch sử công cụ đã chạy", path: "/activity" },
+              { icon: ListChecks, label: "Lịch sử Plan", desc: "Các plan đã approve trong Control mode", path: "/plans" },
               { icon: Brain, label: "Bộ nhớ dài hạn", desc: "Sự kiện AI ghi nhớ về bạn", path: "/memories" },
             ].map(({ icon: Icon, label, desc, path }) => (
               <button
