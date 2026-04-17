@@ -53,7 +53,7 @@ export function ModeToggle({ value, onChange, disabled }: Props) {
                 !electron && "opacity-70",
               )}
             >
-              <Monitor className="h-3.5 w-3.5" /> Control
+              <Monitor className="h-3.5 w-3.5" /> <span className="hidden md:inline">Control</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">
