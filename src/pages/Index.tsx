@@ -236,7 +236,7 @@ export default function Index() {
         </Sheet>
       )}
 
-      {panelOpen && artifacts.length > 0 ? (
+      {panelOpen && (artifacts.length > 0 || hasAgents) ? (
         isMobile ? (
           // On mobile, stack chat and artifacts vertically (no resizable handles).
           <div className="flex-1 flex flex-col min-w-0">
