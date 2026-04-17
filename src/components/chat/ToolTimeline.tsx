@@ -8,6 +8,7 @@ interface Props {
   onReannotate?: () => void;
   /** Assistant message text that precedes these tool calls — used for "Why?" explainer */
   precedingText?: string;
+  onRetryTool?: (callId: string) => void;
 }
 
 interface Group {
