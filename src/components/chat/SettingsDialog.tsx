@@ -40,10 +40,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { pingOllama } from "@/lib/ollama";
 import { OPENAI_MODELS } from "@/lib/openai";
-import { useTheme, Theme } from "@/hooks/useTheme";
 import {
-  Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight, ListChecks,
-  Palette, Cpu, ShieldCheck, Laptop,
+  Clock, Activity as ActivityIcon, Brain, ChevronRight, ListChecks,
+  Cpu, ShieldCheck, Laptop,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
@@ -71,7 +70,6 @@ const LS_OPENAI_MODEL = "chat.openai_model";
 
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
   const nav = useNavigate();
   const goTo = (path: string) => {
     onOpenChange(false);
