@@ -1,4 +1,5 @@
-// Real bridge: dispatches to Electron's window.bridge if present, otherwise mock.
+// Bridge — dispatch Anthropic-style tools (computer / bash / text_editor)
+// xuống Electron IPC, hoặc fallback mock trong browser.
 import { mockExecute, ExecResult } from "./tools";
 
 export interface BridgeAPI {
@@ -28,8 +29,15 @@ export const isElectron = (): boolean =>
   typeof window !== "undefined" && !!window.bridge?.isElectron;
 
 export interface ToolExecResult extends ExecResult {
-  /** Base64-encoded PNG (no data: prefix), present for screenshot tool. */
   image?: string;
+}
+
+/**
+ * Read string-replace-once (text_editor.str_replace requires unique match).
+ */
+async function readForEdit(b: BridgeAPI, path: string): Promise<string | null> {
+  const r = await b.readFile(path);
+  return r.ok ? r.output : null;
 }
 
 export async function executeTool(
@@ -37,32 +45,71 @@ export async function executeTool(
   args: Record<string, any>,
 ): Promise<ToolExecResult> {
   const b = typeof window !== "undefined" ? window.bridge : undefined;
-  if (!b) {
-    // Browser → mock
-    return mockExecute(name, args);
+  if (!b) return mockExecute(name, args);
+
+  if (name === "bash") {
+    return b.runShell(String(args.command ?? ""));
   }
-  switch (name) {
-    case "read_file":
-      return b.readFile(String(args.path ?? ""));
-    case "list_dir":
-      return b.listDir(String(args.path ?? ""));
-    case "write_file":
-      return b.writeFile(String(args.path ?? ""), String(args.content ?? ""));
-    case "run_shell":
-      return b.runShell(String(args.command ?? ""));
-    case "screenshot": {
-      const r = await b.screenshot();
-      return { ok: r.ok, output: r.output, image: r.image };
+
+  if (name === "text_editor") {
+    const action = String(args.action ?? "");
+    const path = String(args.path ?? "");
+    switch (action) {
+      case "view":
+        return b.readFile(path);
+      case "list_dir":
+        return b.listDir(path);
+      case "create":
+        return b.writeFile(path, String(args.file_text ?? ""));
+      case "str_replace": {
+        const cur = await readForEdit(b, path);
+        if (cur === null) return { ok: false, output: `Cannot read ${path} for editing` };
+        const oldStr = String(args.old_str ?? "");
+        const newStr = String(args.new_str ?? "");
+        const occurrences = cur.split(oldStr).length - 1;
+        if (occurrences === 0) return { ok: false, output: `old_str not found in ${path}` };
+        if (occurrences > 1)
+          return {
+            ok: false,
+            output: `old_str matched ${occurrences} times in ${path}; provide a more unique snippet.`,
+          };
+        const next = cur.replace(oldStr, newStr);
+        return b.writeFile(path, next);
+      }
+      default:
+        return { ok: false, output: `Unknown text_editor action: ${action}` };
     }
-    case "mouse_move":
-      return b.mouseMove(Number(args.x), Number(args.y));
-    case "mouse_click":
-      return b.mouseClick(Number(args.x), Number(args.y), args.button);
-    case "type_text":
-      return b.typeText(String(args.text ?? ""));
-    case "key_press":
-      return b.keyPress(String(args.key ?? ""));
-    default:
-      return { ok: false, output: `Unknown tool: ${name}` };
   }
+
+  if (name === "computer") {
+    const action = String(args.action ?? "");
+    const coord: number[] = Array.isArray(args.coordinate) ? args.coordinate : [];
+    const [x, y] = [Number(coord[0]), Number(coord[1])];
+    switch (action) {
+      case "screenshot": {
+        const r = await b.screenshot();
+        return { ok: r.ok, output: r.output, image: r.image };
+      }
+      case "mouse_move":
+        return b.mouseMove(x, y);
+      case "left_click":
+        return b.mouseClick(x, y, "left");
+      case "right_click":
+        return b.mouseClick(x, y, "right");
+      case "middle_click":
+        return b.mouseClick(x, y, "middle");
+      case "double_click": {
+        await b.mouseClick(x, y, "left");
+        return b.mouseClick(x, y, "left");
+      }
+      case "type":
+        return b.typeText(String(args.text ?? ""));
+      case "key":
+        return b.keyPress(String(args.key ?? ""));
+      default:
+        return { ok: false, output: `Unknown computer action: ${action}` };
+    }
+  }
+
+  return { ok: false, output: `Unknown tool: ${name}` };
 }
