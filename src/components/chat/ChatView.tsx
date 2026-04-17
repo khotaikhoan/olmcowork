@@ -414,6 +414,16 @@ export function ChatView({
     for (let step = 0; step < MAX_STEPS; step++) {
       setAgentStep({ current: step + 1, max: MAX_STEPS });
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      // Phase 6: drain pending child reports → inject so the root agent reacts.
+      const reports = drainRootReports();
+      if (reports.length > 0) {
+        working.push({
+          role: "user",
+          content: reports
+            .map((m) => `[REPORT from ${m.fromName} (${m.fromId.slice(0, 8)})]\n${m.text}`)
+            .join("\n\n"),
+        });
+      }
       const resp = await chatOnce(ollamaUrl, model, working, ollamaTools, signal);
 
       // No tool calls → final answer
@@ -540,6 +550,16 @@ export function ChatView({
     for (let step = 0; step < MAX_STEPS; step++) {
       setAgentStep({ current: step + 1, max: MAX_STEPS });
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
+      // Phase 6: drain pending child reports → inject so the root agent reacts.
+      const reports = drainRootReports();
+      if (reports.length > 0) {
+        working.push({
+          role: "user",
+          content: reports
+            .map((m) => `[REPORT from ${m.fromName} (${m.fromId.slice(0, 8)})]\n${m.text}`)
+            .join("\n\n"),
+        });
+      }
       const resp = await chatOnceOpenAI(openaiModel, working, oaiTools, signal);
 
       if (!resp.tool_calls || resp.tool_calls.length === 0) {
