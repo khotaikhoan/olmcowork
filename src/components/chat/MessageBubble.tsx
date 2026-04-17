@@ -90,7 +90,13 @@ export function MessageBubble({
             ))}
           </div>
         )}
-        {toolCalls && toolCalls.length > 0 && <ToolTimeline calls={toolCalls} onReannotate={onReannotate} />}
+        {toolCalls && toolCalls.length > 0 && (
+          <ToolTimeline
+            calls={toolCalls}
+            onReannotate={onReannotate}
+            precedingText={!isUser ? content : undefined}
+          />
+        )}
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
