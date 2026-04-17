@@ -138,12 +138,31 @@ export default function Index() {
       onTitleUpdated={() => setRefreshKey((k) => k + 1)}
       onArtifactsChange={setArtifacts}
       onArtifactOpen={openArtifact}
+      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : undefined}
+    />
+  );
+
+  const sidebarNode = (
+    <ConversationList
+      selectedId={(id) => id}
+      onSelect={(id) => {
+        setSelectedId(id);
+        if (isMobile) setSidebarOpen(false);
+      }}
+      onNew={() => {
+        setSelectedId(null);
+        if (isMobile) setSidebarOpen(false);
+      }}
+      refreshKey={refreshKey}
+      onOpenSettings={() => setSettingsOpen(true)}
+      {...({ selectedId } as any)}
     />
   );
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background">
-      {sidebarOpen && (
+      {/* Desktop sidebar */}
+      {!isMobile && sidebarOpen && (
         <ConversationList
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -152,22 +171,60 @@ export default function Index() {
           onOpenSettings={() => setSettingsOpen(true)}
         />
       )}
+      {/* Mobile sidebar in a Sheet */}
+      {isMobile && (
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent side="left" className="p-0 w-[85vw] max-w-sm">
+            <ConversationList
+              selectedId={selectedId}
+              onSelect={(id) => {
+                setSelectedId(id);
+                setSidebarOpen(false);
+              }}
+              onNew={() => {
+                setSelectedId(null);
+                setSidebarOpen(false);
+              }}
+              refreshKey={refreshKey}
+              onOpenSettings={() => {
+                setSettingsOpen(true);
+                setSidebarOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {panelOpen && artifacts.length > 0 ? (
-        <ResizablePanelGroup direction="horizontal" className="flex-1">
-          <ResizablePanel defaultSize={55} minSize={30}>
-            {chatNode}
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={45} minSize={25} maxSize={70}>
-            <ArtifactsPanel
-              artifacts={artifacts}
-              activeId={activeArtifactId}
-              onSelect={setActiveArtifactId}
-              onClose={() => setPanelOpen(false)}
-            />
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        isMobile ? (
+          // On mobile, stack chat and artifacts vertically (no resizable handles).
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 min-h-0">{chatNode}</div>
+            <div className="h-[45vh] border-t border-border">
+              <ArtifactsPanel
+                artifacts={artifacts}
+                activeId={activeArtifactId}
+                onSelect={setActiveArtifactId}
+                onClose={() => setPanelOpen(false)}
+              />
+            </div>
+          </div>
+        ) : (
+          <ResizablePanelGroup direction="horizontal" className="flex-1">
+            <ResizablePanel defaultSize={55} minSize={30}>
+              {chatNode}
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={45} minSize={25} maxSize={70}>
+              <ArtifactsPanel
+                artifacts={artifacts}
+                activeId={activeArtifactId}
+                onSelect={setActiveArtifactId}
+                onClose={() => setPanelOpen(false)}
+              />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )
       ) : (
         chatNode
       )}
