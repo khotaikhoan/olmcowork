@@ -402,7 +402,7 @@ export function ChatView({
             acc += chunk;
             setStreamingText(acc);
           },
-          onError: (err) => toast.error("Stream error: " + err.message),
+          onError: (err) => toast.error("Lỗi luồng: " + err.message),
         });
         finalContent = acc;
       }
@@ -456,7 +456,7 @@ export function ChatView({
     setToolsEnabled(false);
     setStreamingText("");
     setStreamingToolCalls([]);
-    toast.error("Kill switch activated — agent stopped, auto-approvals revoked, tools disabled.");
+    toast.error("Đã kích hoạt dừng khẩn — tác nhân dừng, thu hồi quyền tự duyệt, tắt công cụ.");
   };
 
   const killArmed = isStreaming || !!pending || Object.keys(autoApprove).length > 0 || toolsEnabled;
@@ -500,7 +500,7 @@ export function ChatView({
       try {
         const r = await b.stopOllama();
         if (r.ok) {
-          toast.info(`Ollama auto-stopped after ${autoStopMinutes}m idle (RAM freed).`);
+          toast.info(`Đã tự dừng Ollama sau ${autoStopMinutes} phút không hoạt động (đã giải phóng RAM).`);
           setBridgeOnline(false);
           setModels([]);
         }
@@ -533,13 +533,13 @@ export function ChatView({
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
         <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
         <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
-          Computer-use tools {isElectron() ? "(live)" : "(mock — open in Electron for real bridge)"}
+          Công cụ điều khiển máy {isElectron() ? "(thật)" : "(giả lập — mở trong Electron để dùng thật)"}
         </Label>
         <Switch id="tools-switch" checked={toolsEnabled} onCheckedChange={setToolsEnabled} />
         <span className="text-xs text-muted-foreground">
           {toolsEnabled
-            ? `${TOOLS.length} tools available • ${requireConfirm ? "Confirm before run" : "Auto-run low/medium"}`
-            : "Toggle on to let the AI request tool calls"}
+            ? `${TOOLS.length} công cụ khả dụng • ${requireConfirm ? "Xác nhận trước khi chạy" : "Tự chạy mức thấp/trung bình"}`
+            : "Bật để cho phép AI yêu cầu công cụ"}
         </span>
       </div>
 
@@ -551,15 +551,15 @@ export function ChatView({
                 <div className="h-14 w-14 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-4">
                   <Bot className="h-7 w-7 text-primary-foreground" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-2">Chat with your local AI</h2>
+                <h2 className="text-2xl font-semibold mb-2">Trò chuyện với AI cục bộ</h2>
                 <p className="text-muted-foreground max-w-md">
-                  Pick a model from the dropdown above and start a conversation. Enable
-                  computer-use tools to let the AI read files, run commands, and more.
+                  Chọn model ở khung phía trên và bắt đầu cuộc trò chuyện. Bật công cụ điều khiển máy
+                  để cho phép AI đọc tệp, chạy lệnh và nhiều hơn nữa.
                 </p>
                 {!bridgeOnline && (
                   <p className="text-sm text-destructive mt-4 max-w-md">
-                    Can't reach Ollama at <code className="px-1 bg-muted rounded">{ollamaUrl}</code>.
-                    Make sure it's running with <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code>.
+                    Không kết nối được Ollama tại <code className="px-1 bg-muted rounded">{ollamaUrl}</code>.
+                    Hãy đảm bảo nó đang chạy với <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code>.
                   </p>
                 )}
               </div>

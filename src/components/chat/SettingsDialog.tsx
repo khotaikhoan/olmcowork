@@ -63,7 +63,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     const ok = await pingOllama(url);
     setStatus(ok ? "ok" : "fail");
     toast[ok ? "success" : "error"](
-      ok ? "Connected to Ollama" : "Cannot reach Ollama (check OLLAMA_ORIGINS=*)",
+      ok ? "Đã kết nối Ollama" : "Không kết nối được Ollama (kiểm tra OLLAMA_ORIGINS=*)",
     );
   };
 
@@ -81,7 +81,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     const { error } = await supabase.from("user_settings").upsert(payload);
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Settings saved");
+    toast.success("Đã lưu cài đặt");
     onSaved({
       ollama_url: url,
       default_model: model || null,
@@ -96,44 +96,44 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>Cài đặt</DialogTitle>
           <DialogDescription>
-            Configure your local Ollama connection. To allow browser access, start Ollama with{" "}
+            Cấu hình kết nối tới Ollama trên máy bạn. Để cho phép trình duyệt truy cập, khởi động Ollama bằng{" "}
             <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="url">Ollama URL</Label>
+            <Label htmlFor="url">URL Ollama</Label>
             <div className="flex gap-2">
               <Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} />
               <Button variant="outline" onClick={test}>
-                Test
+                Kiểm tra
               </Button>
             </div>
-            {status === "ok" && <p className="text-xs text-[hsl(var(--success))]">Connected ✓</p>}
-            {status === "fail" && <p className="text-xs text-destructive">Connection failed</p>}
+            {status === "ok" && <p className="text-xs text-[hsl(var(--success))]">Đã kết nối ✓</p>}
+            {status === "fail" && <p className="text-xs text-destructive">Kết nối thất bại</p>}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="model">Default model (optional)</Label>
+            <Label htmlFor="model">Model mặc định (tuỳ chọn)</Label>
             <Input
               id="model"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="e.g. llama3.1:8b"
+              placeholder="vd. llama3.1:8b"
             />
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label>Require confirmation for risky tool calls</Label>
+              <Label>Yêu cầu xác nhận với công cụ rủi ro</Label>
               <p className="text-xs text-muted-foreground">
-                Used in Phase 2 (computer use). Recommended: ON.
+                Dùng cho công cụ điều khiển máy. Khuyến nghị: BẬT.
               </p>
             </div>
             <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="auto-stop">Auto-stop Ollama after idle (minutes)</Label>
+            <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
             <Input
               id="auto-stop"
               type="number"
@@ -143,14 +143,14 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
               onChange={(e) => setAutoStopMinutes(Math.max(0, Number(e.target.value) || 0))}
             />
             <p className="text-xs text-muted-foreground">
-              0 = disabled. Only works in the desktop app. Timer resets on each message.
+              0 = tắt. Chỉ hoạt động trong ứng dụng desktop. Bộ đếm reset mỗi khi gửi tin nhắn.
             </p>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <Label>Auto-start Ollama on first message</Label>
+              <Label>Tự khởi động Ollama khi gửi tin nhắn</Label>
               <p className="text-xs text-muted-foreground">
-                If Ollama is stopped, automatically start it before sending. Desktop app only.
+                Nếu Ollama đang dừng, tự khởi động trước khi gửi. Chỉ trong ứng dụng desktop.
               </p>
             </div>
             <Switch checked={autoStart} onCheckedChange={setAutoStart} />
@@ -158,10 +158,10 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
+            Huỷ
           </Button>
           <Button onClick={save} disabled={busy}>
-            Save
+            Lưu
           </Button>
         </DialogFooter>
       </DialogContent>
