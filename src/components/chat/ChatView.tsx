@@ -35,6 +35,8 @@ import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
 import { setOculoState } from "@/components/OculoLogo";
 import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
+import { isArmed, arm, requiresArmed } from "@/lib/armed";
+import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap } from "lucide-react";
 
 interface DbMessage {
