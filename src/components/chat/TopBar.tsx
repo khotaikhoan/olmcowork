@@ -33,6 +33,8 @@ import {
 import { UpdateBadge } from "./UpdateBadge";
 import { TokenMeter } from "./TokenMeter";
 import { CostMeter } from "./CostMeter";
+import { ModeToggle } from "./ModeToggle";
+import type { ConversationMode } from "@/lib/tools";
 
 interface Props {
   title: string;
@@ -62,6 +64,8 @@ interface Props {
   onExport: (format: "markdown" | "json") => void;
   canExport: boolean;
   onToggleSidebar?: () => void;
+  mode: ConversationMode;
+  onModeChange: (m: ConversationMode) => void;
 }
 
 
@@ -100,6 +104,8 @@ export function TopBar({
   onExport,
   canExport,
   onToggleSidebar,
+  mode,
+  onModeChange,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0 overflow-x-auto">
@@ -119,6 +125,7 @@ export function TopBar({
         onChange={(e) => onTitleChange(e.target.value)}
         className="h-8 w-32 sm:max-w-xs sm:w-auto border-0 bg-transparent font-medium text-base focus-visible:ring-1 shrink"
       />
+      <ModeToggle value={mode} onChange={onModeChange} />
       <div className="flex-1" />
 
       <Select value={model} onValueChange={onModelChange}>

@@ -58,6 +58,7 @@ export type Database = {
           branch_of_message_id: string | null
           created_at: string
           id: string
+          mode: Database["public"]["Enums"]["conversation_mode"]
           model: string | null
           system_prompt: string | null
           title: string
@@ -68,6 +69,7 @@ export type Database = {
           branch_of_message_id?: string | null
           created_at?: string
           id?: string
+          mode?: Database["public"]["Enums"]["conversation_mode"]
           model?: string | null
           system_prompt?: string | null
           title?: string
@@ -78,6 +80,7 @@ export type Database = {
           branch_of_message_id?: string | null
           created_at?: string
           id?: string
+          mode?: Database["public"]["Enums"]["conversation_mode"]
           model?: string | null
           system_prompt?: string | null
           title?: string
@@ -257,6 +260,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      conversation_mode: "chat" | "control"
       job_type: "local" | "cloud"
     }
     CompositeTypes: {
@@ -385,6 +389,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      conversation_mode: ["chat", "control"],
       job_type: ["local", "cloud"],
     },
   },

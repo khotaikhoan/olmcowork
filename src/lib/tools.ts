@@ -126,9 +126,63 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
   TOOLS.map((t) => [t.name, t]),
 );
 
+/**
+ * Conversation modes:
+ *  - "chat": pure conversation, optionally read-only inspection (text_editor.view/list_dir).
+ *           No mouse/keyboard/bash/file mutation. Safe in browser.
+ *  - "control": full computer-use suite (computer, vision_click, bash, text_editor mutations).
+ *           Requires Electron desktop bridge.
+ */
+export type ConversationMode = "chat" | "control";
+
+/** Names of tools allowed in Chat mode (read-only inspection only). */
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor"]);
+
+/**
+ * Filter the tool registry by mode. In chat mode we still expose `text_editor`
+ * but downstream callers (executeTool) must reject any non-view actions.
+ */
+export function toolsForMode(mode: ConversationMode): ToolDef[] {
+  if (mode === "control") return TOOLS;
+  // Chat mode: only read-only text_editor (view + list_dir). We narrow the
+  // schema to make that explicit to the model.
+  return TOOLS.filter((t) => CHAT_MODE_TOOL_NAMES.has(t.name)).map((t) => {
+    if (t.name !== "text_editor") return t;
+    return {
+      ...t,
+      description:
+        "Read-only file inspection. Use 'view' to read a file or 'list_dir' to list a directory. Mutations are disabled in chat mode.",
+      parameters: {
+        ...t.parameters,
+        properties: {
+          ...t.parameters.properties,
+          action: {
+            type: "string",
+            enum: ["view", "list_dir"],
+            description: "view=read file; list_dir=list directory entries.",
+          },
+        },
+        required: ["action", "path"],
+      },
+    };
+  });
+}
+
+/** True if a given (tool, action) is permitted in the given mode. */
+export function isActionAllowedInMode(
+  mode: ConversationMode,
+  name: string,
+  args: Record<string, any>,
+): boolean {
+  if (mode === "control") return true;
+  if (name !== "text_editor") return false;
+  const a = String(args.action ?? "");
+  return a === "view" || a === "list_dir";
+}
+
 /** OpenAI/Ollama "function" tool format. */
-export function toOllamaTools() {
-  return TOOLS.map((t) => ({
+export function toOllamaTools(mode: ConversationMode = "control") {
+  return toolsForMode(mode).map((t) => ({
     type: "function" as const,
     function: {
       name: t.name,
