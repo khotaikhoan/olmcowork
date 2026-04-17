@@ -18,13 +18,15 @@ interface Props {
  * accessibility mark. Clicking a mark sends a real `vision_click` through the
  * Electron bridge (left-click). Shift+click → right-click. Alt+click → middle.
  */
-export function VisionMarksOverlay({ image, marks, onClicked }: Props) {
+export function VisionMarksOverlay({ image, marks, onClicked, onReannotate }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const [scale, setScale] = useState(1);
   const [hover, setHover] = useState<number | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [keyBuffer, setKeyBuffer] = useState("");
   const electron = isElectron();
 
   useEffect(() => {
@@ -36,6 +38,13 @@ export function VisionMarksOverlay({ image, marks, onClicked }: Props) {
     ro.observe(wrapRef.current);
     return () => ro.disconnect();
   }, [natural]);
+
+  // Clear key buffer after 800ms of inactivity
+  useEffect(() => {
+    if (!keyBuffer) return;
+    const t = setTimeout(() => setKeyBuffer(""), 800);
+    return () => clearTimeout(t);
+  }, [keyBuffer]);
 
   const triggerClick = async (
     markId: number,
@@ -55,6 +64,10 @@ export function VisionMarksOverlay({ image, marks, onClicked }: Props) {
           { description: res.output?.slice(0, 120) },
         );
         onClicked?.(markId, button);
+        // Auto re-annotate after a small delay so the UI has time to update
+        if (onReannotate) {
+          setTimeout(() => onReannotate(), 600);
+        }
       } else {
         toast.error(`Click #${markId} thất bại`, { description: res.output });
       }
@@ -64,6 +77,53 @@ export function VisionMarksOverlay({ image, marks, onClicked }: Props) {
       });
     } finally {
       setBusy(null);
+    }
+  };
+
+  // Keyboard navigation: type 1-99 to click that mark; Tab cycles
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!electron) return;
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const ids = marks.map((m) => m.id).sort((a, b) => a - b);
+      if (ids.length === 0) return;
+      const cur = hover ?? ids[0];
+      const idx = ids.indexOf(cur);
+      const next = e.shiftKey
+        ? ids[(idx - 1 + ids.length) % ids.length]
+        : ids[(idx + 1) % ids.length];
+      setHover(next);
+      return;
+    }
+    if (e.key === "Enter" && hover !== null) {
+      e.preventDefault();
+      const button: "left" | "right" | "middle" = e.shiftKey
+        ? "right"
+        : e.altKey
+          ? "middle"
+          : "left";
+      void triggerClick(hover, button);
+      return;
+    }
+    if (/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+      const next = (keyBuffer + e.key).slice(-2);
+      setKeyBuffer(next);
+      const id = Number(next);
+      const exact = marks.find((m) => m.id === id);
+      if (exact) {
+        setHover(id);
+        // If a 2-digit number that matches, click immediately
+        if (next.length === 2) {
+          setKeyBuffer("");
+          const button: "left" | "right" | "middle" = e.shiftKey
+            ? "right"
+            : e.altKey
+              ? "middle"
+              : "left";
+          void triggerClick(id, button);
+        }
+      }
     }
   };
 
