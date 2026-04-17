@@ -216,6 +216,45 @@ export function TopBar({
         {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
 
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onOpenSearch}
+        title="Tìm trong chat (⌘/Ctrl+F)"
+        className="h-8 w-8"
+      >
+        <Search className="h-3.5 w-3.5" />
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!canExport}
+            title="Xuất hội thoại"
+            className="h-8 w-8"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onExport("markdown")}>
+            <FileText className="h-3.5 w-3.5 mr-2" /> Markdown (.md)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onExport("json")}>
+            <FileJson className="h-3.5 w-3.5 mr-2" /> JSON (.json)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <CostMeter
+        model={costModel}
+        inputTokens={inputTokens}
+        outputTokens={outputTokens}
+        totalCostUsd={totalCostUsd}
+      />
+
       <TokenMeter
         totalTokens={totalTokens}
         lastReplyTokens={lastReplyTokens}
