@@ -16,10 +16,15 @@ import { TOOLS_BY_NAME, isActionAllowedInMode, type ConversationMode } from "./t
 import { executeTool } from "./bridge";
 import { chatOnce, type OllamaChatMessage, type OllamaTool } from "./ollamaTools";
 import { chatOnceOpenAI, type OpenAIMessage, type OpenAITool } from "./openai";
+import { logActivity } from "./activityLog";
 
 export const MAX_CONCURRENT = 3;
 export const MAX_DEPTH = 2;
 export const SUB_AGENT_MAX_STEPS = 10;
+
+// Phase 7: scratchpad limits
+export const SCRATCHPAD_MAX_VALUE_BYTES = 10 * 1024; // 10KB / key
+export const SCRATCHPAD_MAX_KEYS = 50;               // 50 keys / scope
 
 /** Sentinel parent id used when a top-level (root) sub-agent reports back —
  *  the user's main ChatView agent is the parent but has no AgentNode. */
