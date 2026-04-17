@@ -1322,6 +1322,9 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
     }
   } catch (e) {
     return { ok: false, output: `browser.${action} failed: ${e?.message ?? String(e)}` };
+  } finally {
+    // Clear after a tiny delay so the overlay can show the last action briefly.
+    setTimeout(() => emitBrowserAction(null), 600);
   }
 });
 
