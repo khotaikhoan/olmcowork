@@ -1305,7 +1305,7 @@ export function ChatView({
       />
 
       {mode === "control" ? (
-        <div className="border-b border-border bg-[hsl(var(--warning)/0.08)] px-4 py-2 flex items-center gap-3 flex-wrap">
+        <div className="border-b border-border bg-[hsl(var(--warning)/0.08)] px-4 py-2 flex items-center gap-3 flex-wrap relative z-10">
           <Wrench className="h-3.5 w-3.5 text-warning" />
           <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
             Công cụ điều khiển máy {isElectron() ? "(thật)" : "(giả lập — mở trong desktop app để dùng thật)"}
