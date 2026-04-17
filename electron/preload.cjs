@@ -36,6 +36,11 @@ contextBridge.exposeInMainWorld("bridge", {
     ipcRenderer.on("browser:status", listener);
     return () => ipcRenderer.removeListener("browser:status", listener);
   },
+  onBrowserAction: (cb) => {
+    const listener = (_e, payload) => cb(payload);
+    ipcRenderer.on("browser:action", listener);
+    return () => ipcRenderer.removeListener("browser:action", listener);
+  },
   // Phase 4: Deep system access (armed-mode required at the renderer layer)
   sudoShell: (command) => invoke("bridge:sudo_shell", { command }),
   runScript: (language, script) => invoke("bridge:run_script", { language, script }),

@@ -160,6 +160,8 @@ export interface BridgeAPI {
   chromeQuit?: (force?: boolean) => Promise<ExecResult & { remaining?: number }>;
   /** Subscribe to browser status changes (launch/shutdown). Returns unsubscribe fn. */
   onBrowserStatus?: (cb: (s: { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }) => void) => () => void;
+  /** Subscribe to the current human-readable Playwright action (e.g. "click submit button"). */
+  onBrowserAction?: (cb: (a: { label: string | null; ts: number }) => void) => () => void;
   /** Phase 4: sudo shell — biometric/password prompt every call, no caching. */
   sudoShell?: (command: string) => Promise<ExecResult>;
   /** Phase 4: AppleScript / PowerShell / bash. */
