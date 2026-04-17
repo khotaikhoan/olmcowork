@@ -69,7 +69,7 @@ export async function chatOnce(
     return out;
   });
 
-  const body: any = { model, messages: sanitized, stream: false };
+  const body: any = { model, messages: sanitized, stream: false, options: { num_ctx: 2048 } };
   if (useTools) body.tools = tools;
 
   let res = await fetch(url, {
@@ -85,7 +85,7 @@ export async function chatOnce(
     const errMsg = extractError(txt);
     if (res.status === 400 && /does not support tools/i.test(errMsg)) {
       modelsWithoutToolSupport.add(model);
-      const retryBody = { model, messages: sanitized, stream: false };
+      const retryBody = { model, messages: sanitized, stream: false, options: { num_ctx: 2048 } };
       res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
