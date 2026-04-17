@@ -796,6 +796,7 @@ export function ChatView({
       }
 
       setIsStreaming(false);
+      setAgentStep(null);
       abortRef.current = null;
       const elapsedSec = Math.max(0.001, (performance.now() - streamStartRef.current) / 1000);
       const replyTokens = estimateTokens(finalContent);
@@ -823,6 +824,7 @@ export function ChatView({
       notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
     } catch (e: any) {
       setIsStreaming(false);
+      setAgentStep(null);
       if (e.name !== "AbortError") toast.error(e.message);
     }
   };
@@ -830,12 +832,31 @@ export function ChatView({
   const stop = () => {
     abortRef.current?.abort();
     setIsStreaming(false);
+    setAgentStep(null);
     // Cancel any pending approval
     if (pending) {
       pending.resolve({ approve: false, alwaysAllow: false });
       setPending(null);
     }
   };
+
+  // Esc khi đang stream → dừng ngay (đặc biệt quan trọng cho Full Auto)
+  useEffect(() => {
+    if (!isStreaming) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const t = e.target as HTMLElement;
+        // Ignore Esc khi đang trong input/textarea (để khỏi cướp khỏi Radix dialog)
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+        e.preventDefault();
+        stop();
+        toast.message("Đã dừng tác nhân");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
 
   const killSwitch = () => {
     abortRef.current?.abort();
