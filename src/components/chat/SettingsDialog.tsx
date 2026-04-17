@@ -156,9 +156,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
-          {/* Quick links to management pages */}
-          <div className="space-y-1.5 rounded-md border border-border p-2">
+        <div className="py-1 max-h-[70vh] overflow-y-auto pr-1">
+          {/* Quick links to management pages — luôn hiện trên cùng */}
+          <div className="space-y-1 rounded-md border border-border p-2 mb-3">
             <Label className="px-1.5 text-xs text-muted-foreground uppercase tracking-wider">
               Quản lý
             </Label>
@@ -184,136 +184,185 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             ))}
           </div>
 
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <Label>Giao diện</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { v: "light" as Theme, label: "Sáng", Icon: Sun },
-                { v: "dark" as Theme, label: "Tối", Icon: Moon },
-                { v: "system" as Theme, label: "Hệ thống", Icon: Monitor },
-              ]).map(({ v, label, Icon }) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setTheme(v)}
-                  className={
-                    "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors " +
-                    (theme === v
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border hover:bg-muted/50 text-muted-foreground")
-                  }
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2 rounded-md border border-border p-3">
-            <Label>Nhà cung cấp AI</Label>
-            <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>
-                <SelectItem value="openai">OpenAI (đám mây)</SelectItem>
-              </SelectContent>
-            </Select>
-            {provider === "openai" && (
-              <div className="pt-2 space-y-2">
-                <Label>Model OpenAI</Label>
-                <Select value={openaiModel} onValueChange={setOpenaiModel}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {OPENAI_MODELS.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Key đã lưu an toàn ở máy chủ. Tin nhắn sẽ gọi qua hàm <code>openai-chat</code>.
-                </p>
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="url">URL Ollama</Label>
-            <div className="flex gap-2">
-              <Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} />
-              <Button variant="outline" onClick={test}>
-                Kiểm tra
-              </Button>
-            </div>
-            {status === "ok" && <p className="text-xs text-[hsl(var(--success))]">Đã kết nối ✓</p>}
-            {status === "fail" && <p className="text-xs text-destructive">Kết nối thất bại</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="model">Model mặc định (tuỳ chọn)</Label>
-            <Input
-              id="model"
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              placeholder="vd. llama3.1:8b"
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Yêu cầu xác nhận với công cụ rủi ro</Label>
-              <p className="text-xs text-muted-foreground">
-                Dùng cho công cụ điều khiển máy. Khuyến nghị: BẬT.
-              </p>
-            </div>
-            <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
-          </div>
+          <Accordion type="multiple" defaultValue={["ai"]} className="space-y-2">
+            {/* ── Giao diện ─────────────────────────────────────────── */}
+            <AccordionItem value="appearance" className="border rounded-md px-3">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Palette className="h-4 w-4 text-muted-foreground" /> Giao diện
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { v: "light" as Theme, label: "Sáng", Icon: Sun },
+                    { v: "dark" as Theme, label: "Tối", Icon: Moon },
+                    { v: "system" as Theme, label: "Hệ thống", Icon: Monitor },
+                  ]).map(({ v, label, Icon }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setTheme(v)}
+                      className={
+                        "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors " +
+                        (theme === v
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border hover:bg-muted/50 text-muted-foreground")
+                      }
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
-          {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
-          <FullAutoToggle />
-          <div className="space-y-2">
-            <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
-            <Input
-              id="auto-stop"
-              type="number"
-              min={0}
-              max={1440}
-              value={autoStopMinutes}
-              onChange={(e) => setAutoStopMinutes(Math.max(0, Number(e.target.value) || 0))}
-            />
-            <p className="text-xs text-muted-foreground">
-              0 = tắt. Chỉ hoạt động trong ứng dụng desktop. Bộ đếm reset mỗi khi gửi tin nhắn.
-            </p>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Tự khởi động Ollama khi gửi tin nhắn</Label>
-              <p className="text-xs text-muted-foreground">
-                Nếu Ollama đang dừng, tự khởi động trước khi gửi. Chỉ trong ứng dụng desktop.
-              </p>
-            </div>
-            <Switch checked={autoStart} onCheckedChange={setAutoStart} />
-          </div>
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <Label>Trình duyệt hiển thị (headful)</Label>
-              <p className="text-xs text-muted-foreground">
-                Tắt = headless (ngầm, nhanh). Bật = mở cửa sổ Chrome để bạn xem AI làm gì. Đổi xong sẽ relaunch ở lần dùng tiếp theo.
-              </p>
-            </div>
-            <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
-          </div>
-          <div className="flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <Label>Tự động cài bản update khi tải xong</Label>
-              <p className="text-xs text-muted-foreground">
-                Khi BẬT: app sẽ tự khởi động lại để cài bản mới ngay sau khi tải xong (không cần bấm nút). Có thông báo trước 5 giây để bạn huỷ. Chỉ trong ứng dụng desktop.
-              </p>
-            </div>
-            <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
-          </div>
+            {/* ── AI & Model ─────────────────────────────────────────── */}
+            <AccordionItem value="ai" className="border rounded-md px-3">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Cpu className="h-4 w-4 text-muted-foreground" /> AI &amp; Model
+                  <span className="text-xs font-normal text-muted-foreground">
+                    · {provider === "openai" ? "OpenAI" : "Ollama"}
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pb-3">
+                <div className="space-y-2">
+                  <Label>Nhà cung cấp AI</Label>
+                  <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>
+                      <SelectItem value="openai">OpenAI (đám mây)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {provider === "openai" && (
+                  <div className="space-y-2">
+                    <Label>Model OpenAI</Label>
+                    <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {OPENAI_MODELS.map((m) => (
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Key đã lưu an toàn ở máy chủ. Tin nhắn sẽ gọi qua hàm <code>openai-chat</code>.
+                    </p>
+                  </div>
+                )}
+
+                {provider === "ollama" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="url">URL Ollama</Label>
+                      <div className="flex gap-2">
+                        <Input id="url" value={url} onChange={(e) => setUrl(e.target.value)} />
+                        <Button variant="outline" onClick={test}>Kiểm tra</Button>
+                      </div>
+                      {status === "ok" && <p className="text-xs text-[hsl(var(--success))]">Đã kết nối ✓</p>}
+                      {status === "fail" && <p className="text-xs text-destructive">Kết nối thất bại</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="model">Model mặc định (tuỳ chọn)</Label>
+                      <Input
+                        id="model"
+                        value={model}
+                        onChange={(e) => setModel(e.target.value)}
+                        placeholder="vd. llama3.1:8b"
+                      />
+                    </div>
+                  </>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* ── An toàn & Tự động hoá ──────────────────────────────── */}
+            <AccordionItem value="safety" className="border rounded-md px-3">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" /> An toàn &amp; Tự động hoá
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pb-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Yêu cầu xác nhận với công cụ rủi ro</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Dùng cho công cụ điều khiển máy. Khuyến nghị: BẬT.
+                    </p>
+                  </div>
+                  <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
+                </div>
+                {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
+                <FullAutoToggle />
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* ── Desktop app ────────────────────────────────────────── */}
+            <AccordionItem value="desktop" className="border rounded-md px-3">
+              <AccordionTrigger className="hover:no-underline py-3">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Laptop className="h-4 w-4 text-muted-foreground" /> Desktop app
+                  <span className="text-xs font-normal text-muted-foreground">
+                    · Ollama, trình duyệt, update
+                  </span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-4 pb-3">
+                <div className="space-y-2">
+                  <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
+                  <Input
+                    id="auto-stop"
+                    type="number"
+                    min={0}
+                    max={1440}
+                    value={autoStopMinutes}
+                    onChange={(e) => setAutoStopMinutes(Math.max(0, Number(e.target.value) || 0))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    0 = tắt. Bộ đếm reset mỗi khi gửi tin nhắn.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Tự khởi động Ollama khi gửi tin nhắn</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Nếu Ollama đang dừng, tự khởi động trước khi gửi.
+                    </p>
+                  </div>
+                  <Switch checked={autoStart} onCheckedChange={setAutoStart} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Trình duyệt hiển thị (headful)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Tắt = headless (ngầm, nhanh). Bật = mở cửa sổ Chrome để xem AI làm gì.
+                    </p>
+                  </div>
+                  <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Tự động cài bản update khi tải xong</Label>
+                    <p className="text-xs text-muted-foreground">
+                      App tự khởi động lại để cài bản mới ngay sau khi tải. Có thông báo trước 5 giây để huỷ.
+                    </p>
+                  </div>
+                  <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
