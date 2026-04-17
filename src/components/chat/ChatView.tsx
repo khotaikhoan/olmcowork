@@ -919,6 +919,8 @@ export function ChatView({
         contextWindow={contextWindow}
         contextWindowSource={contextWindowSource}
         onToggleSidebar={onToggleSidebar}
+        mode={mode}
+        onModeChange={handleModeChange}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
