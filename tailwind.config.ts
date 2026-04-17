@@ -13,6 +13,15 @@ export default {
       },
     },
     extend: {
+      transitionTimingFunction: {
+        spring: "cubic-bezier(0.32, 0.72, 0, 1)",
+        emphasized: "cubic-bezier(0.2, 0.9, 0.1, 1.05)",
+        standard: "cubic-bezier(0.4, 0, 0.2, 1)",
+        DEFAULT: "cubic-bezier(0.32, 0.72, 0, 1)",
+      },
+      transitionDuration: {
+        DEFAULT: "220ms",
+      },
       fontFamily: {
         sans: ["var(--font-sans)"],
         serif: ["var(--font-serif)"],
@@ -106,11 +115,11 @@ export default {
         },
       },
       animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.25s ease-out",
-        "scale-in": "scale-in 0.18s ease-out",
-        "slide-in-bottom": "slide-in-bottom 0.3s ease-out",
+        "accordion-down": "accordion-down 0.24s cubic-bezier(0.32, 0.72, 0, 1)",
+        "accordion-up": "accordion-up 0.24s cubic-bezier(0.32, 0.72, 0, 1)",
+        "fade-in": "fade-in 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        "scale-in": "scale-in 0.22s cubic-bezier(0.32, 0.72, 0, 1)",
+        "slide-in-bottom": "slide-in-bottom 0.34s cubic-bezier(0.32, 0.72, 0, 1)",
         "shimmer": "shimmer 2.2s linear infinite",
         "blink": "blink 1s ease-in-out infinite",
       },
