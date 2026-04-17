@@ -252,6 +252,20 @@ export function ChatView({
     try { localStorage.setItem("chat.agentId", agentId); } catch { /* ignore */ }
   }, [agentId]);
 
+  // Phase 5: keep the multi-agent orchestrator in sync with the active
+  // provider/model/mode so spawn_agent calls run with the right settings
+  // and inherit the parent's allowed tool list.
+  useEffect(() => {
+    configureOrchestrator({
+      provider,
+      ollamaUrl,
+      defaultOllamaModel: model,
+      openaiModel,
+      mode,
+      parentTools: toolsForMode(mode).map((t) => t.name),
+    });
+  }, [provider, ollamaUrl, model, openaiModel, mode]);
+
   // Load top memories once per user (and refresh when conversation changes)
   useEffect(() => {
     if (!user) return;
