@@ -266,6 +266,18 @@ export function ChatView({
         if (r?.app) setLockedApp(r.app);
       } catch { /* ignore */ }
     }
+    // Phase 2: warn if entering Control with a non-vision Ollama model — observe_screen will be blind.
+    if (
+      next === "control" &&
+      provider === "ollama" &&
+      model &&
+      !modelSupportsVision(model)
+    ) {
+      toast.warning(
+        `Model "${model}" không có vision — observe_screen sẽ chỉ thấy danh sách marks (không phân tích được pixel). Đề xuất: llava, qwen2.5vl, llama3.2-vision, gemma3.`,
+        { duration: 8000 },
+      );
+    }
     if (next === "chat") setLockedApp(null);
     if (conversationId) {
       await supabase
