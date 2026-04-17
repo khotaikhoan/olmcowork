@@ -1371,6 +1371,21 @@ export function ChatView({
           setPending(null);
         }}
       />
+
+      <ArmRequestDialog
+        open={!!armRequest}
+        toolName={armRequest?.toolName ?? null}
+        reason={armRequest?.reason}
+        onApprove={() => {
+          arm();
+          armRequest?.resolve(true);
+          setArmRequest(null);
+        }}
+        onDeny={() => {
+          armRequest?.resolve(false);
+          setArmRequest(null);
+        }}
+      />
     </div>
   );
 }
