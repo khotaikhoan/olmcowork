@@ -89,6 +89,33 @@ Deno.serve(async (req) => {
       ? favicon
       : new URL(favicon, u.origin).toString();
 
+    // Extract readable body text: strip <script>/<style>/<noscript>, then tags, decode entities.
+    const cleaned = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<!--[\s\S]*?-->/g, " ");
+    // Prefer <main>/<article> if present (cuts nav/footer noise).
+    const mainMatch =
+      cleaned.match(/<main[^>]*>([\s\S]*?)<\/main>/i)?.[1] ??
+      cleaned.match(/<article[^>]*>([\s\S]*?)<\/article>/i)?.[1] ??
+      cleaned.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] ??
+      cleaned;
+    const text = mainMatch
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+      .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)))
+      .replace(/\s+/g, " ")
+      .trim();
+    const MAX_BODY = 4096;
+    const body = text.length > MAX_BODY ? text.slice(0, MAX_BODY) + "…" : text;
+
     return new Response(
       JSON.stringify({
         url: u.toString(),
@@ -96,6 +123,8 @@ Deno.serve(async (req) => {
         description: description.slice(0, 300),
         image: image ?? null,
         favicon: faviconAbs,
+        body,
+        bodyTruncated: text.length > MAX_BODY,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
