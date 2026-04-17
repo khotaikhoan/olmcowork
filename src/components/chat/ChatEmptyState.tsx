@@ -49,6 +49,26 @@ export function ChatEmptyState({
   );
   const electron = isElectron();
 
+  // Behavior learning: hide suggestions for power users (10+ messages sent),
+  // but respect any manual override the user has saved.
+  const messageCount = (() => {
+    try { return parseInt(localStorage.getItem(LS_MSG_COUNT) || "0", 10) || 0; }
+    catch { return 0; }
+  })();
+  const manualOverride = (() => {
+    try { return localStorage.getItem(LS_SHOW_SUGGESTIONS); }
+    catch { return null; }
+  })();
+  const isPowerUser = messageCount >= POWER_USER_THRESHOLD;
+  const initialShow = manualOverride === null ? !isPowerUser : manualOverride === "1";
+  const [showSuggestions, setShowSuggestions] = useState(initialShow);
+
+  const toggleSuggestions = () => {
+    const next = !showSuggestions;
+    setShowSuggestions(next);
+    try { localStorage.setItem(LS_SHOW_SUGGESTIONS, next ? "1" : "0"); } catch { /* ignore */ }
+  };
+
   return (
     <div className="flex flex-col items-center text-center py-6 md:py-8 animate-fade-in max-w-3xl mx-auto px-4">
       {/* Compact hero — saves ~40% vertical space vs before */}
