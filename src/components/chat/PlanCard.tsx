@@ -99,6 +99,7 @@ export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, on
               key={s.id}
               className={cn(
                 "group flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted/40",
+                "animate-in fade-in slide-in-from-left-2 duration-300",
                 editingId === s.id && "bg-muted/40",
               )}
             >
