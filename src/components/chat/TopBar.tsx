@@ -6,12 +6,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
-import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2, Cpu, MemoryStick } from "lucide-react";
+import {
+  Wifi,
+  WifiOff,
+  Sparkles,
+  OctagonX,
+  Power,
+  Loader2,
+  Cpu,
+  MemoryStick,
+  Search,
+  Download,
+  FileJson,
+  FileText,
+} from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
 import { TokenMeter } from "./TokenMeter";
+import { CostMeter } from "./CostMeter";
 
 interface Props {
   title: string;
@@ -29,9 +49,23 @@ interface Props {
   onToggleOllama: () => void;
   running: RunningModel[];
   totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalCostUsd: number;
+  costModel: string;
   lastReplyTokens?: number;
   tokensPerSecond?: number;
+  onOpenSearch: () => void;
+  onExport: (format: "markdown" | "json") => void;
+  canExport: boolean;
 }
+
+const PRESETS: Record<string, string> = {
+  "Mặc định": "",
+  "Lập trình viên": "Bạn là một kỹ sư phần mềm chuyên nghiệp. Viết code sạch, đúng chuẩn và giải thích ngắn gọn bằng tiếng Việt.",
+  "Người viết": "Bạn là trợ lý viết lách tinh tế. Cải thiện sự rõ ràng, giọng văn và mạch lạc. Phản hồi bằng tiếng Việt.",
+  "Điều khiển máy": "Bạn là tác nhân điều khiển máy tính cẩn trọng. Lập kế hoạch ngắn, hỏi trước hành động rủi ro, giải thích từng bước bằng tiếng Việt.",
+};
 
 const PRESETS: Record<string, string> = {
   "Mặc định": "",
