@@ -33,6 +33,10 @@ import {
   Clock,
   CloudCog,
   Monitor,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { isElectron } from "@/lib/bridge";
@@ -46,6 +50,7 @@ interface Job {
   job_type: "local" | "cloud";
   enabled: boolean;
   last_run_at: string | null;
+  next_run_at: string | null;
   tools_enabled: boolean;
 }
 
@@ -73,6 +78,14 @@ export default function Schedules() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Job | null>(null);
+  const [filter, setFilter] = useState<"all" | "cloud" | "local">("all");
+  const [now, setNow] = useState(() => Date.now());
+
+  // tick clock for countdowns
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Form
   const [name, setName] = useState("");
@@ -101,7 +114,27 @@ export default function Schedules() {
   };
 
   useEffect(() => {
-    if (user) load();
+    if (!user) return;
+    load();
+
+    // Realtime: push job_runs as they happen (insert/update)
+    const channel = supabase
+      .channel("schedules-runs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "job_runs", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "scheduled_jobs", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const reset = () => {
@@ -210,6 +243,42 @@ export default function Schedules() {
   const runsByJob = (jobId: string) =>
     runs.filter((r) => r.job_id === jobId).slice(0, 3);
 
+  const filteredJobs = jobs.filter((j) => filter === "all" || j.job_type === filter);
+
+  function formatCountdown(iso: string | null): string {
+    if (!iso) return "—";
+    const diff = new Date(iso).getTime() - now;
+    if (diff <= 0) return "sắp chạy";
+    const min = Math.floor(diff / 60_000);
+    if (min < 60) return `trong ${min}m`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `trong ${h}h ${min % 60}m`;
+    const d = Math.floor(h / 24);
+    return `trong ${d}d ${h % 24}h`;
+  }
+
+  function StatusPill({ status }: { status: string }) {
+    if (status === "ok" || status === "success")
+      return (
+        <Badge className="bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.2)] border-0 text-[10px] gap-1">
+          <CheckCircle2 className="h-2.5 w-2.5" /> ok
+        </Badge>
+      );
+    if (status === "error" || status === "failed")
+      return (
+        <Badge variant="destructive" className="text-[10px] gap-1">
+          <XCircle className="h-2.5 w-2.5" /> error
+        </Badge>
+      );
+    if (status === "running")
+      return (
+        <Badge className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] gap-1">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" /> running
+        </Badge>
+      );
+    return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-3 flex items-center gap-3">
@@ -217,6 +286,22 @@ export default function Schedules() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-lg font-semibold">Scheduled Agents</h1>
+        <div className="ml-4 flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/30">
+          {(["all", "cloud", "local"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={
+                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors " +
+                (filter === f
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {f === "all" ? "Tất cả" : f}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -322,16 +407,17 @@ export default function Schedules() {
 
       <ScrollArea className="h-[calc(100vh-64px)]">
         <div className="max-w-3xl mx-auto p-6 space-y-3">
-          {jobs.length === 0 && (
+          {filteredJobs.length === 0 && (
             <Card className="p-8 text-center text-muted-foreground">
-              Chưa có job nào. Tạo job đầu tiên hoặc dùng{" "}
-              <code>/schedule</code> trong chat.
+              {jobs.length === 0
+                ? <>Chưa có job nào. Tạo job đầu tiên hoặc dùng <code>/schedule</code> trong chat.</>
+                : <>Không có job nào ở mục "{filter}".</>}
             </Card>
           )}
-          {jobs.map((j) => {
+          {filteredJobs.map((j) => {
             const recent = runsByJob(j.id);
             return (
-              <Card key={j.id} className="p-4">
+              <Card key={j.id} className="p-4 hover:shadow-[var(--shadow-elevated)] transition-shadow">
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -341,7 +427,13 @@ export default function Schedules() {
                       >
                         {j.name}
                       </button>
-                      <Badge variant={j.enabled ? "default" : "secondary"}>
+                      <Badge
+                        className={
+                          j.enabled
+                            ? "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.2)] border-0"
+                            : "bg-muted text-muted-foreground border-0"
+                        }
+                      >
                         {j.enabled ? "ON" : "OFF"}
                       </Badge>
                       <Badge variant="outline" className="gap-1">
@@ -356,6 +448,12 @@ export default function Schedules() {
                         <Clock className="h-3 w-3" />
                         {j.cron}
                       </Badge>
+                      {j.enabled && j.next_run_at && (
+                        <Badge variant="outline" className="gap-1 text-primary border-primary/30">
+                          <Timer className="h-3 w-3" />
+                          {formatCountdown(j.next_run_at)}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
                       {j.prompt}
@@ -365,24 +463,18 @@ export default function Schedules() {
                         {recent.map((r) => (
                           <details
                             key={r.id}
-                            className="text-xs border border-border rounded px-2 py-1"
+                            className="text-xs border border-border rounded px-2 py-1 hover:bg-muted/30 transition-colors"
                           >
                             <summary className="cursor-pointer flex items-center gap-2">
-                              <Badge
-                                variant={
-                                  r.status === "ok"
-                                    ? "default"
-                                    : r.status === "error"
-                                      ? "destructive"
-                                      : "secondary"
-                                }
-                                className="text-[10px]"
-                              >
-                                {r.status}
-                              </Badge>
+                              <StatusPill status={r.status} />
                               <span className="text-muted-foreground">
                                 {new Date(r.started_at).toLocaleString()}
                               </span>
+                              {r.finished_at && (
+                                <span className="text-muted-foreground/70 text-[10px]">
+                                  ({Math.round((new Date(r.finished_at).getTime() - new Date(r.started_at).getTime()) / 1000)}s)
+                                </span>
+                              )}
                             </summary>
                             <pre className="mt-1 whitespace-pre-wrap break-words text-[11px]">
                               {r.error ?? r.output ?? "(no output)"}

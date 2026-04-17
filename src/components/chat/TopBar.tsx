@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
 import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2, Cpu, MemoryStick } from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
+import { TokenMeter } from "./TokenMeter";
 
 interface Props {
   title: string;
@@ -27,6 +28,9 @@ interface Props {
   ollamaBusy: boolean;
   onToggleOllama: () => void;
   running: RunningModel[];
+  totalTokens: number;
+  lastReplyTokens?: number;
+  tokensPerSecond?: number;
 }
 
 const PRESETS: Record<string, string> = {
@@ -51,6 +55,9 @@ export function TopBar({
   ollamaBusy,
   onToggleOllama,
   running,
+  totalTokens,
+  lastReplyTokens,
+  tokensPerSecond,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
@@ -173,6 +180,12 @@ export function TopBar({
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
         {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
+
+      <TokenMeter
+        totalTokens={totalTokens}
+        lastReplyTokens={lastReplyTokens}
+        tokensPerSecond={tokensPerSecond}
+      />
 
       <UpdateBadge />
 

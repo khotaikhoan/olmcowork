@@ -15,8 +15,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Bot, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
+import { ChatEmptyState } from "./ChatEmptyState";
+import { AgentPreset } from "@/lib/presets";
+import { estimateTokens } from "./TokenMeter";
 
 interface DbMessage {
   id: string;
@@ -72,6 +75,8 @@ export function ChatView({
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
+  const streamStartRef = useRef<number>(0);
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
@@ -293,6 +298,7 @@ export function ChatView({
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
         if (result.image) record.image = result.image;
+        if ((result as any).marks) record.marks = (result as any).marks;
         setStreamingToolCalls([...allCalls]);
 
         working.push({
@@ -385,6 +391,7 @@ export function ChatView({
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
         if (result.image) record.image = result.image;
+        if ((result as any).marks) record.marks = (result as any).marks;
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
@@ -495,6 +502,7 @@ export function ChatView({
       setIsStreaming(true);
       setStreamingText("");
       setStreamingToolCalls([]);
+      streamStartRef.current = performance.now();
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -565,6 +573,9 @@ export function ChatView({
 
       setIsStreaming(false);
       abortRef.current = null;
+      const elapsedSec = Math.max(0.001, (performance.now() - streamStartRef.current) / 1000);
+      const replyTokens = estimateTokens(finalContent);
+      setLastReplyStats({ tokens: replyTokens, tps: replyTokens / elapsedSec });
 
       if (finalContent || savedCalls.length) {
         const { data: aMsg } = await supabase
@@ -684,6 +695,9 @@ export function ChatView({
         ollamaBusy={ollamaBusy}
         onToggleOllama={toggleOllama}
         running={running}
+        totalTokens={messages.reduce((s, m) => s + estimateTokens(m.content), 0) + estimateTokens(streamingText)}
+        lastReplyTokens={lastReplyStats?.tokens}
+        tokensPerSecond={lastReplyStats?.tps}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
@@ -703,22 +717,21 @@ export function ChatView({
         <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
             {messages.length === 0 && !streamingText && !streamingToolCalls.length && (
-              <div className="flex flex-col items-center justify-center text-center py-24">
-                <div className="h-14 w-14 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-4">
-                  <Bot className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <h2 className="text-2xl font-semibold mb-2">Trò chuyện với AI cục bộ</h2>
-                <p className="text-muted-foreground max-w-md">
-                  Chọn model ở khung phía trên và bắt đầu cuộc trò chuyện. Bật công cụ điều khiển máy
-                  để cho phép AI đọc tệp, chạy lệnh và nhiều hơn nữa.
-                </p>
-                {!bridgeOnline && (
-                  <p className="text-sm text-destructive mt-4 max-w-md">
-                    Không kết nối được Ollama tại <code className="px-1 bg-muted rounded">{ollamaUrl}</code>.
-                    Hãy đảm bảo nó đang chạy với <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code>.
-                  </p>
-                )}
-              </div>
+              <ChatEmptyState
+                bridgeOnline={bridgeOnline}
+                ollamaUrl={ollamaUrl}
+                onPickPrompt={(p) => send(p, [])}
+                onPickPreset={(preset: AgentPreset) => {
+                  setSystemPrompt(preset.systemPrompt);
+                  setToolsEnabled(preset.toolsEnabled);
+                  // Pick model: prefer preset's first matching available model
+                  if (provider === "ollama" && preset.preferOllama) {
+                    const m = models.find((x) => x.name.includes(preset.preferOllama!));
+                    if (m) setModel(m.name);
+                  }
+                  toast.success(`Đã chọn preset: ${preset.name}`);
+                }}
+              />
             )}
             {messages.map((m) => (
               <MessageBubble
