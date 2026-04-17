@@ -26,6 +26,7 @@ import { OPENAI_MODELS } from "@/lib/openai";
 import { useTheme, Theme } from "@/hooks/useTheme";
 import { Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { FullAutoToggle } from "./FullAutoToggle";
 
 export type Provider = "ollama" | "openai";
 
@@ -249,6 +250,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             </div>
             <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
           </div>
+
+          {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
+          <FullAutoToggle />
           <div className="space-y-2">
             <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
             <Input

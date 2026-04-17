@@ -34,6 +34,8 @@ import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv
 import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
 import { setOculoState } from "@/components/OculoLogo";
+import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
+import { Zap } from "lucide-react";
 
 interface DbMessage {
   id: string;
@@ -128,6 +130,12 @@ export function ChatView({
     steps: PlanStep[];
     loading: boolean;
   } | null>(null);
+
+  // Full Auto mode — synced from localStorage via subscribeFullAuto
+  const [fullAuto, setFullAutoState] = useState<boolean>(getFullAuto());
+  // Agent step counter (visible in topbar badge while looping)
+  const [agentStep, setAgentStep] = useState<{ current: number; max: number } | null>(null);
+  useEffect(() => subscribeFullAuto(setFullAutoState), []);
 
   // ----- Ollama health + models -----
   useEffect(() => {
@@ -334,9 +342,14 @@ export function ChatView({
     return data.id;
   };
 
-  // Ask user to approve a tool call
+  // Ask user to approve a tool call.
+  // In Full Auto mode: bypass ALL prompts (kể cả high-risk) — Esc để dừng loop.
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>((resolve) => {
+      if (fullAuto) {
+        resolve({ approve: true, alwaysAllow: false });
+        return;
+      }
       const risk = effectiveRisk(tool.name, args);
       if (!requireConfirm && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
@@ -358,9 +371,11 @@ export function ChatView({
     const allCalls: ToolCallRecord[] = [];
     const ollamaTools = toOllamaTools(mode);
     let working = [...history];
-    const MAX_STEPS = 8;
+    const MAX_STEPS = fullAuto ? FULL_AUTO_MAX_STEPS : NORMAL_MAX_STEPS;
 
     for (let step = 0; step < MAX_STEPS; step++) {
+      setAgentStep({ current: step + 1, max: MAX_STEPS });
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const resp = await chatOnce(ollamaUrl, model, working, ollamaTools, signal);
 
       // No tool calls → final answer
@@ -473,9 +488,11 @@ export function ChatView({
       function: { name: t.name, description: t.description, parameters: t.parameters },
     }));
     let working = [...history];
-    const MAX_STEPS = 8;
+    const MAX_STEPS = fullAuto ? FULL_AUTO_MAX_STEPS : NORMAL_MAX_STEPS;
 
     for (let step = 0; step < MAX_STEPS; step++) {
+      setAgentStep({ current: step + 1, max: MAX_STEPS });
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const resp = await chatOnceOpenAI(openaiModel, working, oaiTools, signal);
 
       if (!resp.tool_calls || resp.tool_calls.length === 0) {
@@ -779,6 +796,7 @@ export function ChatView({
       }
 
       setIsStreaming(false);
+      setAgentStep(null);
       abortRef.current = null;
       const elapsedSec = Math.max(0.001, (performance.now() - streamStartRef.current) / 1000);
       const replyTokens = estimateTokens(finalContent);
@@ -806,6 +824,7 @@ export function ChatView({
       notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
     } catch (e: any) {
       setIsStreaming(false);
+      setAgentStep(null);
       if (e.name !== "AbortError") toast.error(e.message);
     }
   };
@@ -813,12 +832,31 @@ export function ChatView({
   const stop = () => {
     abortRef.current?.abort();
     setIsStreaming(false);
+    setAgentStep(null);
     // Cancel any pending approval
     if (pending) {
       pending.resolve({ approve: false, alwaysAllow: false });
       setPending(null);
     }
   };
+
+  // Esc khi đang stream → dừng ngay (đặc biệt quan trọng cho Full Auto)
+  useEffect(() => {
+    if (!isStreaming) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        const t = e.target as HTMLElement;
+        // Ignore Esc khi đang trong input/textarea (để khỏi cướp khỏi Radix dialog)
+        if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+        e.preventDefault();
+        stop();
+        toast.message("Đã dừng tác nhân");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming]);
 
   const killSwitch = () => {
     abortRef.current?.abort();
@@ -829,6 +867,7 @@ export function ChatView({
       setPending(null);
     }
     setAutoApprove({});
+    setAgentStep(null);
     setToolsEnabled(false);
     setStreamingText("");
     setStreamingToolCalls([]);
@@ -1180,6 +1219,27 @@ export function ChatView({
           currentIndex={searchIndex}
           onNavigate={navigateSearch}
         />
+        {/* Full Auto agent step badge — pinned top center while loop runs */}
+        {agentStep && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 animate-fade-in">
+            <div
+              className={
+                "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-[var(--shadow-soft)] backdrop-blur " +
+                (fullAuto
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-background/80 text-muted-foreground")
+              }
+            >
+              {fullAuto && <Zap className="h-3.5 w-3.5 fill-current" />}
+              <span>
+                {fullAuto ? "Full Auto" : "Agent"} · Bước {agentStep.current}/{agentStep.max}
+              </span>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-background/60 border border-border font-mono text-[10px]">
+                Esc
+              </kbd>
+            </div>
+          </div>
+        )}
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
