@@ -62,6 +62,8 @@ function variant(call: ToolCallRecord) {
     if (a === "str_replace") return { kind: "edit" as const, icon: Pencil, label: "edit file" };
     return { kind: "view" as const, icon: FileText, label: a };
   }
+  if (call.name === "fetch_url") return { kind: "url" as const, icon: Globe, label: "fetch url" };
+  if (call.name === "web_search") return { kind: "search" as const, icon: Search, label: "web search" };
   return { kind: "generic" as const, icon: Wrench, label: call.name };
 }
 
