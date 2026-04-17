@@ -150,6 +150,13 @@ export function ChatView({
     });
   }, [conversationId]);
 
+  // Sync user's headless preference to Electron bridge on mount.
+  // Default: visible window (false) so user can watch the AI driving Chrome.
+  useEffect(() => {
+    const headless = localStorage.getItem("chat.browser_headless") === "true";
+    (window as any).bridge?.browserSetHeadless?.(headless).catch(() => {});
+  }, []);
+
   // ----- Ollama health + models -----
   useEffect(() => {
     let alive = true;
