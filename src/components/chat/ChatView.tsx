@@ -409,7 +409,7 @@ export function ChatView({
   const [ollamaBusy, setOllamaBusy] = useState(false);
   const canControlOllama = isElectron();
   const toggleOllama = async () => {
-    const b = window.bridge;
+    const b = (window as any).bridge;
     if (!b?.startOllama || !b?.stopOllama) return;
     setOllamaBusy(true);
     try {
