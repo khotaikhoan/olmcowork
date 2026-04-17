@@ -46,8 +46,11 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
+import { isElectron } from "@/lib/bridge";
 
 export type Provider = "ollama" | "openai";
+
+const IS_DESKTOP = isElectron();
 
 interface Props {
   open: boolean;
@@ -75,9 +78,11 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     onOpenChange(false);
     nav(path);
   };
-  const [provider, setProvider] = useState<Provider>(
-    (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
-  );
+  const [provider, setProvider] = useState<Provider>(() => {
+    const saved = (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama";
+    // Web preview không gọi được Ollama → ép sang openai.
+    return !IS_DESKTOP && saved === "ollama" ? "openai" : saved;
+  });
   const [openaiModel, setOpenaiModel] = useState<string>(
     localStorage.getItem(LS_OPENAI_MODEL) || "gpt-4o-mini",
   );
@@ -307,10 +312,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>
+                      {IS_DESKTOP && <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>}
                       <SelectItem value="openai">OpenAI (đám mây)</SelectItem>
                     </SelectContent>
                   </Select>
+                  {!IS_DESKTOP && (
+                    <p className="text-xs text-muted-foreground">
+                      Ollama chỉ hoạt động trong Desktop app. Web preview chỉ hỗ trợ OpenAI.
+                    </p>
+                  )}
                 </div>
 
                 {provider === "openai" && (
