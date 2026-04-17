@@ -967,7 +967,23 @@ async function ensurePwPage() {
     pwPages.push(page);
     pwActiveIdx = pwPages.length - 1;
   }
+  emitBrowserStatus();
   return page;
+}
+
+function emitBrowserStatus() {
+  try {
+    const active = !!pwContext;
+    const url = active ? (pwActivePage()?.url() ?? null) : null;
+    const tabs = active ? pwPages.filter((p) => p && !p.isClosed()).length : 0;
+    win?.webContents.send("browser:status", {
+      active,
+      url,
+      tabs,
+      headless: pwHeadless,
+      useRealProfile: pwUseRealProfile,
+    });
+  } catch { /* ignore */ }
 }
 
 async function pwShutdown() {
@@ -978,7 +994,26 @@ async function pwShutdown() {
   pwContext = null;
   pwBrowser = null;
   pwPersistent = false;
+  emitBrowserStatus();
 }
+
+ipcMain.handle("bridge:browser_status", async () => {
+  const active = !!pwContext;
+  return {
+    ok: true,
+    output: active ? "active" : "idle",
+    active,
+    url: active ? (pwActivePage()?.url() ?? null) : null,
+    tabs: active ? pwPages.filter((p) => p && !p.isClosed()).length : 0,
+    headless: pwHeadless,
+    useRealProfile: pwUseRealProfile,
+  };
+});
+
+ipcMain.handle("bridge:browser_close", async () => {
+  await pwShutdown();
+  return { ok: true, output: "Browser closed by user." };
+});
 
 ipcMain.handle("bridge:browser_set_headless", async (_e, { headless }) => {
   const next = !!headless;

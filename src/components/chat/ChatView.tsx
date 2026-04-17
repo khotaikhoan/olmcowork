@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
 import { ControlBarCompact, ControlBarFull } from "./ControlBar";
+import { BrowserActiveOverlay } from "./BrowserActiveOverlay";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
@@ -1289,6 +1290,7 @@ export function ChatView({
 
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">
+      <BrowserActiveOverlay />
       <TopBar
         title={title}
         models={models}
