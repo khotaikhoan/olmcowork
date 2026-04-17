@@ -462,12 +462,18 @@ export function ChatView({
           content: result.output,
         });
 
-        // Vision flow: screenshot → feed image back to model
-        const isScreenshot = tc.function.name === "computer" && args.action === "screenshot";
-        if (isScreenshot && result.ok && result.image) {
+        // Vision flow: screenshot OR observe_screen → feed image back to model
+        const isVisionCapture =
+          (tc.function.name === "computer" && args.action === "screenshot") ||
+          tc.function.name === "observe_screen";
+        if (isVisionCapture && result.ok && result.image) {
+          const note =
+            tc.function.name === "observe_screen"
+              ? "[Screen observation attached] Use the marks list above + image to pick next vision_click(mark_id) or computer.* action."
+              : "[Screenshot attached] Analyze what you see and continue the task.";
           working.push({
             role: "user",
-            content: "[Screenshot attached] Analyze what you see and continue the task.",
+            content: note,
             images: [result.image],
           });
         }
@@ -560,13 +566,19 @@ export function ChatView({
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
 
-        // Vision: screenshot → send back as image_url
-        const isScreenshot = tc.function.name === "computer" && args.action === "screenshot";
-        if (isScreenshot && result.ok && result.image) {
+        // Vision: screenshot OR observe_screen → send back as image_url
+        const isVisionCapture =
+          (tc.function.name === "computer" && args.action === "screenshot") ||
+          tc.function.name === "observe_screen";
+        if (isVisionCapture && result.ok && result.image) {
+          const note =
+            tc.function.name === "observe_screen"
+              ? "[Screen observation attached] Use marks list + image to choose next vision_click(mark_id) or computer.* action."
+              : "[Screenshot attached] Analyze what you see and continue the task.";
           working.push({
             role: "user",
             content: [
-              { type: "text", text: "[Screenshot attached] Analyze what you see and continue the task." },
+              { type: "text", text: note },
               { type: "image_url", image_url: { url: `data:image/png;base64,${result.image}` } },
             ],
           });
