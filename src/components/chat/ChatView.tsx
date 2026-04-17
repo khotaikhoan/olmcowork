@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
-import { OllamaModel, listModels, pingOllama, streamChat } from "@/lib/ollama";
+import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
@@ -46,6 +46,7 @@ export function ChatView({
 }: Props) {
   const { user } = useAuth();
   const [models, setModels] = useState<OllamaModel[]>([]);
+  const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [messages, setMessages] = useState<DbMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
@@ -81,6 +82,8 @@ export function ChatView({
           setModels(m);
           setModel((prev) => prev || defaultModel || m[0]?.name || "");
         } catch {}
+      } else {
+        setRunning([]);
       }
     };
     refresh();
@@ -90,6 +93,19 @@ export function ChatView({
       clearInterval(interval);
     };
   }, [ollamaUrl, defaultModel]);
+
+  // ----- Running models (RAM/VRAM) poll -----
+  useEffect(() => {
+    if (!bridgeOnline) return;
+    let alive = true;
+    const tick = async () => {
+      const r = await listRunning(ollamaUrl);
+      if (alive) setRunning(r);
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => { alive = false; clearInterval(id); };
+  }, [bridgeOnline, ollamaUrl]);
 
   // ----- Load conversation -----
   useEffect(() => {
@@ -475,6 +491,7 @@ export function ChatView({
         canControlOllama={canControlOllama}
         ollamaBusy={ollamaBusy}
         onToggleOllama={toggleOllama}
+        running={running}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
