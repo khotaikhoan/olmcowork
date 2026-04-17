@@ -86,6 +86,13 @@ export function TopBar({
   totalTokens,
   lastReplyTokens,
   tokensPerSecond,
+  inputTokens,
+  outputTokens,
+  totalCostUsd,
+  costModel,
+  onOpenSearch,
+  onExport,
+  canExport,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
