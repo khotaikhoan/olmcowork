@@ -31,6 +31,7 @@ interface Props {
   defaultModel: string | null;
   requireConfirm: boolean;
   autoStopMinutes: number;
+  autoStart: boolean;
   onCreated: (id: string) => void;
   onTitleUpdated: () => void;
 }
@@ -41,6 +42,7 @@ export function ChatView({
   defaultModel,
   requireConfirm,
   autoStopMinutes,
+  autoStart,
   onCreated,
   onTitleUpdated,
 }: Props) {
