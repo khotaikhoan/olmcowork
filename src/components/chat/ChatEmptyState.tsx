@@ -1,4 +1,5 @@
-import { Bot, MessageSquare, Monitor } from "lucide-react";
+import { MessageSquare, Monitor } from "lucide-react";
+import { OculoLogo } from "@/components/OculoLogo";
 import { AGENT_PRESETS, AgentPreset } from "@/lib/presets";
 import { Button } from "@/components/ui/button";
 import type { ConversationMode } from "@/lib/tools";
@@ -45,7 +46,7 @@ export function ChatEmptyState({
   return (
     <div className="flex flex-col items-center justify-center text-center py-16 animate-fade-in max-w-3xl mx-auto">
       <div className="h-16 w-16 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-5 shadow-[var(--shadow-elevated)]">
-        <Bot className="h-8 w-8 text-primary-foreground" />
+        <OculoLogo size={36} withGradient={false} className="text-primary-foreground" />
       </div>
       <h2 className="text-3xl font-serif font-semibold mb-2 tracking-tight">
         Sẵn sàng trợ giúp bạn

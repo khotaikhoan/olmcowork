@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Bot, User, Check, X, RotateCw, Loader2 } from "lucide-react";
+import { User, Check, X, RotateCw, Loader2 } from "lucide-react";
+import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ToolTimeline } from "./ToolTimeline";
@@ -82,7 +83,7 @@ export function MessageBubble({
             : "bg-[image:var(--gradient-primary)] text-primary-foreground",
         )}
       >
-        {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
+        {isUser ? <User className="h-4 w-4" /> : <OculoLogo size={18} withGradient={false} className="text-primary-foreground" />}
       </div>
       <div className={cn("max-w-[80%] space-y-2 min-w-0", isUser && "items-end flex flex-col")}>
         {attachments && attachments.length > 0 && (
