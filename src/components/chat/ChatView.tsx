@@ -393,14 +393,45 @@ export function ChatView({
       let finalContent = "";
       let savedCalls: ToolCallRecord[] = [];
 
-      if (toolsEnabled) {
-        // Tool calling loop (non-streaming)
+      if (usingOpenAI) {
+        // OpenAI streaming qua edge function (giữ key server-side)
+        // Tools/vision-image base64 chỉ hỗ trợ ở Ollama path; ở đây gửi text thuần.
+        const oaiMsgs: OpenAIMessage[] = history.map((m) => {
+          const imgs = m.images ?? [];
+          if (m.role === "user" && imgs.length) {
+            return {
+              role: "user",
+              content: [
+                { type: "text", text: m.content },
+                ...imgs.map((b64) => ({
+                  type: "image_url",
+                  image_url: { url: `data:image/png;base64,${b64}` },
+                })),
+              ],
+            };
+          }
+          return { role: m.role as "system" | "user" | "assistant", content: m.content };
+        });
+        let acc = "";
+        await streamOpenAI({
+          model: openaiModel,
+          messages: oaiMsgs,
+          signal: controller.signal,
+          onToken: (chunk) => {
+            acc += chunk;
+            setStreamingText(acc);
+          },
+          onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
+        });
+        finalContent = acc;
+      } else if (toolsEnabled) {
+        // Tool calling loop (Ollama, non-streaming)
         const { finalText, allCalls } = await runToolLoop(convId, history, controller.signal);
         finalContent = finalText;
         savedCalls = allCalls;
         setStreamingText(finalText);
       } else {
-        // Pure streaming
+        // Ollama streaming
         let acc = "";
         await streamChat({
           baseUrl: ollamaUrl,
