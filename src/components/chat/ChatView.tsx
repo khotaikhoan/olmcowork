@@ -342,9 +342,14 @@ export function ChatView({
     return data.id;
   };
 
-  // Ask user to approve a tool call
+  // Ask user to approve a tool call.
+  // In Full Auto mode: bypass ALL prompts (kể cả high-risk) — Esc để dừng loop.
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>((resolve) => {
+      if (fullAuto) {
+        resolve({ approve: true, alwaysAllow: false });
+        return;
+      }
       const risk = effectiveRisk(tool.name, args);
       if (!requireConfirm && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
