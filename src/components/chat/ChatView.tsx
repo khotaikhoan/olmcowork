@@ -25,6 +25,8 @@ import { ChatSearch } from "./ChatSearch";
 import { estimateCostUsd } from "@/lib/pricing";
 import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
+import { notifyDone } from "@/lib/notifications";
+import type { CursorPoint } from "./CursorTrailOverlay";
 
 interface DbMessage {
   id: string;
