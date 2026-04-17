@@ -150,6 +150,12 @@ export interface BridgeAPI {
   browserSetHeadless?: (headless: boolean) => Promise<ExecResult>;
   /** Toggle whether Playwright launches with the user's real Chrome profile (cookies/logins). */
   browserSetUseRealProfile?: (enabled: boolean) => Promise<ExecResult>;
+  /** Snapshot of current Playwright browser state (active, url, tab count). */
+  browserStatus?: () => Promise<ExecResult & { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }>;
+  /** Force-close the Playwright browser (user-initiated stop). */
+  browserClose?: () => Promise<ExecResult>;
+  /** Subscribe to browser status changes (launch/shutdown). Returns unsubscribe fn. */
+  onBrowserStatus?: (cb: (s: { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }) => void) => () => void;
   /** Phase 4: sudo shell — biometric/password prompt every call, no caching. */
   sudoShell?: (command: string) => Promise<ExecResult>;
   /** Phase 4: AppleScript / PowerShell / bash. */
