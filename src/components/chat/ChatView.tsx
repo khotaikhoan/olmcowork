@@ -94,6 +94,13 @@ export function ChatView({
   const [model, setModel] = useState<string>("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [toolsEnabled, setToolsEnabled] = useState(false);
+  const [controlBarCollapsed, setControlBarCollapsed] = useState<boolean>(
+    () => typeof localStorage !== "undefined" && localStorage.getItem("chat.control_bar_collapsed") === "1",
+  );
+  const setCollapsedPersist = (v: boolean) => {
+    setControlBarCollapsed(v);
+    try { localStorage.setItem("chat.control_bar_collapsed", v ? "1" : "0"); } catch { /* ignore */ }
+  };
   const [mode, setMode] = useState<ConversationMode>("chat");
   const [lockedApp, setLockedApp] = useState<string | null>(null);
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
