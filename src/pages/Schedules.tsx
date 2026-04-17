@@ -243,6 +243,42 @@ export default function Schedules() {
   const runsByJob = (jobId: string) =>
     runs.filter((r) => r.job_id === jobId).slice(0, 3);
 
+  const filteredJobs = jobs.filter((j) => filter === "all" || j.job_type === filter);
+
+  function formatCountdown(iso: string | null): string {
+    if (!iso) return "—";
+    const diff = new Date(iso).getTime() - now;
+    if (diff <= 0) return "sắp chạy";
+    const min = Math.floor(diff / 60_000);
+    if (min < 60) return `trong ${min}m`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `trong ${h}h ${min % 60}m`;
+    const d = Math.floor(h / 24);
+    return `trong ${d}d ${h % 24}h`;
+  }
+
+  function StatusPill({ status }: { status: string }) {
+    if (status === "ok" || status === "success")
+      return (
+        <Badge className="bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/0.2)] border-0 text-[10px] gap-1">
+          <CheckCircle2 className="h-2.5 w-2.5" /> ok
+        </Badge>
+      );
+    if (status === "error" || status === "failed")
+      return (
+        <Badge variant="destructive" className="text-[10px] gap-1">
+          <XCircle className="h-2.5 w-2.5" /> error
+        </Badge>
+      );
+    if (status === "running")
+      return (
+        <Badge className="bg-primary/15 text-primary hover:bg-primary/20 border-0 text-[10px] gap-1">
+          <Loader2 className="h-2.5 w-2.5 animate-spin" /> running
+        </Badge>
+      );
+    return <Badge variant="secondary" className="text-[10px]">{status}</Badge>;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-3 flex items-center gap-3">
@@ -250,6 +286,22 @@ export default function Schedules() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-lg font-semibold">Scheduled Agents</h1>
+        <div className="ml-4 flex items-center gap-1 rounded-lg border border-border p-0.5 bg-muted/30">
+          {(["all", "cloud", "local"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={
+                "px-2.5 py-1 rounded-md text-xs font-medium transition-colors " +
+                (filter === f
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {f === "all" ? "Tất cả" : f}
+            </button>
+          ))}
+        </div>
         <div className="ml-auto">
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
