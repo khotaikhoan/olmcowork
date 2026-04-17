@@ -356,6 +356,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                   </div>
                   <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
                 </div>
+                <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                  <div className="min-w-0">
+                    <Label>Dùng profile Chrome thật của bạn</Label>
+                    <p className="text-xs text-muted-foreground">
+                      AI dùng cookies & đăng nhập sẵn (Gmail, Facebook…). <strong>Phải đóng hoàn toàn Chrome (Cmd+Q)</strong> trước khi bật. Profile: <code>~/Library/Application Support/Google/Chrome</code> trên macOS.
+                    </p>
+                  </div>
+                  <Switch checked={browserUseRealProfile} onCheckedChange={setBrowserUseRealProfile} />
+                </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Label>Tự động cài bản update khi tải xong</Label>
