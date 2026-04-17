@@ -33,6 +33,8 @@ interface Props {
 }
 
 export interface SettingsValue {
+  provider: Provider;
+  openai_model: string;
   ollama_url: string;
   default_model: string | null;
   require_confirm: boolean;
@@ -40,8 +42,17 @@ export interface SettingsValue {
   auto_start: boolean;
 }
 
+const LS_PROVIDER = "chat.provider";
+const LS_OPENAI_MODEL = "chat.openai_model";
+
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
+  const [provider, setProvider] = useState<Provider>(
+    (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
+  );
+  const [openaiModel, setOpenaiModel] = useState<string>(
+    localStorage.getItem(LS_OPENAI_MODEL) || "gpt-4o-mini",
+  );
   const [url, setUrl] = useState("http://localhost:11434");
   const [model, setModel] = useState("");
   const [requireConfirm, setRequireConfirm] = useState(true);
