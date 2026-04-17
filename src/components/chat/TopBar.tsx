@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
 import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2, Cpu, MemoryStick } from "lucide-react";
+import { UpdateBadge } from "./UpdateBadge";
 
 interface Props {
   title: string;
@@ -172,6 +173,8 @@ export function TopBar({
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
         {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
+
+      <UpdateBadge />
 
       {canControlOllama && (
         <Button
