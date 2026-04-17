@@ -76,8 +76,8 @@ function StatusBadge({ status }: { status: ToolCallStatus }) {
   );
 }
 
-export function ToolCallCard({ call }: { call: ToolCallRecord }) {
-  const [open, setOpen] = useState(false);
+export function ToolCallCard({ call, defaultOpen }: { call: ToolCallRecord; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const v = variant(call);
   const Icon = v.icon;
 

@@ -15,6 +15,7 @@ import Index from "./pages/Index.tsx";
 import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
+import Activity from "./pages/Activity.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
+                <Route path="/activity" element={<Activity />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CommandPaletteProvider>
