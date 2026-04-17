@@ -25,7 +25,9 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # Lovable đôi khi cập nhật package.json mà chưa kịp regenerate
+        # package-lock.json → `npm ci` fail. Fallback sang `npm install`.
+        run: npm ci || npm install
 
       - name: Bump patch version (auto)
         id: bump
