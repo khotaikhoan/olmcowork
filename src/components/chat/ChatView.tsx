@@ -1289,6 +1289,7 @@ export function ChatView({
 
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">
+      <BrowserActiveOverlay />
       <TopBar
         title={title}
         models={models}
