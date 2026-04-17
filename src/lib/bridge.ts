@@ -1,7 +1,7 @@
 // Real bridge: dispatches to Electron's window.bridge if present, otherwise mock.
 import { mockExecute, ExecResult } from "./tools";
 
-interface BridgeAPI {
+export interface BridgeAPI {
   isElectron: boolean;
   info: () => Promise<{ platform: string; arch: string; home: string; version: string; hasScreenshot: boolean }>;
   readFile: (path: string) => Promise<ExecResult>;
