@@ -39,6 +39,9 @@
     }
   },
   "dependencies": {
+    "@fontsource/fraunces": "^5.2.9",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
     "@nut-tree-fork/nut-js": "^4.2.6",
     "@radix-ui/react-accordion": "^1.2.11",
