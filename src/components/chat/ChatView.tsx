@@ -297,14 +297,14 @@ export function ChatView({
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
     if (!model && models.length === 0 && !(autoStart && isElectron())) {
-      return toast.error("Select a model first");
+      return toast.error("Hãy chọn model trước");
     }
     lastActivityRef.current = Date.now();
 
-    // Auto-start Ollama if stopped (Electron only)
+    // Tự khởi động Ollama nếu đang dừng (chỉ trên Electron)
     if (!bridgeOnline) {
       if (autoStart && isElectron()) {
-        const tid = toast.loading("Starting Ollama…");
+        const tid = toast.loading("Đang khởi động Ollama…");
         const b = (window as any).bridge;
         setOllamaBusy(true);
         try {
@@ -316,21 +316,21 @@ export function ChatView({
           }
           const ok = await pingOllama(ollamaUrl);
           setBridgeOnline(ok);
-          if (!ok) return toast.error("Ollama did not respond after start.");
+          if (!ok) return toast.error("Ollama không phản hồi sau khi khởi động.");
           try {
             const m = await listModels(ollamaUrl);
             setModels(m);
             if (!model) setModel(defaultModel || m[0]?.name || "");
           } catch {}
-          toast.success("Ollama started.");
+          toast.success("Đã khởi động Ollama.");
         } finally {
           setOllamaBusy(false);
         }
       } else {
-        return toast.error("Ollama is offline. Check Settings.");
+        return toast.error("Ollama đang ngoại tuyến. Kiểm tra Cài đặt.");
       }
     }
-    if (!model) return toast.error("Select a model first");
+    if (!model) return toast.error("Hãy chọn model trước");
 
     try {
       const convId = await ensureConversation(text);
