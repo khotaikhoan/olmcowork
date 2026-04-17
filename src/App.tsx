@@ -16,6 +16,7 @@ import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
+import Plans from "./pages/Plans.tsx";
 
 import Memories from "./pages/Memories.tsx";
 import Landing from "./pages/Landing.tsx";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/schedules" element={<Schedules />} />
                 <Route path="/activity" element={<Activity />} />
+                <Route path="/plans" element={<Plans />} />
                 
                 <Route path="/memories" element={<Memories />} />
                 <Route path="*" element={<NotFound />} />

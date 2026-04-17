@@ -1469,6 +1469,24 @@ export function ChatView({
               if (wasLoading) {
                 toast.info(`Bắt đầu sớm với ${approvedSteps.length} bước.`);
               }
+              // Persist approved plan to history (fire-and-forget).
+              if (user) {
+                supabase
+                  .from("approved_plans")
+                  .insert({
+                    user_id: user.id,
+                    conversation_id: conversationId,
+                    prompt,
+                    steps: approvedSteps as any,
+                    step_count: approvedSteps.length,
+                    was_early_start: wasLoading,
+                    model: provider === "openai" ? openaiModel : model,
+                    provider,
+                  })
+                  .then(({ error }) => {
+                    if (error) console.error("Save plan failed:", error);
+                  });
+              }
               executeSend(prompt, attachments, approvedSteps);
             }}
             onSkip={() => {

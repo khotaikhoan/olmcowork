@@ -24,6 +24,7 @@ import {
   LogOut,
   HelpCircle,
   Activity as ActivityIcon,
+  ListChecks,
   
 } from "lucide-react";
 
@@ -119,6 +120,9 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
             </CommandItem>
             <CommandItem onSelect={() => run(() => nav("/activity"))}>
               <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => nav("/plans"))}>
+              <ListChecks className="h-4 w-4 mr-2" /> Lịch sử Plan
             </CommandItem>
             <CommandItem onSelect={() => run(() => handlers.onOpenSettings())}>
               <Settings className="h-4 w-4 mr-2" /> Cài đặt
