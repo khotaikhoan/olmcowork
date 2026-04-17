@@ -263,38 +263,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             }}
             className="space-y-2"
           >
-            {/* ── Giao diện ─────────────────────────────────────────── */}
-            <AccordionItem value="appearance" className="border rounded-md px-3">
-              <AccordionTrigger className="hover:no-underline py-3">
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <Palette className="h-4 w-4 text-muted-foreground" /> Giao diện
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="pb-3">
-                <div className="grid grid-cols-3 gap-2">
-                  {([
-                    { v: "light" as Theme, label: "Sáng", Icon: Sun },
-                    { v: "dark" as Theme, label: "Tối", Icon: Moon },
-                    { v: "system" as Theme, label: "Hệ thống", Icon: Monitor },
-                  ]).map(({ v, label, Icon }) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setTheme(v)}
-                      className={
-                        "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors " +
-                        (theme === v
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border hover:bg-muted/50 text-muted-foreground")
-                      }
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+            {/* Giao diện đã có ở ngoài (ThemeToggle) — bỏ khỏi Settings để tránh trùng lặp. */}
 
             {/* ── AI & Model ─────────────────────────────────────────── */}
             <AccordionItem value="ai" className="border rounded-md px-3">
