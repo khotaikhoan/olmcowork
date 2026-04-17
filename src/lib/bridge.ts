@@ -3,11 +3,57 @@
 import { mockExecute, ExecResult } from "./tools";
 import { supabase } from "@/integrations/supabase/client";
 
+// ---------- Generic localStorage TTL cache (used by fetch_url + web_search) ----------
+const TOOL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface CachedEntry {
+  ts: number;
+  output: string;
+}
+
+function readToolCache(key: string): string | null {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedEntry;
+    if (!parsed?.ts || Date.now() - parsed.ts > TOOL_CACHE_TTL_MS) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      return null;
+    }
+    return parsed.output;
+  } catch {
+    return null;
+  }
+}
+
+function writeToolCache(prefix: string, key: string, output: string): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const payload: CachedEntry = { ts: Date.now(), output };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // quota exceeded — best-effort prune entries with same prefix
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k?.startsWith(prefix)) localStorage.removeItem(k);
+      }
+    } catch { /* ignore */ }
+  }
+}
+
+const FETCH_URL_PREFIX = "olm:fetch_url:";
+const WEB_SEARCH_PREFIX = "olm:web_search:";
+const CACHE_HIT_MARKER = "<!--cache_hit-->\n";
+
 /** Read-only URL fetch via the public `fetch-meta` edge function. Safe in browser + Electron. */
 async function fetchUrlTool(url: string): Promise<ExecResult> {
   if (!url || !/^https?:\/\//i.test(url)) {
     return { ok: false, output: "fetch_url requires an absolute http(s) URL." };
   }
+  const cacheKey = `${FETCH_URL_PREFIX}${url.trim()}`;
+  const cached = readToolCache(cacheKey);
+  if (cached) return { ok: true, output: CACHE_HIT_MARKER + cached };
   try {
     const { data, error } = await supabase.functions.invoke("fetch-meta", { body: { url } });
     if (error) return { ok: false, output: `fetch_url failed: ${error.message}` };
@@ -30,7 +76,9 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
       d.image ? `Image: ${d.image}` : null,
       d.body ? `\nContent${d.bodyTruncated ? " (truncated to 4KB)" : ""}:\n${d.body}` : null,
     ].filter(Boolean);
-    return { ok: true, output: lines.join("\n") };
+    const output = lines.join("\n");
+    writeToolCache(FETCH_URL_PREFIX, cacheKey, output);
+    return { ok: true, output };
   } catch (e: any) {
     return { ok: false, output: `fetch_url failed: ${e?.message ?? String(e)}` };
   }
@@ -39,9 +87,13 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
 /** Read-only web search via the public `web-search` edge function (DuckDuckGo). */
 async function webSearchTool(query: string, limit?: number): Promise<ExecResult> {
   if (!query?.trim()) return { ok: false, output: "web_search requires a non-empty query." };
+  const n = limit ?? 5;
+  const cacheKey = `${WEB_SEARCH_PREFIX}${n}:${query.trim().toLowerCase()}`;
+  const cached = readToolCache(cacheKey);
+  if (cached) return { ok: true, output: CACHE_HIT_MARKER + cached };
   try {
     const { data, error } = await supabase.functions.invoke("web-search", {
-      body: { query, limit: limit ?? 5 },
+      body: { query, limit: n },
     });
     if (error) return { ok: false, output: `web_search failed: ${error.message}` };
     if (!data || (data as any).error) {
@@ -52,7 +104,10 @@ async function webSearchTool(query: string, limit?: number): Promise<ExecResult>
     const text = results
       .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
       .join("\n\n");
-    return { ok: true, output: text };
+    const marker = `<!--web_search:${JSON.stringify({ query, results })}-->\n`;
+    const output = marker + text;
+    writeToolCache(WEB_SEARCH_PREFIX, cacheKey, output);
+    return { ok: true, output };
   } catch (e: any) {
     return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };
   }
