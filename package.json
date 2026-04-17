@@ -1,7 +1,7 @@
 {
   "name": "ollama-cowork",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -20,9 +20,16 @@
   "build": {
     "appId": "com.ollamacowork.app",
     "productName": "OllamaCowork",
-    "files": ["dist/**/*", "electron/**/*", "package.json"],
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.developer-tools"
     },
     "publish": {
