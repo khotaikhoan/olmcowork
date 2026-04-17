@@ -23,8 +23,8 @@ export async function notifyDone(title: string, body: string) {
   try {
     const n = new Notification(title, {
       body: body.slice(0, 140),
-      icon: "/favicon.ico",
-      tag: "ollama-cowork-done",
+      icon: "/favicon.svg",
+      tag: "oculo-done",
     });
     n.onclick = () => {
       window.focus();

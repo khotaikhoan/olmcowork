@@ -14,8 +14,8 @@ const STORAGE_KEY = "onboarded.v1";
 const STEPS = [
   {
     icon: Sparkles,
-    title: "Chào mừng đến Ollama Cowork",
-    body: "Một chat client cho cả model local (Ollama, miễn phí) lẫn cloud (OpenAI, Lovable AI). Tất cả lưu trên cloud, đồng bộ giữa các thiết bị.",
+    title: "Chào mừng đến Oculo",
+    body: "Trợ lý AI quan sát & cộng tác, hỗ trợ cả model local (Ollama, miễn phí) lẫn cloud (OpenAI, Lovable AI). Tất cả lưu trên cloud, đồng bộ giữa các thiết bị.",
   },
   {
     icon: Wrench,
