@@ -27,6 +27,7 @@ export interface SettingsValue {
   default_model: string | null;
   require_confirm: boolean;
   auto_stop_minutes: number;
+  auto_start: boolean;
 }
 
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
@@ -35,6 +36,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [model, setModel] = useState("");
   const [requireConfirm, setRequireConfirm] = useState(true);
   const [autoStopMinutes, setAutoStopMinutes] = useState(0);
+  const [autoStart, setAutoStart] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
 
@@ -51,6 +53,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           setModel(data.default_model ?? "");
           setRequireConfirm(data.require_confirm);
           setAutoStopMinutes((data as any).auto_stop_minutes ?? 0);
+          setAutoStart((data as any).auto_start ?? true);
         }
       });
   }, [open, user]);
@@ -73,6 +76,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
       default_model: model || null,
       require_confirm: requireConfirm,
       auto_stop_minutes: autoStopMinutes,
+      auto_start: autoStart,
     };
     const { error } = await supabase.from("user_settings").upsert(payload);
     setBusy(false);
@@ -83,6 +87,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
       default_model: model || null,
       require_confirm: requireConfirm,
       auto_stop_minutes: autoStopMinutes,
+      auto_start: autoStart,
     });
     onOpenChange(false);
   };
