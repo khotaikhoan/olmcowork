@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
 import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
-import { OllamaModel, listModels, pingOllama, streamChat } from "@/lib/ollama";
+import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
@@ -46,6 +46,7 @@ export function ChatView({
 }: Props) {
   const { user } = useAuth();
   const [models, setModels] = useState<OllamaModel[]>([]);
+  const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [messages, setMessages] = useState<DbMessage[]>([]);
   const [streamingText, setStreamingText] = useState("");
