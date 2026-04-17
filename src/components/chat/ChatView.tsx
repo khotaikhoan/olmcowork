@@ -687,11 +687,18 @@ export function ChatView({
           ollamaModel: model,
           openaiModel,
         });
+        if (!steps || steps.length === 0) {
+          // Plan empty → don't trap user, just run the task
+          toast.info("Không tạo được plan — chạy thẳng task.");
+          setPendingPlan(null);
+          executeSend(text, attachments);
+          return;
+        }
         setPendingPlan((p) =>
           p && p.prompt === text ? { ...p, steps, loading: false } : p,
         );
       } catch (err: any) {
-        toast.error(`Không tạo được plan: ${err?.message ?? err}`);
+        toast.error(`Không tạo được plan: ${err?.message ?? err} — chạy thẳng task.`);
         // Fallback: send without plan
         setPendingPlan(null);
         executeSend(text, attachments);
@@ -1442,7 +1449,11 @@ export function ChatView({
               setPendingPlan(null);
               executeSend(prompt, attachments);
             }}
-            onCancel={() => setPendingPlan(null)}
+            onCancel={() => {
+              // Cancel = drop the task entirely; warn so user knows
+              toast.message("Đã huỷ task. Gõ lại nếu muốn chạy.");
+              setPendingPlan(null);
+            }}
           />
         </div>
       )}
