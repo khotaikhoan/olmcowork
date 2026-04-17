@@ -22,7 +22,6 @@ import {
   Clock,
   Pin,
   PinOff,
-  Command,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -30,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { getPins, isPinned, togglePin } from "@/lib/pins";
+import { getPins, togglePin } from "@/lib/pins";
 
 export interface Conversation {
   id: string;

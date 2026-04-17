@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { ChatView, ChatViewHandle } from "@/components/chat/ChatView";
+import { ChatView } from "@/components/chat/ChatView";
 import { SettingsDialog, SettingsValue } from "@/components/chat/SettingsDialog";
 import { ArtifactsPanel } from "@/components/chat/ArtifactsPanel";
 import {
@@ -40,7 +40,6 @@ export default function Index() {
   const [panelOpen, setPanelOpen] = useState(false);
 
   const { setHandlers } = useCommandPalette();
-  const chatRef = useRef<ChatViewHandle>(null);
 
   useEffect(() => {
     if (!loading && !user) nav("/auth", { replace: true });
@@ -105,8 +104,8 @@ export default function Index() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const handleGlobalDrop = useCallback((files: FileList) => {
-    chatRef.current?.attachFiles(files);
+  const handleGlobalDrop = useCallback((_files: FileList) => {
+    // Drag-drop overlay shows feedback; ChatInput's own dropzone still receives the files.
   }, []);
 
   if (loading || !user) {
@@ -119,7 +118,6 @@ export default function Index() {
 
   const chatNode = (
     <ChatView
-      ref={chatRef}
       conversationId={selectedId}
       provider={settings.provider}
       openaiModel={settings.openai_model}
@@ -135,21 +133,6 @@ export default function Index() {
       onTitleUpdated={() => setRefreshKey((k) => k + 1)}
       onArtifactsChange={setArtifacts}
       onArtifactOpen={openArtifact}
-      sidebarToggle={
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          onClick={() => setSidebarOpen((v) => !v)}
-          title={sidebarOpen ? "Ẩn sidebar (⌘B)" : "Hiện sidebar (⌘B)"}
-        >
-          {sidebarOpen ? (
-            <PanelLeftClose className="h-4 w-4" />
-          ) : (
-            <PanelLeftOpen className="h-4 w-4" />
-          )}
-        </Button>
-      }
     />
   );
 

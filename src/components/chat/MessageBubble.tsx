@@ -69,9 +69,9 @@ export function MessageBubble({
             {toolCalls.length > 1 && (
               <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
             )}
-            {toolCalls.map((tc, i) => (
+            {toolCalls.map((tc) => (
               <div key={tc.id} className="relative">
-                <ToolCallCard call={tc} stepIndex={i + 1} />
+                <ToolCallCard call={tc} />
               </div>
             ))}
           </div>
