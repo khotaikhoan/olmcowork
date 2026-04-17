@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Wrench, MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
+import { ControlModeBlocker } from "./ControlModeBlocker";
 import { AgentPreset } from "@/lib/presets";
 import { estimateTokens } from "./TokenMeter";
 import { ChatSearch } from "./ChatSearch";
@@ -1005,7 +1006,11 @@ export function ChatView({
         </ScrollArea>
       </div>
 
-      <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} disabled={!user} />
+      {mode === "control" && !isElectron() ? (
+        <ControlModeBlocker onSwitchToChat={() => handleModeChange("chat")} />
+      ) : (
+        <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} disabled={!user} />
+      )}
 
       <ToolApprovalDialog
         open={!!pending}
