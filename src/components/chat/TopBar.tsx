@@ -62,11 +62,11 @@ export function TopBar({
 
       <Select value={model} onValueChange={onModelChange}>
         <SelectTrigger className="h-8 w-[200px] text-sm">
-          <SelectValue placeholder="Select model" />
+          <SelectValue placeholder="Chọn model" />
         </SelectTrigger>
         <SelectContent>
           {models.length === 0 && (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">No models found</div>
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
           )}
           {models.map((m) => (
             <SelectItem key={m.name} value={m.name}>
@@ -79,12 +79,12 @@ export function TopBar({
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-8">
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> System
+            <Sparkles className="h-3.5 w-3.5 mr-1" /> Hệ thống
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-96">
           <div className="space-y-3">
-            <Label>System prompt</Label>
+            <Label>Lời nhắc hệ thống</Label>
             <div className="flex flex-wrap gap-1">
               {Object.entries(PRESETS).map(([k, v]) => (
                 <Button
@@ -102,7 +102,7 @@ export function TopBar({
               value={systemPrompt}
               onChange={(e) => onSystemPromptChange(e.target.value)}
               rows={6}
-              placeholder="Define the assistant's behavior…"
+              placeholder="Định nghĩa hành vi của trợ lý…"
             />
           </div>
         </PopoverContent>
