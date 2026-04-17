@@ -1219,6 +1219,27 @@ export function ChatView({
           currentIndex={searchIndex}
           onNavigate={navigateSearch}
         />
+        {/* Full Auto agent step badge — pinned top center while loop runs */}
+        {agentStep && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 animate-fade-in">
+            <div
+              className={
+                "flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium shadow-[var(--shadow-soft)] backdrop-blur " +
+                (fullAuto
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-background/80 text-muted-foreground")
+              }
+            >
+              {fullAuto && <Zap className="h-3.5 w-3.5 fill-current" />}
+              <span>
+                {fullAuto ? "Full Auto" : "Agent"} · Bước {agentStep.current}/{agentStep.max}
+              </span>
+              <kbd className="ml-1 px-1.5 py-0.5 rounded bg-background/60 border border-border font-mono text-[10px]">
+                Esc
+              </kbd>
+            </div>
+          </div>
+        )}
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
