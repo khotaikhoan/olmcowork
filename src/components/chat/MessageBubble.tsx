@@ -1,10 +1,15 @@
-import { Bot, User } from "lucide-react";
+import { useState } from "react";
+import { Bot, User, Check, X } from "lucide-react";
 import { Markdown } from "./Markdown";
-import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
+import { ToolCallRecord } from "./ToolCallCard";
+import { ToolTimeline } from "./ToolTimeline";
 import { ThinkingBlock, splitThinking } from "./ThinkingBlock";
 import { ArtifactChip } from "./ArtifactsPanel";
 import { extractArtifacts } from "@/lib/artifacts";
 import { MessageActions } from "./MessageActions";
+import { highlightMatches } from "./ChatSearch";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -14,8 +19,11 @@ interface Props {
   toolCalls?: ToolCallRecord[] | null;
   streaming?: boolean;
   messageId?: string;
+  searchQuery?: string;
   onArtifactOpen?: (id: string) => void;
   onRegenerate?: () => void;
+  onEditSubmit?: (newContent: string) => void;
+  onBranch?: () => void;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -29,17 +37,34 @@ export function MessageBubble({
   toolCalls,
   streaming,
   messageId,
+  searchQuery,
   onArtifactOpen,
   onRegenerate,
+  onEditSubmit,
+  onBranch,
 }: Props) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(content);
+
   if (role === "system" || role === "tool") return null;
   const isUser = role === "user";
 
   const segments = !isUser ? splitThinking(content || "") : [];
   const artifacts = !isUser && messageId ? extractArtifacts(messageId, content || "") : [];
 
+  const hasMatch =
+    !!searchQuery && content.toLowerCase().includes(searchQuery.toLowerCase());
+
   return (
-    <div className={cn("group flex gap-3 py-4 animate-fade-in", isUser && "flex-row-reverse")}>
+    <div
+      data-message-id={messageId}
+      data-has-match={hasMatch ? "true" : undefined}
+      className={cn(
+        "group flex gap-3 py-4 animate-fade-in scroll-mt-20",
+        isUser && "flex-row-reverse",
+        hasMatch && "ring-1 ring-warning/40 rounded-2xl px-2 -mx-2",
+      )}
+    >
       <div
         className={cn(
           "h-8 w-8 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
@@ -63,30 +88,57 @@ export function MessageBubble({
             ))}
           </div>
         )}
-        {toolCalls && toolCalls.length > 0 && (
-          <div className="w-full min-w-[300px] relative">
-            {/* timeline rail */}
-            {toolCalls.length > 1 && (
-              <div className="absolute left-[15px] top-2 bottom-2 w-px bg-border" />
-            )}
-            {toolCalls.map((tc) => (
-              <div key={tc.id} className="relative">
-                <ToolCallCard call={tc} />
-              </div>
-            ))}
-          </div>
-        )}
+        {toolCalls && toolCalls.length > 0 && <ToolTimeline calls={toolCalls} />}
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
-              "rounded-2xl px-4 py-2.5 transition-shadow",
+              "rounded-2xl px-4 py-2.5 transition-shadow w-full",
               isUser
                 ? "bg-primary text-primary-foreground"
                 : "bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]",
             )}
           >
-            {isUser ? (
-              <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
+            {editing && isUser && onEditSubmit ? (
+              <div className="space-y-2">
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={Math.min(10, Math.max(2, draft.split("\n").length))}
+                  className="bg-background text-foreground"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditing(false);
+                      setDraft(content);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" /> Huỷ
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      onEditSubmit(draft.trim());
+                      setEditing(false);
+                    }}
+                    disabled={!draft.trim() || draft.trim() === content.trim()}
+                  >
+                    <Check className="h-3 w-3 mr-1" /> Lưu & gửi lại
+                  </Button>
+                </div>
+              </div>
+            ) : isUser ? (
+              <p
+                className="whitespace-pre-wrap leading-relaxed"
+                dangerouslySetInnerHTML={{
+                  __html: searchQuery
+                    ? highlightMatches(content, searchQuery)
+                    : content,
+                }}
+              />
             ) : segments.length > 0 ? (
               <>
                 {segments.map((seg, i) =>
@@ -120,8 +172,13 @@ export function MessageBubble({
             )}
           </div>
         )}
-        {!isUser && !streaming && content && (
-          <MessageActions content={content} onRegenerate={onRegenerate} />
+        {!streaming && content && !editing && (
+          <MessageActions
+            content={content}
+            onRegenerate={!isUser ? onRegenerate : undefined}
+            onEdit={isUser && onEditSubmit ? () => setEditing(true) : undefined}
+            onBranch={onBranch}
+          />
         )}
         {!isUser && artifacts.length > 0 && onArtifactOpen && (
           <div className="w-full min-w-[300px]">

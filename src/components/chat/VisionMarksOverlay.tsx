@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MousePointerClick, Loader2 } from "lucide-react";
+import { MousePointerClick, Loader2, Keyboard } from "lucide-react";
 import { toast } from "sonner";
 import type { VisionMark } from "@/lib/bridge";
 import { isElectron } from "@/lib/bridge";
@@ -9,6 +9,8 @@ interface Props {
   marks: VisionMark[];
   /** Optional callback after a successful remote click. */
   onClicked?: (markId: number, button: "left" | "right" | "middle") => void;
+  /** If provided, called after a successful click to re-capture the screen. */
+  onReannotate?: () => void;
 }
 
 /**
