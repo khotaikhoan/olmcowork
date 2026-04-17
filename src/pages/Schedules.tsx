@@ -37,6 +37,7 @@ import {
   XCircle,
   Loader2,
   Timer,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { isElectron } from "@/lib/bridge";
@@ -491,6 +492,14 @@ export default function Schedules() {
                       onClick={() => runNow(j)}
                     >
                       <Play className="h-3.5 w-3.5 mr-1" /> Run
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => openEdit(j)}
+                      title="Sửa job"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" /> Sửa
                     </Button>
                     <Switch
                       checked={j.enabled}

@@ -23,6 +23,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { pingOllama } from "@/lib/ollama";
 import { OPENAI_MODELS } from "@/lib/openai";
+import { useTheme, Theme } from "@/hooks/useTheme";
+import { Sun, Moon, Monitor } from "lucide-react";
 
 export type Provider = "ollama" | "openai";
 
@@ -47,6 +49,7 @@ const LS_OPENAI_MODEL = "chat.openai_model";
 
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [provider, setProvider] = useState<Provider>(
     (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
   );
@@ -128,6 +131,31 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <Label>Giao diện</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { v: "light" as Theme, label: "Sáng", Icon: Sun },
+                { v: "dark" as Theme, label: "Tối", Icon: Moon },
+                { v: "system" as Theme, label: "Hệ thống", Icon: Monitor },
+              ]).map(({ v, label, Icon }) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setTheme(v)}
+                  className={
+                    "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors " +
+                    (theme === v
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border hover:bg-muted/50 text-muted-foreground")
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-2 rounded-md border border-border p-3">
             <Label>Nhà cung cấp AI</Label>
             <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
