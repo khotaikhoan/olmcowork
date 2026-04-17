@@ -158,6 +158,10 @@ export interface BridgeAPI {
   chromeDetect?: () => Promise<ExecResult & { running: boolean; count: number }>;
   /** Quit Chrome (graceful first; force=true skips graceful step and SIGKILLs). */
   chromeQuit?: (force?: boolean) => Promise<ExecResult & { remaining?: number }>;
+  /** Probe whether Chrome is reachable on CDP debug port 9222. */
+  chromeDebugProbe?: () => Promise<ExecResult & { ready: boolean; browser?: string | null }>;
+  /** Quit + relaunch Chrome with --remote-debugging-port=9222 --restore-last-session. */
+  chromeRelaunchWithDebug?: () => Promise<ExecResult>;
   /** Subscribe to browser status changes (launch/shutdown). Returns unsubscribe fn. */
   onBrowserStatus?: (cb: (s: { active: boolean; url: string | null; tabs: number; headless: boolean; useRealProfile: boolean }) => void) => () => void;
   /** Subscribe to the current human-readable Playwright action (e.g. "click submit button"). */
