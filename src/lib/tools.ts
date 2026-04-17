@@ -230,6 +230,36 @@ export const TOOLS: ToolDef[] = [
       required: ["action", "path"],
     },
   },
+  // ────────────── Phase 5: Multi-agent orchestration ──────────────
+  {
+    name: "spawn_agent",
+    risk: "medium",
+    description:
+      "Fork an autonomous SUB-AGENT with its own context window and a tool subset to work on a sub-task in parallel. Use this to: (a) split a big task into 2–3 independent threads, (b) isolate a noisy investigation, (c) keep your main context lean. The sub-agent runs by itself (no user prompts) and returns a final answer string. Up to 3 sub-agents run concurrently — extras queue. Nested spawning is allowed up to depth 2. Tool subset: omit 'tools' to inherit the parent's full toolset; pass an explicit array (e.g. ['web_search','fetch_url']) for least-privilege.",
+    parameters: {
+      type: "object",
+      properties: {
+        name: {
+          type: "string",
+          description: "Short label for the sub-agent shown in the UI tree (e.g. 'Hacker News scraper').",
+        },
+        goal: {
+          type: "string",
+          description: "Self-contained task description. The sub-agent only sees this — include all context it needs.",
+        },
+        tools: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional whitelist of tool names the sub-agent may use. Omit to inherit parent's tools.",
+        },
+        model: {
+          type: "string",
+          description: "Optional override model (e.g. 'gpt-5-mini' for cheap/fast workers). Defaults to current model.",
+        },
+      },
+      required: ["name", "goal"],
+    },
+  },
   {
     name: "text_editor",
     anthropic_type: "text_editor_20241022",
@@ -272,7 +302,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -311,7 +341,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url" || name === "web_search") return true;
+  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent") return true;
   if (name === "browser") {
     const a = String(args.action ?? "");
     return [

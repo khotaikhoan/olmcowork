@@ -38,6 +38,7 @@ import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS }
 import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap } from "lucide-react";
+import { configureOrchestrator } from "@/lib/agentOrchestrator";
 
 interface DbMessage {
   id: string;
@@ -250,6 +251,20 @@ export function ChatView({
   useEffect(() => {
     try { localStorage.setItem("chat.agentId", agentId); } catch { /* ignore */ }
   }, [agentId]);
+
+  // Phase 5: keep the multi-agent orchestrator in sync with the active
+  // provider/model/mode so spawn_agent calls run with the right settings
+  // and inherit the parent's allowed tool list.
+  useEffect(() => {
+    configureOrchestrator({
+      provider,
+      ollamaUrl,
+      defaultOllamaModel: model,
+      openaiModel,
+      mode,
+      parentTools: toolsForMode(mode).map((t) => t.name),
+    });
+  }, [provider, ollamaUrl, model, openaiModel, mode]);
 
   // Load top memories once per user (and refresh when conversation changes)
   useEffect(() => {

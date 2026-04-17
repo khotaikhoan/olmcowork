@@ -20,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { listAgents, subscribeAgents } from "@/lib/agentOrchestrator";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -52,6 +53,17 @@ export default function Index() {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [activeArtifactId, setActiveArtifactId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Track whether any sub-agent exists — used to auto-open the side panel.
+  const [hasAgents, setHasAgents] = useState(() => listAgents().length > 0);
+  useEffect(() => {
+    const tick = () => {
+      const all = listAgents();
+      const any = all.length > 0;
+      setHasAgents(any);
+      if (any && !panelOpen) setPanelOpen(true);
+    };
+    return subscribeAgents(tick);
+  }, [panelOpen]);
 
   const { setHandlers } = useCommandPalette();
 
@@ -224,7 +236,7 @@ export default function Index() {
         </Sheet>
       )}
 
-      {panelOpen && artifacts.length > 0 ? (
+      {panelOpen && (artifacts.length > 0 || hasAgents) ? (
         isMobile ? (
           // On mobile, stack chat and artifacts vertically (no resizable handles).
           <div className="flex-1 flex flex-col min-w-0">
