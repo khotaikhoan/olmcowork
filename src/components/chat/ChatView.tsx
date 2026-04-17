@@ -371,9 +371,11 @@ export function ChatView({
     const allCalls: ToolCallRecord[] = [];
     const ollamaTools = toOllamaTools(mode);
     let working = [...history];
-    const MAX_STEPS = 8;
+    const MAX_STEPS = fullAuto ? FULL_AUTO_MAX_STEPS : NORMAL_MAX_STEPS;
 
     for (let step = 0; step < MAX_STEPS; step++) {
+      setAgentStep({ current: step + 1, max: MAX_STEPS });
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const resp = await chatOnce(ollamaUrl, model, working, ollamaTools, signal);
 
       // No tool calls → final answer
@@ -486,9 +488,11 @@ export function ChatView({
       function: { name: t.name, description: t.description, parameters: t.parameters },
     }));
     let working = [...history];
-    const MAX_STEPS = 8;
+    const MAX_STEPS = fullAuto ? FULL_AUTO_MAX_STEPS : NORMAL_MAX_STEPS;
 
     for (let step = 0; step < MAX_STEPS; step++) {
+      setAgentStep({ current: step + 1, max: MAX_STEPS });
+      if (signal.aborted) throw new DOMException("Aborted", "AbortError");
       const resp = await chatOnceOpenAI(openaiModel, working, oaiTools, signal);
 
       if (!resp.tool_calls || resp.tool_calls.length === 0) {
