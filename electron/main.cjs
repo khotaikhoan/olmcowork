@@ -6,8 +6,60 @@ const { exec, spawn } = require("child_process");
 const os = require("os");
 const http = require("http");
 
+// Optional auto-updater (only active in packaged builds with GitHub Releases configured).
+let autoUpdater = null;
+try {
+  ({ autoUpdater } = require("electron-updater"));
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+} catch {
+  // electron-updater not installed yet — skip silently in dev.
+}
+
 let win = null;
 let ollamaProc = null;
+
+function setupAutoUpdate() {
+  if (!autoUpdater || !app.isPackaged) return;
+  autoUpdater.on("update-available", (info) => {
+    win?.webContents.send("updater:status", { state: "available", version: info.version });
+  });
+  autoUpdater.on("update-not-available", () => {
+    win?.webContents.send("updater:status", { state: "none" });
+  });
+  autoUpdater.on("download-progress", (p) => {
+    win?.webContents.send("updater:status", { state: "downloading", percent: Math.round(p.percent) });
+  });
+  autoUpdater.on("update-downloaded", async (info) => {
+    win?.webContents.send("updater:status", { state: "ready", version: info.version });
+    const { response } = await dialog.showMessageBox(win, {
+      type: "info",
+      buttons: ["Cài & khởi động lại", "Để sau"],
+      defaultId: 0,
+      title: "Có bản cập nhật",
+      message: `Phiên bản ${info.version} đã tải xong.`,
+      detail: "Bạn muốn cài và khởi động lại app ngay bây giờ?",
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+  autoUpdater.on("error", (err) => {
+    win?.webContents.send("updater:status", { state: "error", message: String(err?.message || err) });
+  });
+  // Check now and every 30 minutes.
+  autoUpdater.checkForUpdates().catch(() => {});
+  setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 30 * 60 * 1000);
+}
+
+ipcMain.handle("bridge:check_updates", async () => {
+  if (!autoUpdater) return { ok: false, output: "electron-updater not installed" };
+  if (!app.isPackaged) return { ok: false, output: "Auto-update only works in packaged builds" };
+  try {
+    const r = await autoUpdater.checkForUpdates();
+    return { ok: true, output: r?.updateInfo?.version ? `Latest: ${r.updateInfo.version}` : "No update info" };
+  } catch (e) {
+    return { ok: false, output: String(e?.message || e) };
+  }
+});
 
 function createWindow() {
   win = new BrowserWindow({
@@ -40,6 +92,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  setupAutoUpdate();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
