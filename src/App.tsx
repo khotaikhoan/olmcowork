@@ -16,6 +16,7 @@ import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
+import Plans from "./pages/Plans.tsx";
 
 import Memories from "./pages/Memories.tsx";
 import Landing from "./pages/Landing.tsx";
