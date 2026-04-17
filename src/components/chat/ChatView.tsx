@@ -31,6 +31,7 @@ interface Props {
   defaultModel: string | null;
   requireConfirm: boolean;
   autoStopMinutes: number;
+  autoStart: boolean;
   onCreated: (id: string) => void;
   onTitleUpdated: () => void;
 }
@@ -41,6 +42,7 @@ export function ChatView({
   defaultModel,
   requireConfirm,
   autoStopMinutes,
+  autoStart,
   onCreated,
   onTitleUpdated,
 }: Props) {
@@ -294,9 +296,41 @@ export function ChatView({
   // ----- Send -----
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
-    if (!model) return toast.error("Select a model first");
-    if (!bridgeOnline) return toast.error("Ollama is offline. Check Settings.");
+    if (!model && models.length === 0 && !(autoStart && isElectron())) {
+      return toast.error("Select a model first");
+    }
     lastActivityRef.current = Date.now();
+
+    // Auto-start Ollama if stopped (Electron only)
+    if (!bridgeOnline) {
+      if (autoStart && isElectron()) {
+        const tid = toast.loading("Starting Ollama…");
+        const b = (window as any).bridge;
+        setOllamaBusy(true);
+        try {
+          const r = await b.startOllama();
+          toast.dismiss(tid);
+          if (!r.ok) {
+            toast.error(r.output);
+            return;
+          }
+          const ok = await pingOllama(ollamaUrl);
+          setBridgeOnline(ok);
+          if (!ok) return toast.error("Ollama did not respond after start.");
+          try {
+            const m = await listModels(ollamaUrl);
+            setModels(m);
+            if (!model) setModel(defaultModel || m[0]?.name || "");
+          } catch {}
+          toast.success("Ollama started.");
+        } finally {
+          setOllamaBusy(false);
+        }
+      } else {
+        return toast.error("Ollama is offline. Check Settings.");
+      }
+    }
+    if (!model) return toast.error("Select a model first");
 
     try {
       const convId = await ensureConversation(text);

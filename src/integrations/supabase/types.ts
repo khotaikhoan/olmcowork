@@ -88,6 +88,7 @@ export type Database = {
       user_settings: {
         Row: {
           allowed_paths: Json
+          auto_start: boolean
           auto_stop_minutes: number
           default_model: string | null
           ollama_url: string
@@ -97,6 +98,7 @@ export type Database = {
         }
         Insert: {
           allowed_paths?: Json
+          auto_start?: boolean
           auto_stop_minutes?: number
           default_model?: string | null
           ollama_url?: string
@@ -106,6 +108,7 @@ export type Database = {
         }
         Update: {
           allowed_paths?: Json
+          auto_start?: boolean
           auto_stop_minutes?: number
           default_model?: string | null
           ollama_url?: string
