@@ -30,6 +30,7 @@ interface Props {
   ollamaUrl: string;
   defaultModel: string | null;
   requireConfirm: boolean;
+  autoStopMinutes: number;
   onCreated: (id: string) => void;
   onTitleUpdated: () => void;
 }
@@ -39,6 +40,7 @@ export function ChatView({
   ollamaUrl,
   defaultModel,
   requireConfirm,
+  autoStopMinutes,
   onCreated,
   onTitleUpdated,
 }: Props) {
