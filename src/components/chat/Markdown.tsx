@@ -7,6 +7,43 @@ import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { CodeRunner } from "./CodeRunner";
 
+// Map common short names to react-syntax-highlighter / Prism language keys.
+const LANG_ALIAS: Record<string, string> = {
+  sh: "bash",
+  shell: "bash",
+  zsh: "bash",
+  py: "python",
+  rb: "ruby",
+  js: "javascript",
+  jsx: "jsx",
+  ts: "typescript",
+  tsx: "tsx",
+  yml: "yaml",
+  md: "markdown",
+  "c++": "cpp",
+  cs: "csharp",
+  "objective-c": "objectivec",
+  objc: "objectivec",
+  ps: "powershell",
+  ps1: "powershell",
+  dockerfile: "docker",
+  vue: "markup",
+  html: "markup",
+  xml: "markup",
+  svg: "markup",
+  conf: "ini",
+  env: "ini",
+  proto: "protobuf",
+  rs: "rust",
+  kt: "kotlin",
+  pl: "perl",
+};
+
+function normalizeLang(lang: string): string {
+  const l = (lang || "text").toLowerCase().trim();
+  return LANG_ALIAS[l] ?? l;
+}
+
 function CodeBlock({ language, value }: { language: string; value: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -14,10 +51,11 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
+  const normalized = normalizeLang(language);
   return (
     <div className="relative group my-3 rounded-lg overflow-hidden border border-border">
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted text-xs text-muted-foreground">
-        <span>{language || "text"}</span>
+        <span className="font-mono">{language || "text"}</span>
         <div className="flex items-center gap-1">
           <CodeRunner code={value} language={language || "text"} />
           <Button
@@ -25,15 +63,29 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
             size="sm"
             className="h-6 px-2"
             onClick={copy}
+            title={copied ? "Đã sao chép" : "Sao chép"}
           >
             {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
           </Button>
         </div>
       </div>
       <SyntaxHighlighter
-        language={language || "text"}
+        language={normalized}
         style={oneDark as any}
-        customStyle={{ margin: 0, background: "hsl(var(--card))", fontSize: "0.85rem" }}
+        showLineNumbers={value.split("\n").length > 6}
+        wrapLongLines
+        customStyle={{
+          margin: 0,
+          background: "hsl(var(--card))",
+          fontSize: "0.85rem",
+          padding: "0.75rem 1rem",
+        }}
+        lineNumberStyle={{
+          color: "hsl(var(--muted-foreground) / 0.5)",
+          fontSize: "0.75rem",
+          paddingRight: "0.75rem",
+          minWidth: "2.5em",
+        }}
       >
         {value}
       </SyntaxHighlighter>

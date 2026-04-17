@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
-import { TOOLS, TOOLS_BY_NAME, toOllamaTools, toolsForMode, isActionAllowedInMode, ToolDef, effectiveRisk, type ConversationMode } from "@/lib/tools";
+import { TOOLS_BY_NAME, toOllamaTools, toolsForMode, isActionAllowedInMode, ToolDef, effectiveRisk, type ConversationMode } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -901,6 +901,71 @@ export function ChatView({
     }
   };
 
+  // ----- Retry a failed tool call -----
+  const handleRetryTool = async (messageId: string, callId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || !msg.tool_calls) return;
+    const call = msg.tool_calls.find((c) => c.id === callId);
+    if (!call) return;
+    const tool = TOOLS_BY_NAME[call.name];
+    if (!tool) {
+      toast.error(`Không tìm thấy định nghĩa tool: ${call.name}`);
+      return;
+    }
+    if (mode === "control" && !isActionAllowedInMode(mode, call.name, call.args)) {
+      toast.error("Hành động này không được phép trong chế độ hiện tại");
+      return;
+    }
+    const setStatus = (status: ToolCallRecord["status"], extra: Partial<ToolCallRecord> = {}) => {
+      setMessages((prev) =>
+        prev.map((mm) =>
+          mm.id === messageId
+            ? {
+                ...mm,
+                tool_calls:
+                  mm.tool_calls?.map((c) =>
+                    c.id === callId ? { ...c, status, ...extra } : c,
+                  ) ?? null,
+              }
+            : mm,
+        ),
+      );
+    };
+    setStatus("running");
+    toast.info(`Đang chạy lại: ${call.name}`);
+    try {
+      const r = await executeTool(call.name, call.args);
+      const updated: Partial<ToolCallRecord> = {
+        result: r.output,
+        ...(r.image ? { image: r.image } : {}),
+        ...(r.marks ? { marks: r.marks } : {}),
+      };
+      const newStatus: ToolCallRecord["status"] = r.ok ? "done" : "error";
+      setStatus(newStatus, updated);
+      const next = (msg.tool_calls ?? []).map((c) =>
+        c.id === callId ? { ...c, status: newStatus, ...updated } : c,
+      );
+      await supabase
+        .from("messages")
+        .update({ tool_calls: next as any })
+        .eq("id", messageId);
+      logActivity({
+        user_id: user!.id,
+        tool_name: call.name,
+        args: call.args,
+        status: r.ok ? "done" : "error",
+        output: r.output,
+        risk: effectiveRisk(call.name, call.args),
+        conversation_id: conversationId ?? null,
+        message_id: messageId,
+      });
+      toast[r.ok ? "success" : "error"](r.ok ? "Chạy lại thành công" : "Vẫn lỗi");
+    } catch (e: any) {
+      setStatus("error", { result: String(e?.message || e) });
+      toast.error(`Lỗi: ${e?.message || e}`);
+    }
+  };
+
   const costModel = provider === "openai" ? openaiModel : model;
 
   // ----- Ollama process control (Electron only) -----
@@ -1052,6 +1117,7 @@ export function ChatView({
                 onArtifactOpen={onArtifactOpen}
                 onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
                 onBranch={() => handleBranch(m.id)}
+                onRetryTool={(callId) => handleRetryTool(m.id, callId)}
               />
             ))}
             {isStreaming && (

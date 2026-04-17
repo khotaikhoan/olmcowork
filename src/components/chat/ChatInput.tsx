@@ -1,11 +1,13 @@
 import { useRef, useState, KeyboardEvent, useEffect, ClipboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ImagePlus, Send, Square, X } from "lucide-react";
+import { ImagePlus, Send, Square, X, Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { UrlPreviewChip, UrlMeta } from "./UrlPreviewChip";
+import { createVoiceController, isVoiceInputSupported, type VoiceController } from "@/lib/voiceInput";
+import { cn } from "@/lib/utils";
 
 export interface PendingAttachment {
   file: File;
@@ -26,9 +28,51 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [urlPreviews, setUrlPreviews] = useState<UrlMeta[]>([]);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const voiceRef = useRef<VoiceController | null>(null);
+  const voiceSupported = isVoiceInputSupported();
   const { user } = useAuth();
+
+  useEffect(() => {
+    return () => voiceRef.current?.stop();
+  }, []);
+
+  const toggleVoice = () => {
+    if (!voiceSupported) {
+      toast.error("Trình duyệt không hỗ trợ nhận diện giọng nói");
+      return;
+    }
+    if (listening) {
+      voiceRef.current?.stop();
+      return;
+    }
+    setInterim("");
+    const ctrl = createVoiceController({
+      lang: "vi-VN",
+      onInterim: (t) => setInterim(t),
+      onFinal: (t) => {
+        setText((prev) => (prev ? prev.replace(/\s+$/, "") + " " + t : t));
+        setInterim("");
+      },
+      onError: (err) => {
+        if (err !== "no-speech" && err !== "aborted") {
+          toast.error(`Lỗi giọng nói: ${err}`);
+        }
+        setListening(false);
+        setInterim("");
+      },
+      onEnd: () => {
+        setListening(false);
+        setInterim("");
+      },
+    });
+    voiceRef.current = ctrl;
+    ctrl.start();
+    setListening(true);
+  };
 
   // Slash command: /schedule "<name>" <cron> -- <prompt>
   const trySlashCommand = async (raw: string): Promise<boolean> => {
@@ -195,12 +239,21 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
           onPaste={onPaste}
-          placeholder="Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh, paste URL)"
+          placeholder={
+            listening
+              ? "🎙 Đang nghe… nói thoải mái, bấm mic lần nữa để dừng"
+              : "Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh, paste URL)"
+          }
           disabled={disabled}
           className="min-h-[52px] max-h-60 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
         />
+        {interim && (
+          <div className="px-3 pb-1 text-xs text-muted-foreground italic truncate">
+            {interim}
+          </div>
+        )}
         <div className="flex items-center justify-between p-2 pt-0">
-          <div>
+          <div className="flex items-center gap-1">
             <input
               ref={fileRef}
               type="file"
@@ -218,6 +271,23 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
               <ImagePlus className="h-4 w-4 mr-1" />
               Ảnh
             </Button>
+            {voiceSupported && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleVoice}
+                disabled={disabled}
+                title={listening ? "Dừng nghe" : "Nhập bằng giọng nói (vi-VN)"}
+                className={cn(
+                  listening && "bg-destructive/15 text-destructive hover:bg-destructive/20",
+                )}
+              >
+                <Mic
+                  className={cn("h-4 w-4 mr-1", listening && "animate-pulse")}
+                />
+                {listening ? "Đang nghe" : "Giọng nói"}
+              </Button>
+            )}
           </div>
           {isStreaming ? (
             <Button onClick={onStop} variant="destructive" size="sm">

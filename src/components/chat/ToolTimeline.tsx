@@ -8,6 +8,7 @@ interface Props {
   onReannotate?: () => void;
   /** Assistant message text that precedes these tool calls — used for "Why?" explainer */
   precedingText?: string;
+  onRetryTool?: (callId: string) => void;
 }
 
 interface Group {
@@ -42,11 +43,13 @@ function GroupCard({
   defaultOpen,
   onReannotate,
   precedingText,
+  onRetryTool,
 }: {
   group: Group;
   defaultOpen?: boolean;
   onReannotate?: () => void;
   precedingText?: string;
+  onRetryTool?: (callId: string) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const label = (group.groupName ?? "tool").replace(":", " · ");
@@ -72,7 +75,14 @@ function GroupCard({
       {open && (
         <div className="border-t border-primary/20 p-2 space-y-1">
           {group.calls.map((c) => (
-            <ToolCallCard key={c.id} call={c} defaultOpen={false} onReannotate={onReannotate} precedingText={precedingText} />
+            <ToolCallCard
+              key={c.id}
+              call={c}
+              defaultOpen={false}
+              onReannotate={onReannotate}
+              precedingText={precedingText}
+              onRetry={onRetryTool ? () => onRetryTool(c.id) : undefined}
+            />
           ))}
         </div>
       )}
@@ -84,7 +94,7 @@ function GroupCard({
  * Vertical timeline with a connector rail + animate-in for new steps.
  * Groups ≥3 consecutive calls of same name+action into one expandable card.
  */
-export function ToolTimeline({ calls, onReannotate, precedingText }: Props) {
+export function ToolTimeline({ calls, onReannotate, precedingText, onRetryTool }: Props) {
   const [expandKey, setExpandKey] = useState(0);
   const [forceState, setForceState] = useState<"open" | "closed" | null>(null);
 
@@ -139,6 +149,7 @@ export function ToolTimeline({ calls, onReannotate, precedingText }: Props) {
               defaultOpen={forceState === "open"}
               onReannotate={onReannotate}
               precedingText={precedingText}
+              onRetryTool={onRetryTool}
             />
           ) : (
             <ToolCallCard
@@ -149,6 +160,7 @@ export function ToolTimeline({ calls, onReannotate, precedingText }: Props) {
               }
               onReannotate={onReannotate}
               precedingText={precedingText}
+              onRetry={onRetryTool ? () => onRetryTool(g.calls[0].id) : undefined}
             />
           )}
         </div>
