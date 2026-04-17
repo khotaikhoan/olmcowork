@@ -1055,10 +1055,35 @@ export function ChatView({
         </ScrollArea>
       </div>
 
+      {pendingPlan && (
+        <div className="px-4 pt-3 max-w-3xl w-full mx-auto">
+          <PlanCard
+            steps={pendingPlan.steps}
+            loading={pendingPlan.loading}
+            onApprove={(approvedSteps) => {
+              const { prompt, attachments } = pendingPlan;
+              setPendingPlan(null);
+              executeSend(prompt, attachments, approvedSteps);
+            }}
+            onSkip={() => {
+              const { prompt, attachments } = pendingPlan;
+              setPendingPlan(null);
+              executeSend(prompt, attachments);
+            }}
+            onCancel={() => setPendingPlan(null)}
+          />
+        </div>
+      )}
+
       {mode === "control" && !isElectron() ? (
         <ControlModeBlocker onSwitchToChat={() => handleModeChange("chat")} />
       ) : (
-        <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} disabled={!user} />
+        <ChatInput
+          onSend={send}
+          onStop={stop}
+          isStreaming={isStreaming || !!pendingPlan}
+          disabled={!user || !!pendingPlan}
+        />
       )}
 
       <ToolApprovalDialog
