@@ -910,7 +910,8 @@ export function ChatView({
             <div className="h-4" />
           </div>
         </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} disabled={!user} />
 
