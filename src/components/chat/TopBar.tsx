@@ -176,6 +176,8 @@ export function TopBar({
 
       <ArmedBadge />
 
+      {extraSlot}
+
       <div className="flex-1" />
 
       {/* Subtle status pill — click for details (cost, tokens, running models, connection) */}
