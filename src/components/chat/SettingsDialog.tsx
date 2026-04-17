@@ -110,6 +110,49 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   });
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
+  // Chrome quit-confirmation state for the "real profile" toggle.
+  const [chromeDialogOpen, setChromeDialogOpen] = useState(false);
+  const [chromeCount, setChromeCount] = useState(0);
+  const [quittingChrome, setQuittingChrome] = useState(false);
+
+  const handleToggleRealProfile = async (next: boolean) => {
+    // Turning OFF — no detection needed.
+    if (!next) { setBrowserUseRealProfile(false); return; }
+    const bridge = (window as any).bridge;
+    // Web preview (no Electron) — just flip the switch; bridge call is a no-op on save.
+    if (!bridge?.chromeDetect) { setBrowserUseRealProfile(true); return; }
+    try {
+      const r = await bridge.chromeDetect();
+      if (r?.running) {
+        setChromeCount(Number(r.count) || 0);
+        setChromeDialogOpen(true);
+        return; // wait for user decision in the dialog
+      }
+      setBrowserUseRealProfile(true);
+    } catch {
+      setBrowserUseRealProfile(true);
+    }
+  };
+
+  const handleQuitChrome = async (force: boolean) => {
+    const bridge = (window as any).bridge;
+    if (!bridge?.chromeQuit) return;
+    setQuittingChrome(true);
+    try {
+      const r = await bridge.chromeQuit(force);
+      if (r?.ok) {
+        toast.success("Đã thoát Chrome — bật profile thật.");
+        setBrowserUseRealProfile(true);
+        setChromeDialogOpen(false);
+      } else {
+        toast.error(r?.output ?? "Không thoát được Chrome — thử Force quit.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Không thoát được Chrome.");
+    } finally {
+      setQuittingChrome(false);
+    }
+  };
 
   useEffect(() => {
     if (!open || !user) return;
