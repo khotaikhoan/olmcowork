@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,10 +17,11 @@ import {
   LogOut,
   PanelLeftOpen,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   onNew: () => void;
@@ -33,29 +35,74 @@ interface Props {
  */
 export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
   const nav = useNavigate();
-  const { signOut } = useAuth();
+  const location = useLocation();
+  const { user, signOut } = useAuth();
   const cp = useCommandPalette();
+  const [failedCount, setFailedCount] = useState(0);
+
+  // Poll recent failed tool calls (last 24h) for activity badge
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const load = async () => {
+      const { count } = await supabase
+        .from("activity_log")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .in("status", ["error", "denied"])
+        .gte("created_at", since);
+      if (!cancelled) setFailedCount(count ?? 0);
+    };
+    load();
+
+    // Refresh when user navigates back from /activity (presumably reviewed)
+    const ch = supabase
+      .channel("mini-rail-activity")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "activity_log", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [user, location.pathname]);
 
   const Item = ({
     icon,
     label,
     onClick,
     accent,
+    badge,
   }: {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
     accent?: boolean;
+    badge?: number;
   }) => (
     <Tooltip delayDuration={150}>
       <TooltipTrigger asChild>
         <Button
           variant={accent ? "default" : "ghost"}
           size="icon"
-          className="h-9 w-9"
+          className="h-9 w-9 relative"
           onClick={onClick}
         >
           {icon}
+          {badge !== undefined && badge > 0 && (
+            <span
+              className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold leading-none flex items-center justify-center shadow-[var(--shadow-soft)] ring-2 ring-sidebar"
+              aria-label={`${badge} hoạt động cần xem`}
+            >
+              {badge > 9 ? "9+" : badge}
+            </span>
+          )}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
@@ -106,8 +153,13 @@ export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
         />
         <Item
           icon={<ActivityIcon className="h-4 w-4" />}
-          label="Nhật ký hoạt động"
+          label={
+            failedCount > 0
+              ? `Nhật ký hoạt động (${failedCount} lỗi/từ chối trong 24h)`
+              : "Nhật ký hoạt động"
+          }
           onClick={() => nav("/activity")}
+          badge={failedCount}
         />
         <Item
           icon={<Scale className="h-4 w-4" />}
