@@ -113,6 +113,10 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0" },
         },
+        "progress-indeterminate": {
+          "0%":   { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(400%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.24s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -122,6 +126,7 @@ export default {
         "slide-in-bottom": "slide-in-bottom 0.34s cubic-bezier(0.32, 0.72, 0, 1)",
         "shimmer": "shimmer 2.2s linear infinite",
         "blink": "blink 1s ease-in-out infinite",
+        "progress-indeterminate": "progress-indeterminate 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite",
       },
     },
   },
