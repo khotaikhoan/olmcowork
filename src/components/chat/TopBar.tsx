@@ -78,6 +78,8 @@ interface Props {
   onLockedAppChange: (app: string | null) => void;
   agentId: string;
   onAgentChange: (id: string) => void;
+  /** Optional extra slot rendered after Mode/Model — used for the compact ControlBar pill. */
+  extraSlot?: React.ReactNode;
 }
 
 
