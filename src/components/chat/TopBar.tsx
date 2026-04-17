@@ -108,6 +108,58 @@ export function TopBar({
         </PopoverContent>
       </Popover>
 
+      {bridgeOnline && running.length > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              title="Loaded models — click for details"
+              className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-mono"
+            >
+              <MemoryStick className="h-3 w-3" />
+              {formatBytes(running.reduce((s, r) => s + r.size, 0))}
+              {running.some((r) => r.size_vram > 0) && (
+                <span className="flex items-center gap-0.5 text-[hsl(var(--success))]">
+                  <Cpu className="h-3 w-3" />
+                  GPU
+                </span>
+              )}
+              <span className="opacity-70">· {running.length}</span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-3">
+            <div className="text-xs font-medium mb-2">Loaded models (RAM/VRAM)</div>
+            <div className="space-y-2">
+              {running.map((r) => {
+                const cpuBytes = Math.max(0, r.size - r.size_vram);
+                const vramPct = r.size > 0 ? Math.round((r.size_vram / r.size) * 100) : 0;
+                return (
+                  <div key={r.name} className="rounded-md border border-border p-2">
+                    <div className="font-mono text-xs font-semibold mb-1 truncate">{r.name}</div>
+                    <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+                      <span>Total {formatBytes(r.size)}</span>
+                      <span>{vramPct}% on GPU</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
+                      <div className="bg-[hsl(var(--success))]" style={{ width: `${vramPct}%` }} />
+                      <div className="bg-warning/60" style={{ width: `${100 - vramPct}%` }} />
+                    </div>
+                    <div className="flex justify-between text-[11px] mt-1">
+                      <span className="text-[hsl(var(--success))]">VRAM {formatBytes(r.size_vram)}</span>
+                      <span className="text-muted-foreground">RAM {formatBytes(cpuBytes)}</span>
+                    </div>
+                    {r.expires_at && (
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        Unloads at {new Date(r.expires_at).toLocaleTimeString()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+
       <div
         title={bridgeOnline ? "Ollama connected" : "Ollama offline"}
         className={
