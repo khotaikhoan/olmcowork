@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ListChecks,
   Plus,
@@ -8,6 +8,8 @@ import {
   GripVertical,
   Pencil,
   Loader2,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,18 +19,26 @@ import type { PlanStep } from "@/lib/planGen";
 interface Props {
   steps: PlanStep[];
   loading?: boolean;
+  /** True when generation finished but produced no steps. */
+  empty?: boolean;
   onApprove: (steps: PlanStep[]) => void;
   onSkip: () => void;
   onCancel: () => void;
+  onRetry?: () => void;
 }
 
 /**
  * Plan card shown in Control mode before the agent starts executing tools.
  * User can edit step text, delete steps, add new ones, or skip planning entirely.
  */
-export function PlanCard({ steps: initial, loading, onApprove, onSkip, onCancel }: Props) {
+export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, onCancel, onRetry }: Props) {
   const [steps, setSteps] = useState<PlanStep[]>(initial);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Re-sync when parent provides new steps (e.g. after retry).
+  useEffect(() => {
+    setSteps(initial);
+  }, [initial]);
 
   const update = (id: string, text: string) =>
     setSteps((s) => s.map((st) => (st.id === id ? { ...st, text } : st)));
@@ -61,6 +71,26 @@ export function PlanCard({ steps: initial, loading, onApprove, onSkip, onCancel 
         <div className="px-4 py-6 text-xs text-muted-foreground flex items-center gap-2">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           Đang phân tích goal và tạo các bước…
+        </div>
+      ) : empty && steps.length === 0 ? (
+        <div className="px-4 py-5 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium">Model chưa tạo được plan</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Có thể model bị quá tải hoặc không hiểu rõ goal. Thử lại, bỏ qua plan để chạy thẳng, hoặc huỷ task.
+            </div>
+            {onRetry && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onRetry}
+                className="mt-2.5 h-7 text-xs"
+              >
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Thử tạo plan lại
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <ul className="px-3 py-2 space-y-1">
