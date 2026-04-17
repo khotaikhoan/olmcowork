@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
 import type { VisionMark } from "@/lib/bridge";
+import { InlineDiff } from "./InlineDiff";
+import { CursorTrailOverlay, CursorPoint } from "./CursorTrailOverlay";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
@@ -32,6 +34,8 @@ export interface ToolCallRecord {
   image?: string;
   /** accessibility marks, set for vision_click.annotate */
   marks?: VisionMark[];
+  /** ordered cursor waypoints when this call is part of a computer-use sequence */
+  trailPoints?: CursorPoint[];
 }
 
 function variant(call: ToolCallRecord) {
