@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/chat/ConversationList";
+import { MiniRail } from "@/components/chat/MiniRail";
 import { ChatView } from "@/components/chat/ChatView";
 import { SettingsDialog, SettingsValue } from "@/components/chat/SettingsDialog";
 import { ArtifactsPanel } from "@/components/chat/ArtifactsPanel";
