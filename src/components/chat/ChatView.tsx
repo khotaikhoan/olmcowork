@@ -1087,6 +1087,17 @@ export function ChatView({
         onModeChange={handleModeChange}
         lockedApp={lockedApp}
         onLockedAppChange={setLockedApp}
+        agentId={agentId}
+        onAgentChange={(id) => {
+          setAgentId(id);
+          // Auto-pick a preferred model for this agent if available
+          const a = getAgent(id);
+          if (provider === "ollama" && a.preferOllama) {
+            const m = models.find((x) => x.name.toLowerCase().includes(a.preferOllama!.toLowerCase()));
+            if (m && m.name !== model) handleModelChange(m.name);
+          }
+          if (id !== "default") toast.success(`Đang dùng agent: ${a.name}`);
+        }}
       />
 
       {mode === "control" ? (
