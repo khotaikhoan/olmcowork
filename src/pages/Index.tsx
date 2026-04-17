@@ -13,6 +13,8 @@ export default function Index() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settings, setSettings] = useState<SettingsValue>({
+    provider: (localStorage.getItem("chat.provider") as any) || "ollama",
+    openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
     ollama_url: "http://localhost:11434",
     default_model: null,
     require_confirm: true,
@@ -34,13 +36,14 @@ export default function Index() {
       .maybeSingle()
       .then(({ data }) => {
         if (data) {
-          setSettings({
+          setSettings((prev) => ({
+            ...prev,
             ollama_url: data.ollama_url,
             default_model: data.default_model,
             require_confirm: data.require_confirm,
             auto_stop_minutes: (data as any).auto_stop_minutes ?? 0,
             auto_start: (data as any).auto_start ?? true,
-          });
+          }));
         }
       });
   }, [user]);
@@ -64,6 +67,8 @@ export default function Index() {
       />
       <ChatView
         conversationId={selectedId}
+        provider={settings.provider}
+        openaiModel={settings.openai_model}
         ollamaUrl={settings.ollama_url}
         defaultModel={settings.default_model}
         requireConfirm={settings.require_confirm}

@@ -11,10 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { pingOllama } from "@/lib/ollama";
+import { OPENAI_MODELS } from "@/lib/openai";
+
+export type Provider = "ollama" | "openai";
 
 interface Props {
   open: boolean;
@@ -23,6 +33,8 @@ interface Props {
 }
 
 export interface SettingsValue {
+  provider: Provider;
+  openai_model: string;
   ollama_url: string;
   default_model: string | null;
   require_confirm: boolean;
@@ -30,8 +42,17 @@ export interface SettingsValue {
   auto_start: boolean;
 }
 
+const LS_PROVIDER = "chat.provider";
+const LS_OPENAI_MODEL = "chat.openai_model";
+
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
+  const [provider, setProvider] = useState<Provider>(
+    (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
+  );
+  const [openaiModel, setOpenaiModel] = useState<string>(
+    localStorage.getItem(LS_OPENAI_MODEL) || "gpt-4o-mini",
+  );
   const [url, setUrl] = useState("http://localhost:11434");
   const [model, setModel] = useState("");
   const [requireConfirm, setRequireConfirm] = useState(true);
@@ -70,6 +91,8 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const save = async () => {
     if (!user) return;
     setBusy(true);
+    localStorage.setItem(LS_PROVIDER, provider);
+    localStorage.setItem(LS_OPENAI_MODEL, openaiModel);
     const payload = {
       user_id: user.id,
       ollama_url: url,
@@ -83,6 +106,8 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     if (error) return toast.error(error.message);
     toast.success("Đã lưu cài đặt");
     onSaved({
+      provider,
+      openai_model: openaiModel,
       ollama_url: url,
       default_model: model || null,
       require_confirm: requireConfirm,
@@ -102,7 +127,39 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <Label>Nhà cung cấp AI</Label>
+            <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ollama">Ollama (cục bộ)</SelectItem>
+                <SelectItem value="openai">OpenAI (đám mây)</SelectItem>
+              </SelectContent>
+            </Select>
+            {provider === "openai" && (
+              <div className="pt-2 space-y-2">
+                <Label>Model OpenAI</Label>
+                <Select value={openaiModel} onValueChange={setOpenaiModel}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OPENAI_MODELS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {m}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Key đã lưu an toàn ở máy chủ. Tin nhắn sẽ gọi qua hàm <code>openai-chat</code>.
+                </p>
+              </div>
+            )}
+          </div>
           <div className="space-y-2">
             <Label htmlFor="url">URL Ollama</Label>
             <div className="flex gap-2">

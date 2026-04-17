@@ -6,6 +6,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
+import { streamOpenAI, OpenAIMessage } from "@/lib/openai";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
@@ -27,6 +28,8 @@ interface DbMessage {
 
 interface Props {
   conversationId: string | null;
+  provider: "ollama" | "openai";
+  openaiModel: string;
   ollamaUrl: string;
   defaultModel: string | null;
   requireConfirm: boolean;
@@ -38,6 +41,8 @@ interface Props {
 
 export function ChatView({
   conversationId,
+  provider,
+  openaiModel,
   ollamaUrl,
   defaultModel,
   requireConfirm,
@@ -166,7 +171,7 @@ export function ChatView({
       .insert({
         user_id: user!.id,
         title: autoTitle,
-        model,
+        model: provider === "openai" ? openaiModel : model,
         system_prompt: systemPrompt || null,
       })
       .select("id")
@@ -296,41 +301,45 @@ export function ChatView({
   // ----- Send -----
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
-    if (!model && models.length === 0 && !(autoStart && isElectron())) {
-      return toast.error("Hãy chọn model trước");
-    }
     lastActivityRef.current = Date.now();
 
-    // Tự khởi động Ollama nếu đang dừng (chỉ trên Electron)
-    if (!bridgeOnline) {
-      if (autoStart && isElectron()) {
-        const tid = toast.loading("Đang khởi động Ollama…");
-        const b = (window as any).bridge;
-        setOllamaBusy(true);
-        try {
-          const r = await b.startOllama();
-          toast.dismiss(tid);
-          if (!r.ok) {
-            toast.error(r.output);
-            return;
-          }
-          const ok = await pingOllama(ollamaUrl);
-          setBridgeOnline(ok);
-          if (!ok) return toast.error("Ollama không phản hồi sau khi khởi động.");
-          try {
-            const m = await listModels(ollamaUrl);
-            setModels(m);
-            if (!model) setModel(defaultModel || m[0]?.name || "");
-          } catch {}
-          toast.success("Đã khởi động Ollama.");
-        } finally {
-          setOllamaBusy(false);
-        }
-      } else {
-        return toast.error("Ollama đang ngoại tuyến. Kiểm tra Cài đặt.");
+    const usingOpenAI = provider === "openai";
+
+    if (!usingOpenAI) {
+      if (!model && models.length === 0 && !(autoStart && isElectron())) {
+        return toast.error("Hãy chọn model trước");
       }
+      // Tự khởi động Ollama nếu đang dừng (chỉ trên Electron)
+      if (!bridgeOnline) {
+        if (autoStart && isElectron()) {
+          const tid = toast.loading("Đang khởi động Ollama…");
+          const b = (window as any).bridge;
+          setOllamaBusy(true);
+          try {
+            const r = await b.startOllama();
+            toast.dismiss(tid);
+            if (!r.ok) {
+              toast.error(r.output);
+              return;
+            }
+            const ok = await pingOllama(ollamaUrl);
+            setBridgeOnline(ok);
+            if (!ok) return toast.error("Ollama không phản hồi sau khi khởi động.");
+            try {
+              const m = await listModels(ollamaUrl);
+              setModels(m);
+              if (!model) setModel(defaultModel || m[0]?.name || "");
+            } catch {}
+            toast.success("Đã khởi động Ollama.");
+          } finally {
+            setOllamaBusy(false);
+          }
+        } else {
+          return toast.error("Ollama đang ngoại tuyến. Kiểm tra Cài đặt.");
+        }
+      }
+      if (!model) return toast.error("Hãy chọn model trước");
     }
-    if (!model) return toast.error("Hãy chọn model trước");
 
     try {
       const convId = await ensureConversation(text);
@@ -384,14 +393,45 @@ export function ChatView({
       let finalContent = "";
       let savedCalls: ToolCallRecord[] = [];
 
-      if (toolsEnabled) {
-        // Tool calling loop (non-streaming)
+      if (usingOpenAI) {
+        // OpenAI streaming qua edge function (giữ key server-side)
+        // Tools/vision-image base64 chỉ hỗ trợ ở Ollama path; ở đây gửi text thuần.
+        const oaiMsgs: OpenAIMessage[] = history.map((m) => {
+          const imgs = m.images ?? [];
+          if (m.role === "user" && imgs.length) {
+            return {
+              role: "user",
+              content: [
+                { type: "text", text: m.content },
+                ...imgs.map((b64) => ({
+                  type: "image_url",
+                  image_url: { url: `data:image/png;base64,${b64}` },
+                })),
+              ],
+            };
+          }
+          return { role: m.role as "system" | "user" | "assistant", content: m.content };
+        });
+        let acc = "";
+        await streamOpenAI({
+          model: openaiModel,
+          messages: oaiMsgs,
+          signal: controller.signal,
+          onToken: (chunk) => {
+            acc += chunk;
+            setStreamingText(acc);
+          },
+          onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
+        });
+        finalContent = acc;
+      } else if (toolsEnabled) {
+        // Tool calling loop (Ollama, non-streaming)
         const { finalText, allCalls } = await runToolLoop(convId, history, controller.signal);
         finalContent = finalText;
         savedCalls = allCalls;
         setStreamingText(finalText);
       } else {
-        // Pure streaming
+        // Ollama streaming
         let acc = "";
         await streamChat({
           baseUrl: ollamaUrl,
