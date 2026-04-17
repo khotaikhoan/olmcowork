@@ -202,6 +202,19 @@ export async function executeTool(
     });
     return { ok: r.ok, output: `[agent ${r.id.slice(0, 8)}] ${r.ok ? "completed" : "failed"}\n\n${r.output}` };
   }
+  if (name === "send_to_agent") {
+    const { sendToAgent, ROOT_PARENT_ID } = await import("./agentOrchestrator");
+    const r = sendToAgent(
+      ROOT_PARENT_ID,
+      String(args.agent_id ?? ""),
+      String(args.message ?? ""),
+      args.new_goal ? String(args.new_goal) : undefined,
+    );
+    return { ok: r.ok, output: r.output };
+  }
+  if (name === "report_to_parent") {
+    return { ok: false, output: "report_to_parent is only callable from inside a sub-agent (you are the root agent)." };
+  }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
 
