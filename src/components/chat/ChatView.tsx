@@ -112,6 +112,14 @@ export function ChatView({
     resolve: (decision: { approve: boolean; alwaysAllow: boolean }) => void;
   } | null>(null);
 
+  // Plan card state (Control mode only) — gates send until user approves/skips.
+  const [pendingPlan, setPendingPlan] = useState<{
+    prompt: string;
+    attachments: PendingAttachment[];
+    steps: PlanStep[];
+    loading: boolean;
+  } | null>(null);
+
   // ----- Ollama health + models -----
   useEffect(() => {
     let alive = true;
