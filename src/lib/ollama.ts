@@ -112,10 +112,12 @@ export async function streamChat(opts: StreamOptions) {
       if (m.images && m.images.length) out.images = m.images;
       return out;
     });
+    const hasImages = sanitized.some((m: any) => Array.isArray(m.images) && m.images.length);
+    const num_ctx = hasImages ? 16384 : 4096;
     const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages: sanitized, stream: true, options: { num_ctx: 2048 } }),
+      body: JSON.stringify({ model, messages: sanitized, stream: true, options: { num_ctx } }),
       signal,
     });
     if (!res.ok || !res.body) {
