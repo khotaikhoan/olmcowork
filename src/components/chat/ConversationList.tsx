@@ -19,14 +19,10 @@ import {
   Search,
   Settings,
   LogOut,
-  Clock,
   Pin,
   PinOff,
-  Activity as ActivityIcon,
-  
   Monitor,
   PanelLeftClose,
-  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
