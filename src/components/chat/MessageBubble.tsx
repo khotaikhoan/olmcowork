@@ -48,6 +48,8 @@ export function MessageBubble({
   onBranch,
   onReannotate,
   onRetryTool,
+  onRetryAllFailed,
+  bulkRetryProgress,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
