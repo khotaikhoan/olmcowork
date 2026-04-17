@@ -41,14 +41,18 @@ export default function Index() {
   }, [sidebarMode]);
   // Mobile sidebar lives in a Sheet — separate open/closed flag.
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settings, setSettings] = useState<SettingsValue>({
-    provider: (localStorage.getItem("chat.provider") as any) || "ollama",
-    openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
-    ollama_url: "http://localhost:11434",
-    default_model: null,
-    require_confirm: true,
-    auto_stop_minutes: 0,
-    auto_start: true,
+  const [settings, setSettings] = useState<SettingsValue>(() => {
+    const saved = (localStorage.getItem("chat.provider") as any) || "ollama";
+    const provider = !isElectron() && saved === "ollama" ? "openai" : saved;
+    return {
+      provider,
+      openai_model: localStorage.getItem("chat.openai_model") || "gpt-4o-mini",
+      ollama_url: "http://localhost:11434",
+      default_model: null,
+      require_confirm: true,
+      auto_stop_minutes: 0,
+      auto_start: true,
+    };
   });
 
   // Artifacts state — lifted from ChatView so the side panel can render them
