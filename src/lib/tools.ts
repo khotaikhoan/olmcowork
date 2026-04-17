@@ -261,6 +261,46 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "send_to_agent",
+    risk: "low",
+    description:
+      "Send a message to a DIRECT-CHILD sub-agent that you previously spawned. The text is auto-injected as a user-role message before the child's NEXT step (it does NOT interrupt its current tool call). Use this to: (a) deliver new info you discovered, (b) refine instructions, or (c) fully replace its goal via optional `new_goal`. Permission: only direct parent ↔ direct child — siblings cannot DM. Use list with no args via the Agents tab to find agent ids; the spawn_agent result also returned an id.",
+    parameters: {
+      type: "object",
+      properties: {
+        agent_id: {
+          type: "string",
+          description: "Target sub-agent id (the value returned by spawn_agent, full uuid).",
+        },
+        message: {
+          type: "string",
+          description: "Free-form instruction or context to inject. Be concise; the child has limited context.",
+        },
+        new_goal: {
+          type: "string",
+          description: "OPTIONAL — overwrite the child's goal entirely. Use only when redirecting it to a different task.",
+        },
+      },
+      required: ["agent_id", "message"],
+    },
+  },
+  {
+    name: "report_to_parent",
+    risk: "low",
+    description:
+      "Sub-agent → parent progress report. Call this from inside a sub-agent to stream a brief status, partial finding, or blocker to your parent (the user's main agent or your spawning agent). The parent will see your report at the top of its NEXT step's context. Don't spam — use for milestones or when you need the parent to course-correct. Not available to the root agent (you have no parent).",
+    parameters: {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          description: "1–3 sentence status update or partial result.",
+        },
+      },
+      required: ["text"],
+    },
+  },
+  {
     name: "text_editor",
     anthropic_type: "text_editor_20241022",
     risk: "medium",
@@ -302,7 +342,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent", "send_to_agent", "report_to_parent"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -341,7 +381,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent") return true;
+  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent" || name === "send_to_agent" || name === "report_to_parent") return true;
   if (name === "browser") {
     const a = String(args.action ?? "");
     return [

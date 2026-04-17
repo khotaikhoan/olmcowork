@@ -94,6 +94,7 @@ function AgentRow({
           <div className="text-xs">
             <span className="text-muted-foreground">Goal: </span>
             <span className="text-foreground">{node.goal}</span>
+            <span className="ml-1 text-[10px] text-muted-foreground">id={node.id.slice(0, 8)}</span>
           </div>
           {node.tools.length > 0 && (
             <div className="flex flex-wrap gap-1">
@@ -101,6 +102,28 @@ function AgentRow({
                 <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                   {t}
                 </span>
+              ))}
+            </div>
+          )}
+          {node.inbox.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Inbox ({node.inbox.length})</div>
+              {node.inbox.slice(-5).map((m) => (
+                <div key={m.id} className="text-xs rounded border-l-2 border-primary/40 bg-primary/5 px-2 py-1">
+                  <div className="text-[10px] text-muted-foreground">← {m.fromName}{m.newGoal ? " · new goal" : ""}</div>
+                  <div className="break-words whitespace-pre-wrap">{m.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {node.reports.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Reports from children ({node.reports.length})</div>
+              {node.reports.slice(-5).map((m) => (
+                <div key={m.id} className="text-xs rounded border-l-2 border-emerald-500/40 bg-emerald-500/5 px-2 py-1">
+                  <div className="text-[10px] text-muted-foreground">→ {m.fromName}</div>
+                  <div className="break-words whitespace-pre-wrap">{m.text}</div>
+                </div>
               ))}
             </div>
           )}
