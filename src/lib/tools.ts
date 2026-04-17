@@ -216,7 +216,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -256,6 +256,11 @@ export function isActionAllowedInMode(
 ): boolean {
   if (mode === "control") return true;
   if (name === "fetch_url" || name === "web_search") return true;
+  if (name === "browser") {
+    // Read-only / navigation actions allowed in Chat mode; mutations require Control.
+    const a = String(args.action ?? "");
+    return ["navigate", "get_html", "get_text", "screenshot", "wait_for", "close"].includes(a);
+  }
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
   return a === "view" || a === "list_dir";
@@ -291,6 +296,11 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
     return "high";
   }
   if (name === "observe_screen") return "low";
+  if (name === "browser") {
+    const a = String(args.action ?? "");
+    if (["navigate", "get_html", "get_text", "screenshot", "wait_for", "close", "eval"].includes(a)) return "low";
+    return "medium"; // click/fill/press = mutation in remote site
+  }
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }
 

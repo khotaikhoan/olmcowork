@@ -204,7 +204,7 @@ export async function executeTool(
   if (name === "browser") {
     return b.browser(args);
   }
-
+  if (name === "vision_click") {
     const action = String(args.action ?? "");
     if (action === "annotate") {
       return b.visionAnnotate();
