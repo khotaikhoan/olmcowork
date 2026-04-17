@@ -141,6 +141,15 @@ export function ChatView({
   const [agentStep, setAgentStep] = useState<{ current: number; max: number } | null>(null);
   useEffect(() => subscribeFullAuto(setFullAutoState), []);
 
+  // Bypass Approvals — per-conversation auto-approve all tools (incl. armed/high-risk)
+  const [bypass, setBypassState] = useState<boolean>(false);
+  useEffect(() => {
+    setBypassState(getBypass(conversationId));
+    return subscribeBypass((cid, v) => {
+      if (cid === conversationId) setBypassState(v);
+    });
+  }, [conversationId]);
+
   // ----- Ollama health + models -----
   useEffect(() => {
     let alive = true;
