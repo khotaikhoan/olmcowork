@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, Check, X } from "lucide-react";
+import { Bot, User, Check, X, RotateCw, Loader2 } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ToolTimeline } from "./ToolTimeline";
@@ -10,6 +10,7 @@ import { MessageActions } from "./MessageActions";
 import { highlightMatches } from "./ChatSearch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -26,6 +27,8 @@ interface Props {
   onBranch?: () => void;
   onReannotate?: () => void;
   onRetryTool?: (callId: string) => void;
+  onRetryAllFailed?: () => void;
+  bulkRetryProgress?: { current: number; total: number } | null;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -46,6 +49,8 @@ export function MessageBubble({
   onBranch,
   onReannotate,
   onRetryTool,
+  onRetryAllFailed,
+  bulkRetryProgress,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -100,6 +105,44 @@ export function MessageBubble({
             onRetryTool={onRetryTool}
           />
         )}
+        {toolCalls && toolCalls.length > 0 && (() => {
+          const failedCount = toolCalls.filter((c) => c.status === "error").length;
+          const isRetrying = !!bulkRetryProgress;
+          if (failedCount < 2 && !isRetrying) return null;
+          return (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-2.5 space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-destructive font-medium">
+                  {isRetrying
+                    ? `Đang thử lại ${bulkRetryProgress!.current}/${bulkRetryProgress!.total}…`
+                    : `${failedCount} tool lỗi`}
+                </span>
+                {onRetryAllFailed && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-destructive/40 hover:bg-destructive/10"
+                    onClick={onRetryAllFailed}
+                    disabled={isRetrying}
+                  >
+                    {isRetrying ? (
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    ) : (
+                      <RotateCw className="h-3 w-3 mr-1" />
+                    )}
+                    Thử lại tất cả tool lỗi
+                  </Button>
+                )}
+              </div>
+              {isRetrying && (
+                <Progress
+                  value={(bulkRetryProgress!.current / Math.max(1, bulkRetryProgress!.total)) * 100}
+                  className="h-1.5"
+                />
+              )}
+            </div>
+          );
+        })()}
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
