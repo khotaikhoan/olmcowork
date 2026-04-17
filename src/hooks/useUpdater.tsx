@@ -5,7 +5,7 @@ export type UpdaterState =
   | { state: "disabled"; currentVersion?: string | null }
   | { state: "checking"; currentVersion?: string | null }
   | { state: "none"; currentVersion?: string | null }
-  | { state: "available"; version?: string; currentVersion?: string | null }
+  | { state: "available"; version?: string; currentVersion?: string | null; manualOnly?: boolean; releaseUrl?: string | null }
   | { state: "downloading"; percent?: number; bytesPerSecond?: number; transferred?: number; total?: number; version?: string; currentVersion?: string | null }
   | { state: "ready"; version?: string; currentVersion?: string | null }
   | { state: "error"; message?: string; currentVersion?: string | null };

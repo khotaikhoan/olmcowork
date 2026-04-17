@@ -140,13 +140,35 @@ export function UpdateBadge() {
         </div>
 
         {status.state === "available" && (
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground">
-              Đã phát hiện bản mới{" "}
-              <span className="font-mono text-foreground">{status.version}</span>. Đang chuẩn bị tải xuống…
+          (status as any).manualOnly ? (
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                Đã có bản{" "}
+                <span className="font-mono text-foreground">{status.version}</span>. Bản này phải tải thủ công (auto-update không khả dụng cho build hiện tại).
+              </div>
+              <Button
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  const url = (status as any).releaseUrl as string | undefined;
+                  if (url) window.open(url, "_blank", "noopener,noreferrer");
+                  else toast.error("Không có link release");
+                }}
+                disabled={!(status as any).releaseUrl}
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Mở trang tải xuống
+              </Button>
             </div>
-            <Progress value={undefined as any} className="h-1.5 animate-pulse" />
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                Đã phát hiện bản mới{" "}
+                <span className="font-mono text-foreground">{status.version}</span>. Đang chuẩn bị tải xuống…
+              </div>
+              <Progress value={undefined as any} className="h-1.5 animate-pulse" />
+            </div>
+          )
         )}
 
         {status.state === "downloading" && (
