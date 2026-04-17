@@ -114,6 +114,13 @@
   }
 }
 
+/* Force font-display: swap on all bundled @fontsource faces.
+   Prevents the white-flash (FOIT) on initial load — text renders
+   immediately in the system fallback, then swaps to Inter/Fraunces. */
+@font-face { font-family: "Inter"; font-display: swap; }
+@font-face { font-family: "Fraunces"; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; font-display: swap; }
+
 @layer base {
   * { @apply border-border; }
   body {
