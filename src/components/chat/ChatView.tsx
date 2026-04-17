@@ -397,10 +397,16 @@ export function ChatView({
     });
 
   // Ask user to approve a tool call.
+  // Bypass Approvals: skip ALL approvals (incl. armed-mode) — auto-arm if needed.
   // Phase 4 tools (sudo_shell/run_script/raw_file) ALWAYS require armed-mode,
   // even in Full Auto. Other tools follow the normal Full Auto / require_confirm flow.
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>(async (resolve) => {
+      // Bypass: auto-arm + auto-approve everything
+      if (bypass) {
+        if (requiresArmed(tool.name) && !isArmed()) arm();
+        return resolve({ approve: true, alwaysAllow: false });
+      }
       if (requiresArmed(tool.name)) {
         const ok = await ensureArmed(tool.name, args.reason ? String(args.reason) : undefined);
         return resolve({ approve: ok, alwaysAllow: false });
