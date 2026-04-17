@@ -171,7 +171,7 @@ export function ChatView({
       .insert({
         user_id: user!.id,
         title: autoTitle,
-        model,
+        model: provider === "openai" ? openaiModel : model,
         system_prompt: systemPrompt || null,
       })
       .select("id")
