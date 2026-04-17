@@ -145,6 +145,36 @@ export function ChatView({
     return () => { alive = false; clearInterval(id); };
   }, [bridgeOnline, ollamaUrl]);
 
+  // ----- Context window from Ollama /api/show -----
+  useEffect(() => {
+    if (provider === "openai") {
+      // Cloud models — rough fallback by family
+      const m = openaiModel.toLowerCase();
+      if (m.includes("gemini")) setContextWindow(1_000_000);
+      else if (m.includes("gpt-5")) setContextWindow(400_000);
+      else setContextWindow(128_000);
+      setContextWindowSource("fallback");
+      return;
+    }
+    if (!bridgeOnline || !model) {
+      setContextWindow(128_000);
+      setContextWindowSource("fallback");
+      return;
+    }
+    let alive = true;
+    showModel(ollamaUrl, model).then((info) => {
+      if (!alive) return;
+      if (info?.contextLength) {
+        setContextWindow(info.contextLength);
+        setContextWindowSource("real");
+      } else {
+        setContextWindow(128_000);
+        setContextWindowSource("fallback");
+      }
+    });
+    return () => { alive = false; };
+  }, [provider, model, openaiModel, bridgeOnline, ollamaUrl]);
+
   // ----- Load conversation -----
   useEffect(() => {
     setCostInput(0);
@@ -843,6 +873,9 @@ export function ChatView({
         onOpenSearch={() => setSearchOpen(true)}
         onExport={handleExport}
         canExport={messages.length > 0}
+        contextWindow={contextWindow}
+        contextWindowSource={contextWindowSource}
+        onToggleSidebar={onToggleSidebar}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
