@@ -249,6 +249,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             </div>
             <Switch checked={requireConfirm} onCheckedChange={setRequireConfirm} />
           </div>
+
+          {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
+          <FullAutoToggle />
           <div className="space-y-2">
             <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
             <Input
