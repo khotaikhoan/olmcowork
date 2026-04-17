@@ -676,24 +676,39 @@ export function ChatView({
    * Public send handler. In Control mode with a "complex" prompt, generates a
    * plan first and shows PlanCard for user approval. Otherwise sends immediately.
    */
-  const runPlanGeneration = async (text: string, attachments: PendingAttachment[]) => {
+  // Allows "Bắt đầu sớm" / Retry / Cancel to abort an in-flight plan stream.
+  const planAbortRef = useRef<AbortController | null>(null);
+
+  const runPlanGeneration = async (text: string, _attachments: PendingAttachment[]) => {
+    planAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    planAbortRef.current = ctrl;
     try {
-      const steps = await generatePlan(text, {
+      const finalSteps = await streamPlan(text, {
         provider,
         ollamaUrl,
         ollamaModel: model,
         openaiModel,
+        signal: ctrl.signal,
+        onSteps: (partial) => {
+          setPendingPlan((p) => {
+            if (!p || p.prompt !== text) return p;
+            // If user already started early, p will be null — guarded above.
+            return { ...p, steps: partial, loading: true };
+          });
+        },
       });
       setPendingPlan((p) => {
         if (!p || p.prompt !== text) return p;
-        return { ...p, steps, loading: false };
+        return { ...p, steps: finalSteps, loading: false };
       });
     } catch (err: any) {
       toast.error(`Không tạo được plan: ${err?.message ?? err}`);
-      // Mark as empty so the user sees the retry UI instead of being trapped.
       setPendingPlan((p) =>
         p && p.prompt === text ? { ...p, steps: [], loading: false } : p,
       );
+    } finally {
+      if (planAbortRef.current === ctrl) planAbortRef.current = null;
     }
   };
 
