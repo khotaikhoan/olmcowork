@@ -37,7 +37,8 @@ function setupAutoUpdate() {
   emitUpdater({ state: "checking" });
   autoUpdater.on("checking-for-update", () => emitUpdater({ state: "checking" }));
   autoUpdater.on("update-available", (info) => {
-    emitUpdater({ state: "available", version: info.version });
+    // electron-updater will auto-download → not a manual-only flow.
+    emitUpdater({ state: "available", version: info.version, manualOnly: false, releaseUrl: null });
   });
   autoUpdater.on("update-not-available", () => {
     emitUpdater({ state: "none" });
