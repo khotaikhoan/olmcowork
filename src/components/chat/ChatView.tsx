@@ -58,6 +58,7 @@ export function ChatView({
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastActivityRef = useRef<number>(Date.now());
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
@@ -435,7 +436,6 @@ export function ChatView({
   };
 
   // ----- Auto-stop Ollama after idle -----
-  const lastActivityRef = useRef<number>(Date.now());
   useEffect(() => {
     if (!canControlOllama || autoStopMinutes <= 0) return;
     const idleMs = autoStopMinutes * 60 * 1000;
