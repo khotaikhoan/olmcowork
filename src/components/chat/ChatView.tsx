@@ -19,6 +19,7 @@ import { Wrench } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { AgentPreset } from "@/lib/presets";
+import { estimateTokens } from "./TokenMeter";
 
 interface DbMessage {
   id: string;
@@ -74,6 +75,8 @@ export function ChatView({
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
+  const streamStartRef = useRef<number>(0);
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
