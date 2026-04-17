@@ -970,9 +970,13 @@ async function ensurePwPage() {
     pwContext.on("page", (p) => {
       if (!pwPages.includes(p)) pwPages.push(p);
     });
-    // Persistent context already has a default about:blank page — reuse it.
+    // For CDP-attached real-Chrome: ALWAYS open a brand-new tab so we never
+    // hijack the tab the user is reading. For ephemeral/persistent modes,
+    // reuse the default about:blank.
     const existing = pwContext.pages();
-    const first = existing.length ? existing[0] : await pwContext.newPage();
+    const first = (pwUseRealProfile || !existing.length)
+      ? await pwContext.newPage()
+      : existing[0];
     pwPages = [first];
     pwActiveIdx = 0;
   }
