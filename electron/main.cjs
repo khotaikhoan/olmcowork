@@ -842,51 +842,111 @@ function startLocalCronTimer() {
 app.whenReady().then(startLocalCronTimer);
 
 // ──────────────────────────────────────────────────────────────────────────
-// Phase 3: Playwright browser automation (headless Chromium)
-// Single shared browser+context+page for the session. Lazy-launched on first
-// browser:* IPC. Closed on quit. Uses playwright-core + system Chrome channel
-// to avoid bundling a 200MB Chromium with the Electron build.
+// Phase 3+: Playwright browser automation (Chromium) — stealth, multi-tab,
+// smart selectors (text/role/label), download/upload, configurable headless.
+// Single shared browser+context, multiple pages (tabs). Lazy-launched.
 // ──────────────────────────────────────────────────────────────────────────
-let pw = null;            // playwright-core module (lazy)
-let pwBrowser = null;     // Browser instance
-let pwContext = null;     // BrowserContext
-let pwPage = null;        // active Page
+let pw = null;            // playwright(-extra) chromium
+let pwBrowser = null;
+let pwContext = null;
+let pwPages = [];         // ordered tabs
+let pwActiveIdx = 0;
+let pwHeadless = true;    // updated from user_settings via IPC
+const PW_DOWNLOAD_DIR = path.join(app.getPath("downloads"), "OllamaCowork");
+
+function pwActivePage() {
+  // Drop closed pages, clamp index.
+  pwPages = pwPages.filter((p) => p && !p.isClosed());
+  if (!pwPages.length) return null;
+  if (pwActiveIdx >= pwPages.length) pwActiveIdx = pwPages.length - 1;
+  if (pwActiveIdx < 0) pwActiveIdx = 0;
+  return pwPages[pwActiveIdx];
+}
 
 async function ensurePwPage() {
   if (!pw) {
+    // Try playwright-extra + stealth first; fall back to plain playwright-core.
     try {
-      pw = require("playwright-core");
-    } catch (e) {
-      throw new Error("playwright-core không có sẵn. Cài: npm i playwright-core");
+      const { chromium } = require("playwright-extra");
+      const stealth = require("puppeteer-extra-plugin-stealth")();
+      chromium.use(stealth);
+      pw = { chromium };
+    } catch {
+      try {
+        pw = require("playwright-core");
+      } catch {
+        throw new Error("playwright-core không có sẵn. Cài: npm i playwright-core playwright-extra puppeteer-extra-plugin-stealth");
+      }
     }
   }
   if (!pwBrowser || !pwBrowser.isConnected()) {
-    // channel: 'chrome' uses the user's installed Chrome; falls back to executablePath if set.
+    try { fs.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
+    const launchOpts = { headless: pwHeadless, channel: "chrome" };
     try {
-      pwBrowser = await pw.chromium.launch({ headless: true, channel: "chrome" });
+      pwBrowser = await pw.chromium.launch(launchOpts);
     } catch {
-      // Last-resort: try without channel (requires bundled Chromium — usually missing).
-      pwBrowser = await pw.chromium.launch({ headless: true });
+      pwBrowser = await pw.chromium.launch({ headless: pwHeadless });
     }
     pwContext = await pwBrowser.newContext({
       viewport: { width: 1280, height: 800 },
       userAgent:
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
+      locale: "en-US",
+      timezoneId: "America/Los_Angeles",
+      acceptDownloads: true,
     });
-    pwPage = await pwContext.newPage();
+    // Track new tabs (popups, target=_blank).
+    pwContext.on("page", (p) => {
+      if (!pwPages.includes(p)) pwPages.push(p);
+    });
+    const first = await pwContext.newPage();
+    pwPages = [first];
+    pwActiveIdx = 0;
   }
-  if (!pwPage || pwPage.isClosed()) {
-    pwPage = await pwContext.newPage();
+  let page = pwActivePage();
+  if (!page) {
+    page = await pwContext.newPage();
+    pwPages.push(page);
+    pwActiveIdx = pwPages.length - 1;
   }
-  return pwPage;
+  return page;
 }
 
 async function pwShutdown() {
   try { await pwContext?.close(); } catch {}
   try { await pwBrowser?.close(); } catch {}
-  pwPage = null;
+  pwPages = [];
+  pwActiveIdx = 0;
   pwContext = null;
   pwBrowser = null;
+}
+
+ipcMain.handle("bridge:browser_set_headless", async (_e, { headless }) => {
+  const next = !!headless;
+  if (next === pwHeadless) return { ok: true, output: `headless=${pwHeadless}` };
+  pwHeadless = next;
+  // Force relaunch on next call so the new mode takes effect.
+  await pwShutdown();
+  return { ok: true, output: `Browser will relaunch in headless=${pwHeadless} on next use.` };
+});
+
+/**
+ * Resolve a Playwright Locator from one of: selector (CSS), text, role+name, label, placeholder.
+ * Returns null + reason if no resolver provided.
+ */
+function resolveLocator(page, args) {
+  if (args.selector) return { loc: page.locator(String(args.selector)).first(), how: `css=${args.selector}` };
+  if (args.role) {
+    const opts = {};
+    if (args.name) opts.name = String(args.name);
+    if (args.exact !== undefined) opts.exact = !!args.exact;
+    return { loc: page.getByRole(String(args.role), opts).first(), how: `role=${args.role}${args.name ? `[name="${args.name}"]` : ""}` };
+  }
+  if (args.text) return { loc: page.getByText(String(args.text), { exact: !!args.exact }).first(), how: `text=${args.text}` };
+  if (args.label) return { loc: page.getByLabel(String(args.label), { exact: !!args.exact }).first(), how: `label=${args.label}` };
+  if (args.placeholder) return { loc: page.getByPlaceholder(String(args.placeholder), { exact: !!args.exact }).first(), how: `placeholder=${args.placeholder}` };
+  if (args.testId) return { loc: page.getByTestId(String(args.testId)).first(), how: `testId=${args.testId}` };
+  return { loc: null, how: null };
 }
 
 ipcMain.handle("bridge:browser", async (_e, payload) => {
@@ -896,8 +956,9 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
       await pwShutdown();
       return { ok: true, output: "Browser closed." };
     }
-    const page = await ensurePwPage();
+    let page = await ensurePwPage();
     switch (action) {
+      // ── Navigation ─────────────────────────────────────────────────────
       case "navigate": {
         const url = String(args.url ?? "");
         if (!/^https?:\/\//i.test(url)) {
@@ -905,77 +966,106 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
         }
         const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
         const title = await page.title();
-        return {
-          ok: true,
-          output: `Navigated to ${page.url()} (status ${resp?.status() ?? "?"}, title "${title}")`,
-        };
+        return { ok: true, output: `Navigated to ${page.url()} (status ${resp?.status() ?? "?"}, title "${title}")` };
       }
-      case "click_selector": {
-        const selector = String(args.selector ?? "");
-        if (!selector) return { ok: false, output: "click_selector requires selector." };
-        await page.click(selector, { timeout: 10_000 });
-        return { ok: true, output: `Clicked ${selector}` };
+      case "back":
+        await page.goBack({ waitUntil: "domcontentloaded" });
+        return { ok: true, output: `Back → ${page.url()}` };
+      case "forward":
+        await page.goForward({ waitUntil: "domcontentloaded" });
+        return { ok: true, output: `Forward → ${page.url()}` };
+      case "reload":
+        await page.reload({ waitUntil: "domcontentloaded" });
+        return { ok: true, output: `Reloaded ${page.url()}` };
+
+      // ── Tabs ────────────────────────────────────────────────────────────
+      case "new_tab": {
+        const np = await pwContext.newPage();
+        pwPages.push(np);
+        pwActiveIdx = pwPages.length - 1;
+        if (args.url && /^https?:\/\//i.test(String(args.url))) {
+          await np.goto(String(args.url), { waitUntil: "domcontentloaded", timeout: 30_000 });
+        }
+        return { ok: true, output: `Opened tab #${pwActiveIdx} (${np.url() || "blank"}). Total tabs: ${pwPages.length}` };
+      }
+      case "list_tabs": {
+        pwPages = pwPages.filter((p) => p && !p.isClosed());
+        const lines = await Promise.all(
+          pwPages.map(async (p, i) => `${i === pwActiveIdx ? "*" : " "} ${i}. ${await p.title().catch(() => "?")} — ${p.url()}`),
+        );
+        return { ok: true, output: lines.join("\n") || "(no tabs)" };
+      }
+      case "switch_tab": {
+        const idx = Number(args.index);
+        if (!Number.isFinite(idx) || idx < 0 || idx >= pwPages.length) {
+          return { ok: false, output: `switch_tab: index ${idx} out of range (0..${pwPages.length - 1})` };
+        }
+        pwActiveIdx = idx;
+        await pwPages[idx].bringToFront();
+        return { ok: true, output: `Switched to tab #${idx} (${pwPages[idx].url()})` };
+      }
+      case "close_tab": {
+        const idx = Number.isFinite(Number(args.index)) ? Number(args.index) : pwActiveIdx;
+        if (idx < 0 || idx >= pwPages.length) return { ok: false, output: `close_tab: bad index ${idx}` };
+        await pwPages[idx].close();
+        pwPages.splice(idx, 1);
+        if (!pwPages.length) {
+          const np = await pwContext.newPage();
+          pwPages.push(np);
+        }
+        pwActiveIdx = Math.min(pwActiveIdx, pwPages.length - 1);
+        return { ok: true, output: `Closed tab #${idx}. Active=${pwActiveIdx}, total=${pwPages.length}` };
+      }
+
+      // ── Smart-selector actions (selector/text/role/label/placeholder/testId) ──
+      case "click_selector":
+      case "click": {
+        const { loc, how } = resolveLocator(page, args);
+        if (!loc) return { ok: false, output: "click requires one of: selector, role+name, text, label, placeholder, testId." };
+        await loc.click({ timeout: 10_000 });
+        return { ok: true, output: `Clicked ${how}` };
       }
       case "fill": {
-        const selector = String(args.selector ?? "");
+        const { loc, how } = resolveLocator(page, args);
+        if (!loc) return { ok: false, output: "fill requires a locator (selector/role/label/placeholder/testId)." };
         const value = String(args.value ?? "");
-        if (!selector) return { ok: false, output: "fill requires selector." };
-        await page.fill(selector, value, { timeout: 10_000 });
-        return { ok: true, output: `Filled ${selector} (${value.length} chars)` };
+        await loc.fill(value, { timeout: 10_000 });
+        return { ok: true, output: `Filled ${how} (${value.length} chars)` };
       }
       case "press": {
-        const selector = String(args.selector ?? "");
+        const { loc } = resolveLocator(page, args);
         const key = String(args.key ?? "Enter");
-        if (selector) {
-          await page.press(selector, key, { timeout: 10_000 });
+        if (loc) {
+          await loc.press(key, { timeout: 10_000 });
         } else {
           await page.keyboard.press(key);
         }
-        return { ok: true, output: `Pressed ${key}${selector ? ` on ${selector}` : ""}` };
+        return { ok: true, output: `Pressed ${key}` };
       }
+      case "wait_for": {
+        const { loc, how } = resolveLocator(page, args);
+        if (!loc) return { ok: false, output: "wait_for requires a locator." };
+        await loc.waitFor({ timeout: Number(args.timeout) || 15_000, state: args.state || "visible" });
+        return { ok: true, output: `Locator appeared: ${how}` };
+      }
+
+      // ── Reading ─────────────────────────────────────────────────────────
       case "get_html": {
-        const selector = args.selector ? String(args.selector) : null;
-        let html = "";
-        if (selector) {
-          html = await page.locator(selector).first().innerHTML({ timeout: 10_000 });
-        } else {
-          html = await page.content();
-        }
-        // Strip <script>/<style>, collapse whitespace, cap to 16KB to fit context.
-        const cleaned = html
-          .replace(/<script[\s\S]*?<\/script>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/\s+/g, " ")
-          .trim();
+        const { loc } = resolveLocator(page, args);
+        const html = loc ? await loc.innerHTML({ timeout: 10_000 }) : await page.content();
+        const cleaned = html.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "").replace(/\s+/g, " ").trim();
         const truncated = cleaned.length > 16_000;
-        return {
-          ok: true,
-          output:
-            `URL: ${page.url()}\nTitle: ${await page.title()}\n\nHTML${truncated ? " (truncated to 16KB)" : ""}:\n${cleaned.slice(0, 16_000)}`,
-        };
+        return { ok: true, output: `URL: ${page.url()}\nTitle: ${await page.title()}\n\nHTML${truncated ? " (truncated to 16KB)" : ""}:\n${cleaned.slice(0, 16_000)}` };
       }
       case "get_text": {
-        const selector = args.selector ? String(args.selector) : "body";
-        const text = await page.locator(selector).first().innerText({ timeout: 10_000 });
+        const { loc } = resolveLocator(page, args);
+        const text = await (loc ?? page.locator("body").first()).innerText({ timeout: 10_000 });
         const truncated = text.length > 16_000;
-        return {
-          ok: true,
-          output: `URL: ${page.url()}\n\nText${truncated ? " (truncated to 16KB)" : ""}:\n${text.slice(0, 16_000)}`,
-        };
+        return { ok: true, output: `URL: ${page.url()}\n\nText${truncated ? " (truncated to 16KB)" : ""}:\n${text.slice(0, 16_000)}` };
       }
       case "screenshot": {
         const buf = await page.screenshot({ type: "png", fullPage: !!args.fullPage });
-        return {
-          ok: true,
-          output: `Screenshot ${buf.length} bytes (${page.url()})`,
-          image: buf.toString("base64"),
-        };
-      }
-      case "wait_for": {
-        const selector = String(args.selector ?? "");
-        if (!selector) return { ok: false, output: "wait_for requires selector." };
-        await page.waitForSelector(selector, { timeout: Number(args.timeout) || 15_000 });
-        return { ok: true, output: `Selector appeared: ${selector}` };
+        return { ok: true, output: `Screenshot ${buf.length} bytes (${page.url()})`, image: buf.toString("base64") };
       }
       case "eval": {
         const expression = String(args.expression ?? "");
@@ -983,6 +1073,34 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
         const result = await page.evaluate(expression);
         return { ok: true, output: typeof result === "string" ? result : JSON.stringify(result).slice(0, 8000) };
       }
+
+      // ── Files: download (click element that triggers it) + upload ──────
+      case "download": {
+        // Wait for download triggered by clicking a locator (or by user-supplied URL navigation).
+        const { loc, how } = resolveLocator(page, args);
+        try { fs.mkdirSync(PW_DOWNLOAD_DIR, { recursive: true }); } catch {}
+        const [ download ] = await Promise.all([
+          page.waitForEvent("download", { timeout: Number(args.timeout) || 30_000 }),
+          loc ? loc.click() : (args.url ? page.goto(String(args.url)) : Promise.resolve()),
+        ]);
+        const suggested = download.suggestedFilename();
+        const target = path.join(PW_DOWNLOAD_DIR, suggested);
+        await download.saveAs(target);
+        return { ok: true, output: `Downloaded "${suggested}" → ${target}${how ? ` (via ${how})` : ""}` };
+      }
+      case "upload": {
+        const { loc, how } = resolveLocator(page, args);
+        if (!loc) return { ok: false, output: "upload requires locator pointing at <input type=file>." };
+        const files = Array.isArray(args.files) ? args.files.map(String) : [String(args.file ?? "")];
+        if (!files.filter(Boolean).length) return { ok: false, output: "upload requires file or files[]." };
+        // Path safety: reuse the same allowlist as readFile/writeFile.
+        for (const f of files) {
+          if (!isPathSafe(f)) return { ok: false, output: `upload blocked by path safety: ${f}` };
+        }
+        await loc.setInputFiles(files, { timeout: 10_000 });
+        return { ok: true, output: `Uploaded ${files.length} file(s) to ${how}` };
+      }
+
       default:
         return { ok: false, output: `Unknown browser action: ${action}` };
     }
