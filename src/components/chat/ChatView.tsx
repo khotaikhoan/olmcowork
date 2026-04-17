@@ -522,7 +522,40 @@ export function ChatView({
   };
 
   // ----- Send -----
+  /**
+   * Public send handler. In Control mode with a "complex" prompt, generates a
+   * plan first and shows PlanCard for user approval. Otherwise sends immediately.
+   */
   const send = async (text: string, attachments: PendingAttachment[]) => {
+    if (!user) return;
+    if (mode === "control" && shouldGeneratePlan(text) && !pendingPlan) {
+      setPendingPlan({ prompt: text, attachments, steps: [], loading: true });
+      try {
+        const steps = await generatePlan(text, {
+          provider,
+          ollamaUrl,
+          ollamaModel: model,
+          openaiModel,
+        });
+        setPendingPlan((p) =>
+          p && p.prompt === text ? { ...p, steps, loading: false } : p,
+        );
+      } catch (err: any) {
+        toast.error(`Không tạo được plan: ${err?.message ?? err}`);
+        // Fallback: send without plan
+        setPendingPlan(null);
+        executeSend(text, attachments);
+      }
+      return;
+    }
+    executeSend(text, attachments);
+  };
+
+  const executeSend = async (
+    text: string,
+    attachments: PendingAttachment[],
+    planSteps?: PlanStep[],
+  ) => {
     if (!user) return;
     lastActivityRef.current = Date.now();
 
