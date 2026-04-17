@@ -20,6 +20,8 @@ import { Wrench, MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ControlModeBlocker } from "./ControlModeBlocker";
+import { PlanCard } from "./PlanCard";
+import { generatePlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
 import { AgentPreset } from "@/lib/presets";
 import { estimateTokens } from "./TokenMeter";
 import { ChatSearch } from "./ChatSearch";
@@ -108,6 +110,14 @@ export function ChatView({
     tool: ToolDef;
     args: Record<string, any>;
     resolve: (decision: { approve: boolean; alwaysAllow: boolean }) => void;
+  } | null>(null);
+
+  // Plan card state (Control mode only) — gates send until user approves/skips.
+  const [pendingPlan, setPendingPlan] = useState<{
+    prompt: string;
+    attachments: PendingAttachment[];
+    steps: PlanStep[];
+    loading: boolean;
   } | null>(null);
 
   // ----- Ollama health + models -----
@@ -512,7 +522,40 @@ export function ChatView({
   };
 
   // ----- Send -----
+  /**
+   * Public send handler. In Control mode with a "complex" prompt, generates a
+   * plan first and shows PlanCard for user approval. Otherwise sends immediately.
+   */
   const send = async (text: string, attachments: PendingAttachment[]) => {
+    if (!user) return;
+    if (mode === "control" && shouldGeneratePlan(text) && !pendingPlan) {
+      setPendingPlan({ prompt: text, attachments, steps: [], loading: true });
+      try {
+        const steps = await generatePlan(text, {
+          provider,
+          ollamaUrl,
+          ollamaModel: model,
+          openaiModel,
+        });
+        setPendingPlan((p) =>
+          p && p.prompt === text ? { ...p, steps, loading: false } : p,
+        );
+      } catch (err: any) {
+        toast.error(`Không tạo được plan: ${err?.message ?? err}`);
+        // Fallback: send without plan
+        setPendingPlan(null);
+        executeSend(text, attachments);
+      }
+      return;
+    }
+    executeSend(text, attachments);
+  };
+
+  const executeSend = async (
+    text: string,
+    attachments: PendingAttachment[],
+    planSteps?: PlanStep[],
+  ) => {
     if (!user) return;
     lastActivityRef.current = Date.now();
 
@@ -581,7 +624,13 @@ export function ChatView({
       const toolsHint = toolsEnabled
         ? "\n\nYou have access to local computer-use tools. Use them when helpful. Always explain what you're doing."
         : "";
-      const fullSystem = (baseSystem + toolsHint).trim();
+      const planHint =
+        planSteps && planSteps.length > 0
+          ? `\n\nThe user has approved the following execution plan. Follow these steps in order; announce which step you are on as you go:\n${planSteps
+              .map((s, i) => `${i + 1}. ${s.text}`)
+              .join("\n")}`
+          : "";
+      const fullSystem = (baseSystem + toolsHint + planHint).trim();
 
       const history: OllamaChatMessage[] = [];
       if (fullSystem) history.push({ role: "system", content: fullSystem });
@@ -1006,10 +1055,35 @@ export function ChatView({
         </ScrollArea>
       </div>
 
+      {pendingPlan && (
+        <div className="px-4 pt-3 max-w-3xl w-full mx-auto">
+          <PlanCard
+            steps={pendingPlan.steps}
+            loading={pendingPlan.loading}
+            onApprove={(approvedSteps) => {
+              const { prompt, attachments } = pendingPlan;
+              setPendingPlan(null);
+              executeSend(prompt, attachments, approvedSteps);
+            }}
+            onSkip={() => {
+              const { prompt, attachments } = pendingPlan;
+              setPendingPlan(null);
+              executeSend(prompt, attachments);
+            }}
+            onCancel={() => setPendingPlan(null)}
+          />
+        </div>
+      )}
+
       {mode === "control" && !isElectron() ? (
         <ControlModeBlocker onSwitchToChat={() => handleModeChange("chat")} />
       ) : (
-        <ChatInput onSend={send} onStop={stop} isStreaming={isStreaming} disabled={!user} />
+        <ChatInput
+          onSend={send}
+          onStop={stop}
+          isStreaming={isStreaming || !!pendingPlan}
+          disabled={!user || !!pendingPlan}
+        />
       )}
 
       <ToolApprovalDialog
