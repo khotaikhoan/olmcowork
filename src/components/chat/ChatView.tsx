@@ -35,6 +35,8 @@ import { notifyDone } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
 import { setOculoState } from "@/components/OculoLogo";
 import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
+import { isArmed, arm, requiresArmed } from "@/lib/armed";
+import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap } from "lucide-react";
 
 interface DbMessage {
@@ -354,23 +356,32 @@ export function ChatView({
     return data.id;
   };
 
+  // Armed-mode request dialog (Phase 4 deep-system tools)
+  const [armRequest, setArmRequest] = useState<{
+    toolName: string;
+    reason?: string;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
+
+  const ensureArmed = (toolName: string, reason?: string) =>
+    new Promise<boolean>((resolve) => {
+      if (isArmed()) return resolve(true);
+      setArmRequest({ toolName, reason, resolve });
+    });
+
   // Ask user to approve a tool call.
-  // In Full Auto mode: bypass ALL prompts (kể cả high-risk) — Esc để dừng loop.
+  // Phase 4 tools (sudo_shell/run_script/raw_file) ALWAYS require armed-mode,
+  // even in Full Auto. Other tools follow the normal Full Auto / require_confirm flow.
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
-    new Promise<{ approve: boolean; alwaysAllow: boolean }>((resolve) => {
-      if (fullAuto) {
-        resolve({ approve: true, alwaysAllow: false });
-        return;
+    new Promise<{ approve: boolean; alwaysAllow: boolean }>(async (resolve) => {
+      if (requiresArmed(tool.name)) {
+        const ok = await ensureArmed(tool.name, args.reason ? String(args.reason) : undefined);
+        return resolve({ approve: ok, alwaysAllow: false });
       }
+      if (fullAuto) return resolve({ approve: true, alwaysAllow: false });
       const risk = effectiveRisk(tool.name, args);
-      if (!requireConfirm && risk !== "high") {
-        resolve({ approve: true, alwaysAllow: false });
-        return;
-      }
-      if (autoApprove[tool.name] && risk !== "high") {
-        resolve({ approve: true, alwaysAllow: false });
-        return;
-      }
+      if (!requireConfirm && risk !== "high") return resolve({ approve: true, alwaysAllow: false });
+      if (autoApprove[tool.name] && risk !== "high") return resolve({ approve: true, alwaysAllow: false });
       setPending({ tool, args, resolve });
     });
 
@@ -1367,6 +1378,21 @@ export function ChatView({
         onDeny={() => {
           pending?.resolve({ approve: false, alwaysAllow: false });
           setPending(null);
+        }}
+      />
+
+      <ArmRequestDialog
+        open={!!armRequest}
+        toolName={armRequest?.toolName ?? null}
+        reason={armRequest?.reason}
+        onApprove={() => {
+          arm();
+          armRequest?.resolve(true);
+          setArmRequest(null);
+        }}
+        onDeny={() => {
+          armRequest?.resolve(false);
+          setArmRequest(null);
         }}
       />
     </div>

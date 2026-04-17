@@ -176,6 +176,60 @@ export const TOOLS: ToolDef[] = [
       required: ["command"],
     },
   },
+  // ────────────── Phase 4: Deep system access (armed-mode required) ──────────────
+  {
+    name: "sudo_shell",
+    risk: "high",
+    description:
+      "Run a shell command with elevated/root privileges. macOS uses Touch ID via osascript, Windows uses UAC/Hello, Linux uses pkexec — the OS prompts the user for biometric/password EVERY call (no caching). REQUIRES armed-mode. If user has not armed, you may explain WHY you need it via 'reason' and the app will prompt them. Use sparingly; prefer plain `bash` for non-privileged work.",
+    parameters: {
+      type: "object",
+      properties: {
+        command: { type: "string", description: "Shell command to run as root/admin." },
+        reason: { type: "string", description: "1-line justification shown to the user if they need to arm first." },
+      },
+      required: ["command"],
+    },
+  },
+  {
+    name: "run_script",
+    risk: "high",
+    description:
+      "Run a native scripting host: AppleScript (macOS, e.g. send Mail/Messages, control apps), PowerShell (Windows, e.g. Outlook COM, services), or raw bash. Choose 'language' based on platform. Powerful — can send emails, post messages, automate any GUI app. REQUIRES armed-mode. 30s timeout.",
+    parameters: {
+      type: "object",
+      properties: {
+        language: {
+          type: "string",
+          enum: ["applescript", "powershell", "bash"],
+          description: "applescript=macOS only; powershell=Windows only; bash=any.",
+        },
+        script: { type: "string", description: "Full script source. Multi-line OK." },
+        reason: { type: "string", description: "1-line justification for armed-mode prompt." },
+      },
+      required: ["language", "script"],
+    },
+  },
+  {
+    name: "raw_file",
+    risk: "high",
+    description:
+      "Read/write/list files ANYWHERE on disk, bypassing the normal allowed_paths whitelist. Hard-blocked paths (/System, /etc/sudoers, ~/.ssh/id_*, HKLM registry) remain forbidden. REQUIRES armed-mode. Prefer text_editor.* for paths inside allowed_paths — it works without arming.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["read", "write", "list_dir", "delete"],
+          description: "read=return file contents; write=overwrite; list_dir=list entries; delete=rm file.",
+        },
+        path: { type: "string", description: "Absolute path." },
+        content: { type: "string", description: "File contents for action=write." },
+        reason: { type: "string", description: "1-line justification for armed-mode prompt." },
+      },
+      required: ["action", "path"],
+    },
+  },
   {
     name: "text_editor",
     anthropic_type: "text_editor_20241022",
@@ -290,6 +344,7 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
     if (a === "view" || a === "list_dir") return "low";
     return "high"; // create/str_replace mutate files
   }
+  if (name === "sudo_shell" || name === "run_script" || name === "raw_file") return "high";
   if (name === "computer") {
     const a = String(args.action ?? "");
     if (a === "screenshot") return "medium";
@@ -362,6 +417,15 @@ export async function mockExecute(
       mockFs[p] = next;
       return { ok: true, output: `[mock] Replaced in ${p}` };
     }
+  }
+  if (name === "sudo_shell") {
+    return { ok: false, output: `[mock] sudo $ ${args.command}\n(desktop only — would prompt biometric/password)` };
+  }
+  if (name === "run_script") {
+    return { ok: false, output: `[mock] run_script(${args.language}) — desktop only.` };
+  }
+  if (name === "raw_file") {
+    return { ok: false, output: `[mock] raw_file.${args.action} ${args.path} — desktop only.` };
   }
   if (name === "computer") {
     const action = String(args.action ?? "");

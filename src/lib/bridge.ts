@@ -148,6 +148,12 @@ export interface BridgeAPI {
   browser: (payload: Record<string, any>) => Promise<ExecResult & { image?: string }>;
   /** Toggle browser headless mode. Forces relaunch on next browser call. */
   browserSetHeadless?: (headless: boolean) => Promise<ExecResult>;
+  /** Phase 4: sudo shell — biometric/password prompt every call, no caching. */
+  sudoShell?: (command: string) => Promise<ExecResult>;
+  /** Phase 4: AppleScript / PowerShell / bash. */
+  runScript?: (language: "applescript" | "powershell" | "bash", script: string) => Promise<ExecResult>;
+  /** Phase 4: raw file ops bypassing allowed_paths (still blocks death-paths). */
+  rawFile?: (action: "read" | "write" | "list_dir" | "delete", path: string, content?: string) => Promise<ExecResult>;
 }
 
 declare global {
@@ -188,6 +194,22 @@ export async function executeTool(
 
   if (name === "bash") {
     return b.runShell(String(args.command ?? ""));
+  }
+
+  // ── Phase 4: deep-system tools (armed-mode is enforced upstream in ChatView) ──
+  if (name === "sudo_shell") {
+    if (!b.sudoShell) return { ok: false, output: "sudo_shell unavailable in this build." };
+    return b.sudoShell(String(args.command ?? ""));
+  }
+  if (name === "run_script") {
+    if (!b.runScript) return { ok: false, output: "run_script unavailable in this build." };
+    const lang = String(args.language ?? "bash") as "applescript" | "powershell" | "bash";
+    return b.runScript(lang, String(args.script ?? ""));
+  }
+  if (name === "raw_file") {
+    if (!b.rawFile) return { ok: false, output: "raw_file unavailable in this build." };
+    const action = String(args.action ?? "") as "read" | "write" | "list_dir" | "delete";
+    return b.rawFile(action, String(args.path ?? ""), args.content == null ? undefined : String(args.content));
   }
 
   // observe_screen = screenshot + AX annotate (Phase 2 vision loop primary "eyes")

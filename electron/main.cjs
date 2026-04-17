@@ -1110,6 +1110,154 @@ ipcMain.handle("bridge:browser", async (_e, payload) => {
   }
 });
 
+// ──────────────────────────────────────────────────────────────────────────
+// Phase 4: Deep system access — sudo via biometrics, native scripts, raw FS.
+// All three IPC handlers are intentionally PERMISSIVE; armed-mode (renderer)
+// is the front-line gate. The death-path list below is the LAST line of
+// defense and applies even when armed.
+// ──────────────────────────────────────────────────────────────────────────
+const HOME = os.homedir();
+function deathPath(p) {
+  if (!p || typeof p !== "string") return true;
+  const norm = path.resolve(p);
+  const lower = norm.toLowerCase();
+  const denyExact = [
+    "/etc/sudoers", "/etc/shadow", "/etc/passwd",
+    "c:\\windows\\system32\\config\\sam",
+    "c:\\windows\\system32\\config\\system",
+    "c:\\windows\\system32\\config\\security",
+  ];
+  if (denyExact.includes(lower)) return true;
+  const denyPrefix = [
+    "/system", "/etc/sudoers.d",
+    "/private/etc/sudoers", "/private/var/db/sudo",
+    "c:\\windows\\system32\\drivers", "c:\\windows\\system32\\config",
+  ];
+  for (const d of denyPrefix) {
+    if (lower === d || lower.startsWith(d + path.sep) || lower.startsWith(d + "/")) return true;
+  }
+  const sshDir = path.join(HOME, ".ssh");
+  if (norm.startsWith(sshDir + path.sep)) {
+    const base = path.basename(norm).toLowerCase();
+    if (base.startsWith("id_") && !base.endsWith(".pub")) return true;
+  }
+  if (norm.startsWith(path.join(HOME, ".gnupg", "private-keys-v1.d"))) return true;
+  const credSubpaths = [
+    path.join("Library", "Application Support", "Google", "Chrome", "Default", "Login Data"),
+    path.join("Library", "Application Support", "Google", "Chrome", "Default", "Cookies"),
+    path.join("Library", "Keychains"),
+  ];
+  for (const c of credSubpaths) {
+    if (norm.startsWith(path.join(HOME, c))) return true;
+  }
+  return false;
+}
+
+// Sudo shell — re-prompts every call. macOS osascript-with-admin triggers
+// Touch ID if pam_tid.so is configured for sudo, otherwise password dialog.
+ipcMain.handle("bridge:sudo_shell", async (_e, { command }) => {
+  const cmd = String(command ?? "").trim();
+  if (!cmd) return { ok: false, output: "sudo_shell: empty command." };
+  const dangerous = [
+    /\brm\s+-rf\s+\/(\s|$)/i,
+    /\bmkfs\b/i,
+    /\bdd\s+if=.+of=\/dev\//i,
+    /:\(\)\s*\{.*:\|:.*\};:/,
+  ];
+  if (dangerous.some((re) => re.test(cmd))) {
+    return { ok: false, output: `sudo_shell BLOCKED — destructive pattern. Refused: ${cmd.slice(0, 80)}` };
+  }
+  return new Promise((resolve) => {
+    let exec_cmd;
+    const opts = { timeout: 60_000, maxBuffer: 5 * 1024 * 1024 };
+    if (process.platform === "darwin") {
+      const escaped = cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      exec_cmd = `osascript -e 'do shell script "${escaped}" with administrator privileges'`;
+    } else if (process.platform === "win32") {
+      const tmpOut = path.join(os.tmpdir(), `cowork-sudo-${Date.now()}.out`);
+      const ps = `Start-Process -Wait -Verb RunAs -FilePath cmd -ArgumentList '/c ${cmd.replace(/'/g, "''")} > ${tmpOut} 2>&1'; Get-Content ${tmpOut}; Remove-Item ${tmpOut} -ErrorAction SilentlyContinue`;
+      exec_cmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps.replace(/"/g, '\\"')}"`;
+    } else {
+      exec_cmd = `pkexec --disable-internal-agent bash -c ${JSON.stringify(cmd)}`;
+    }
+    exec(exec_cmd, opts, (err, stdout, stderr) => {
+      const cancelled =
+        /User cancel/i.test(stderr || "") ||
+        /Authorization cancel/i.test(stderr || "") ||
+        /(-128)/.test(stderr || "") ||
+        /Request dismissed/i.test(stderr || "");
+      if (cancelled) return resolve({ ok: false, output: "sudo cancelled by user (auth dialog dismissed)." });
+      const out = `# sudo $ ${cmd}\n${stdout || ""}${stderr ? "\n[stderr]\n" + stderr : ""}\n(exit ${err?.code ?? 0})`;
+      resolve({ ok: !err, output: out });
+    });
+  });
+});
+
+// Native scripts: AppleScript / PowerShell / bash — full power.
+ipcMain.handle("bridge:run_script", async (_e, { language, script }) => {
+  const lang = String(language ?? "").toLowerCase();
+  const src = String(script ?? "");
+  if (!src.trim()) return { ok: false, output: "run_script: empty script." };
+  if (lang === "applescript" && process.platform !== "darwin") {
+    return { ok: false, output: "AppleScript chỉ chạy trên macOS." };
+  }
+  if (lang === "powershell" && process.platform !== "win32") {
+    return { ok: false, output: "PowerShell chỉ chạy trên Windows." };
+  }
+  const ext = lang === "applescript" ? ".applescript" : lang === "powershell" ? ".ps1" : ".sh";
+  const tmp = path.join(os.tmpdir(), `cowork-script-${Date.now()}${ext}`);
+  await fs.writeFile(tmp, src, "utf-8");
+  let cmd;
+  if (lang === "applescript") cmd = `osascript ${JSON.stringify(tmp)}`;
+  else if (lang === "powershell") cmd = `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmp}"`;
+  else cmd = `bash ${JSON.stringify(tmp)}`;
+  return new Promise((resolve) => {
+    exec(cmd, { timeout: 30_000, maxBuffer: 5 * 1024 * 1024 }, (err, stdout, stderr) => {
+      fs.unlink(tmp).catch(() => {});
+      const out = `# ${lang}\n${stdout || ""}${stderr ? "\n[stderr]\n" + stderr : ""}\n(exit ${err?.code ?? 0})`;
+      resolve({ ok: !err, output: out });
+    });
+  });
+});
+
+// Raw file — bypasses allowed_paths but enforces death-path list.
+ipcMain.handle("bridge:raw_file", async (_e, { action, path: p, content }) => {
+  if (!p) return { ok: false, output: "raw_file: missing path." };
+  const norm = path.resolve(p);
+  if (deathPath(norm)) {
+    return { ok: false, output: `raw_file BLOCKED — ${norm} is on the permanent denylist.` };
+  }
+  try {
+    if (action === "read") {
+      const buf = await fs.readFile(norm, "utf-8");
+      const max = 200_000;
+      return { ok: true, output: buf.length > max ? buf.slice(0, max) + `\n…[truncated ${buf.length - max} chars]` : buf };
+    }
+    if (action === "write") {
+      await fs.mkdir(path.dirname(norm), { recursive: true });
+      await fs.writeFile(norm, content ?? "", "utf-8");
+      return { ok: true, output: `Wrote ${(content ?? "").length} bytes → ${norm}` };
+    }
+    if (action === "list_dir") {
+      const entries = await fs.readdir(norm, { withFileTypes: true });
+      const list = entries.map((d) => (d.isDirectory() ? d.name + "/" : d.name)).join("\n");
+      return { ok: true, output: list || "(empty)" };
+    }
+    if (action === "delete") {
+      const stat = await fs.stat(norm).catch(() => null);
+      if (!stat) return { ok: false, output: `Not found: ${norm}` };
+      if (stat.isDirectory()) {
+        return { ok: false, output: `raw_file.delete refuses directories. Use sudo_shell with rm -rf if you really mean it.` };
+      }
+      await fs.unlink(norm);
+      return { ok: true, output: `Deleted ${norm}` };
+    }
+    return { ok: false, output: `raw_file: unknown action ${action}` };
+  } catch (e) {
+    return { ok: false, output: `raw_file.${action} failed: ${e.message}` };
+  }
+});
+
 app.on("before-quit", async () => {
   if (ollamaProc) { try { ollamaProc.kill(); } catch {} }
   if (localJobsTimer) clearInterval(localJobsTimer);

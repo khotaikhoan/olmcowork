@@ -26,6 +26,10 @@ contextBridge.exposeInMainWorld("bridge", {
   // Phase 3: Playwright browser automation
   browser: (payload) => invoke("bridge:browser", payload),
   browserSetHeadless: (headless) => invoke("bridge:browser_set_headless", { headless }),
+  // Phase 4: Deep system access (armed-mode required at the renderer layer)
+  sudoShell: (command) => invoke("bridge:sudo_shell", { command }),
+  runScript: (language, script) => invoke("bridge:run_script", { language, script }),
+  rawFile: (action, path, content) => invoke("bridge:raw_file", { action, path, content }),
   startOllama: () => invoke("bridge:start_ollama"),
   stopOllama: () => invoke("bridge:stop_ollama"),
   ollamaStatus: () => invoke("bridge:ollama_status"),
