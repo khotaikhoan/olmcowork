@@ -110,7 +110,7 @@ export function ChatView({
         setSystemPrompt(conv.system_prompt ?? "");
         if (conv.model) setModel(conv.model);
       }
-      setMessages((msgs ?? []) as DbMessage[]);
+      setMessages((msgs ?? []) as unknown as DbMessage[]);
     })();
   }, [conversationId, defaultModel]);
 
@@ -285,7 +285,7 @@ export function ChatView({
         .select("id,role,content,attachments,tool_calls,created_at")
         .single();
       if (e1) throw e1;
-      setMessages((p) => [...p, userMsg as DbMessage]);
+      setMessages((p) => [...p, userMsg as unknown as DbMessage]);
 
       // Build Ollama history
       const baseSystem = systemPrompt || "";
@@ -296,7 +296,7 @@ export function ChatView({
 
       const history: OllamaChatMessage[] = [];
       if (fullSystem) history.push({ role: "system", content: fullSystem });
-      for (const m of [...messages, userMsg as DbMessage]) {
+      for (const m of [...messages, userMsg as unknown as DbMessage]) {
         if (m.role === "system" || m.role === "tool") continue;
         const om: OllamaChatMessage = { role: m.role as any, content: m.content };
         if (m.attachments && m.role === "user") {
@@ -353,7 +353,7 @@ export function ChatView({
           })
           .select("id,role,content,attachments,tool_calls,created_at")
           .single();
-        if (aMsg) setMessages((p) => [...p, aMsg as DbMessage]);
+        if (aMsg) setMessages((p) => [...p, aMsg as unknown as DbMessage]);
       }
       setStreamingText("");
       setStreamingToolCalls([]);
