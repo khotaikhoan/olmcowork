@@ -7,7 +7,8 @@
 // skip planning entirely.
 
 import { chatOnce } from "./ollamaTools";
-import { chatOnceOpenAI, OpenAIMessage } from "./openai";
+import { streamChat } from "./ollama";
+import { chatOnceOpenAI, streamOpenAI, OpenAIMessage } from "./openai";
 
 export interface PlanStep {
   id: string;
@@ -88,4 +89,65 @@ export async function generatePlan(prompt: string, opts: GenerateOpts): Promise<
     opts.signal,
   );
   return parseSteps(res.content);
+}
+
+export interface StreamPlanOpts extends GenerateOpts {
+  /** Called every time the streaming buffer parses into a (possibly growing) step list. */
+  onSteps: (steps: PlanStep[]) => void;
+}
+
+/**
+ * Streaming variant of generatePlan: emits partial step lists as tokens arrive
+ * so the UI can show steps appearing one by one. Resolves with the final list.
+ */
+export async function streamPlan(prompt: string, opts: StreamPlanOpts): Promise<PlanStep[]> {
+  const userMsg = `Goal: ${prompt.trim()}\n\nGenerate the step list now.`;
+  let buffer = "";
+  let lastEmittedCount = -1;
+
+  const emit = (final = false) => {
+    // Only parse complete lines (ending with \n) so we don't show half-typed steps,
+    // unless this is the final flush.
+    const idx = buffer.lastIndexOf("\n");
+    const parsable = final ? buffer : idx >= 0 ? buffer.slice(0, idx) : "";
+    if (!parsable && !final) return;
+    const steps = parseSteps(parsable);
+    if (steps.length !== lastEmittedCount) {
+      lastEmittedCount = steps.length;
+      opts.onSteps(steps);
+    }
+  };
+
+  return new Promise<PlanStep[]>((resolve, reject) => {
+    const onToken = (chunk: string) => {
+      buffer += chunk;
+      emit(false);
+    };
+    const onDone = () => {
+      emit(true);
+      resolve(parseSteps(buffer));
+    };
+    const onError = (err: Error) => reject(err);
+
+    if (opts.provider === "openai") {
+      const messages: OpenAIMessage[] = [
+        { role: "system", content: PLAN_SYSTEM },
+        { role: "user", content: userMsg },
+      ];
+      streamOpenAI({ model: opts.openaiModel, messages, signal: opts.signal, onToken, onDone, onError });
+    } else {
+      streamChat({
+        baseUrl: opts.ollamaUrl,
+        model: opts.ollamaModel,
+        messages: [
+          { role: "system", content: PLAN_SYSTEM },
+          { role: "user", content: userMsg },
+        ],
+        signal: opts.signal,
+        onToken,
+        onDone,
+        onError,
+      });
+    }
+  });
 }

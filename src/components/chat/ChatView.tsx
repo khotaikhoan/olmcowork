@@ -21,7 +21,7 @@ import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ControlModeBlocker } from "./ControlModeBlocker";
 import { PlanCard } from "./PlanCard";
-import { generatePlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
+import { streamPlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
 import { AgentPreset } from "@/lib/presets";
 import { getAgent } from "@/lib/agents";
 import { loadTopMemories, formatMemoriesForPrompt, type UserMemory } from "@/lib/memory";
@@ -676,21 +676,27 @@ export function ChatView({
    * Public send handler. In Control mode with a "complex" prompt, generates a
    * plan first and shows PlanCard for user approval. Otherwise sends immediately.
    */
-  const runPlanGeneration = async (text: string, attachments: PendingAttachment[]) => {
+  const runPlanGeneration = async (text: string, _attachments: PendingAttachment[]) => {
     try {
-      const steps = await generatePlan(text, {
+      const finalSteps = await streamPlan(text, {
         provider,
         ollamaUrl,
         ollamaModel: model,
         openaiModel,
+        onSteps: (partial) => {
+          // Stream partial steps into the card as they parse
+          setPendingPlan((p) => {
+            if (!p || p.prompt !== text) return p;
+            return { ...p, steps: partial, loading: true };
+          });
+        },
       });
       setPendingPlan((p) => {
         if (!p || p.prompt !== text) return p;
-        return { ...p, steps, loading: false };
+        return { ...p, steps: finalSteps, loading: false };
       });
     } catch (err: any) {
       toast.error(`Không tạo được plan: ${err?.message ?? err}`);
-      // Mark as empty so the user sees the retry UI instead of being trapped.
       setPendingPlan((p) =>
         p && p.prompt === text ? { ...p, steps: [], loading: false } : p,
       );
