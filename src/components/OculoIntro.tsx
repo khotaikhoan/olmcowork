@@ -1,14 +1,20 @@
 /**
- * OculoIntro — full-screen morph intro played once per session.
+ * OculoIntro — Apple-style cinematic intro played once per session.
  *
- * Sequence (~1.2s):
- *   0.00s  tiny dot in the middle
- *   0.30s  dot expands into pupil
- *   0.55s  iris ring + eye lid sweep open
- *   0.95s  wordmark "Oculo" fades in
- *   1.20s  overlay fades out & unmounts → app reveals
+ * Design principles (Apple HIG-inspired):
+ *   • Single hero element (the eye mark) — no busy concurrent motion.
+ *   • Spring easing: cubic-bezier(0.32, 0.72, 0, 1) — Apple's signature curve.
+ *   • Blur-to-focus reveal (mimics camera autofocus / iOS app launch).
+ *   • Subtle scale (1.08 → 1.0), never bouncy. Confident, not playful.
+ *   • Wordmark rises in sync, with letter-spacing settling (kerning ease).
+ *   • Soft radial spotlight pulses behind mark for depth.
  *
- * Plays only once per browser session (sessionStorage flag).
+ * Sequence (~1.6s, then 400ms exit fade):
+ *   0.00s  Background spotlight fades in
+ *   0.10s  Mark appears blurred + scaled-up, focuses to crisp
+ *   0.55s  Wordmark letters settle into place
+ *   1.30s  Hold beat
+ *   1.60s  Overlay fades + blurs out → app reveals
  */
 import { useEffect, useState } from "react";
 
@@ -24,8 +30,8 @@ export function OculoIntro() {
     sessionStorage.setItem(SESSION_KEY, "1");
     setShow(true);
 
-    const fadeTimer = setTimeout(() => setFading(true), 1200);
-    const removeTimer = setTimeout(() => setShow(false), 1700);
+    const fadeTimer = setTimeout(() => setFading(true), 1600);
+    const removeTimer = setTimeout(() => setShow(false), 2050);
     return () => {
       clearTimeout(fadeTimer);
       clearTimeout(removeTimer);
@@ -40,72 +46,73 @@ export function OculoIntro() {
       data-fading={fading ? "true" : "false"}
       aria-hidden="true"
     >
-      <svg
-        viewBox="0 0 64 64"
-        width={140}
-        height={140}
-        className="oculo-intro-mark"
-        role="img"
-        aria-label="Oculo"
-      >
-        <defs>
-          <linearGradient id="oculo-intro-grad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="100%" stopColor="hsl(var(--accent))" />
-          </linearGradient>
-          <radialGradient id="oculo-intro-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-          </radialGradient>
-        </defs>
+      {/* Soft radial spotlight backdrop */}
+      <div className="oculo-intro-spotlight" />
 
-        {/* Eye lid — sweeps open */}
-        <path
-          className="oculo-intro-lid"
-          d="M6 32 Q 32 6 58 32 Q 32 58 6 32 Z"
-          fill="none"
-          stroke="url(#oculo-intro-grad)"
-          strokeWidth="3"
-          strokeLinejoin="round"
-        />
+      <div className="oculo-intro-stage">
+        <svg
+          viewBox="0 0 64 64"
+          width={120}
+          height={120}
+          className="oculo-intro-mark"
+          role="img"
+          aria-label="Oculo"
+        >
+          <defs>
+            <linearGradient id="oculo-intro-grad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="hsl(var(--primary))" />
+              <stop offset="100%" stopColor="hsl(var(--accent))" />
+            </linearGradient>
+            <radialGradient id="oculo-intro-iris" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.0" />
+              <stop offset="60%" stopColor="hsl(var(--primary))" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.35" />
+            </radialGradient>
+          </defs>
 
-        {/* Iris ring — fades + scales in */}
-        <circle
-          className="oculo-intro-ring"
-          cx="32"
-          cy="32"
-          r="13"
-          fill="url(#oculo-intro-grad)"
-          fillOpacity="0.18"
-          stroke="url(#oculo-intro-grad)"
-          strokeWidth="2"
-          strokeDasharray="4 3"
-        />
+          {/* Almond eye outline */}
+          <path
+            d="M6 32 Q 32 6 58 32 Q 32 58 6 32 Z"
+            fill="none"
+            stroke="url(#oculo-intro-grad)"
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
 
-        {/* Glow */}
-        <circle className="oculo-intro-glow" cx="32" cy="32" r="14" fill="url(#oculo-intro-glow)" />
+          {/* Iris fill */}
+          <circle cx="32" cy="32" r="13" fill="url(#oculo-intro-iris)" />
 
-        {/* Pupil — starts as a tiny dot, scales up */}
-        <circle
-          className="oculo-intro-pupil"
-          cx="32"
-          cy="32"
-          r="4.5"
-          fill="url(#oculo-intro-grad)"
-        />
+          {/* Iris ring */}
+          <circle
+            cx="32"
+            cy="32"
+            r="13"
+            fill="none"
+            stroke="url(#oculo-intro-grad)"
+            strokeWidth="1.4"
+            opacity="0.7"
+          />
 
-        {/* Catchlight */}
-        <circle
-          className="oculo-intro-catch"
-          cx="35"
-          cy="29"
-          r="1.4"
-          fill="hsl(var(--primary-foreground))"
-          opacity="0.9"
-        />
-      </svg>
+          {/* Pupil */}
+          <circle cx="32" cy="32" r="5" fill="hsl(var(--foreground))" />
 
-      <div className="oculo-intro-word">Oculo</div>
+          {/* Catchlight */}
+          <circle cx="34.5" cy="29.5" r="1.6" fill="hsl(var(--background))" opacity="0.95" />
+          <circle cx="29" cy="33" r="0.7" fill="hsl(var(--background))" opacity="0.6" />
+        </svg>
+
+        <div className="oculo-intro-word" aria-hidden="true">
+          {"Oculo".split("").map((ch, i) => (
+            <span
+              key={i}
+              className="oculo-intro-letter"
+              style={{ animationDelay: `${0.55 + i * 0.05}s` }}
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
