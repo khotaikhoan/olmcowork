@@ -135,15 +135,22 @@ ipcMain.handle("bridge:check_updates", async () => {
   }
 
   // Dev mode (or updater missing/failed): fall back to GitHub Releases API.
+  // NOTE: this path cannot auto-download — we only TELL the user a version
+  // exists and surface a link. The renderer must show a manual download CTA.
   try {
     const latest = await checkGithubLatest();
     const current = app.getVersion();
     const cmp = cmpVersion(latest.tag, current);
     if (cmp > 0 && !latest.draft) {
-      emitUpdater({ state: "available", version: String(latest.tag).replace(/^v/, "") });
+      emitUpdater({
+        state: "available",
+        version: String(latest.tag).replace(/^v/, ""),
+        releaseUrl: latest.url || null,
+        manualOnly: true,
+      });
       return { ok: true, output: `New version available: ${latest.tag}` };
     }
-    emitUpdater({ state: "none" });
+    emitUpdater({ state: "none", releaseUrl: null, manualOnly: false });
     return { ok: true, output: `Up to date (current v${current}, latest ${latest.tag})` };
   } catch (e) {
     emitUpdater({ state: "error", message: String(e?.message || e) });
