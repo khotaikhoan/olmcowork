@@ -60,18 +60,22 @@ npx electron-packager . OllamaCowork --platform=win32 --arch=x64 --out=electron-
 npx electron-packager . OllamaCowork --platform=linux --arch=x64 --out=electron-release --overwrite
 ```
 
-## Bridge surface (what the app can do on your machine)
+## Bridge surface — Anthropic Computer Use spec
 
-| Tool | Risk | Notes |
-|---|---|---|
-| `read_file(path)` | low | Blocked for `/etc`, `/usr`, `/System`, `C:\Windows`, `C:\Program Files` |
-| `list_dir(path)` | low | same path safety |
-| `write_file(path, content)` | high | always asks for confirmation |
-| `run_shell(command)` | high | 30s timeout, 5MB output cap |
-| `screenshot()` | medium | needs `screenshot-desktop` |
-| `mouse_move / mouse_click / type_text / key_press` | high | needs `@nut-tree-fork/nut-js` |
+3 tools mapping to Anthropic's `computer_20241022`, `bash_20241022`, `text_editor_20241022`.
 
-All high-risk calls show an approval modal regardless of settings. Disable any tool by removing it from `src/lib/tools.ts`.
+| Tool | Action | Risk | Notes |
+|---|---|---|---|
+| `bash` | — | high | 30s timeout, 5MB output cap |
+| `text_editor` | `view` | low | Path safety filter |
+| `text_editor` | `list_dir` | low | Path safety filter |
+| `text_editor` | `create` | high | Overwrites file |
+| `text_editor` | `str_replace` | high | Requires unique match |
+| `computer` | `screenshot` | medium | Needs `screenshot-desktop` |
+| `computer` | `mouse_move` / `*_click` | high | Needs `@nut-tree-fork/nut-js` |
+| `computer` | `type` / `key` | high | Needs `@nut-tree-fork/nut-js` |
+
+All high-risk calls show an approval modal regardless of settings. Path safety blocks `/etc`, `/usr`, `/System`, `C:\Windows`, `C:\Program Files`.
 
 ## Suggested models
 

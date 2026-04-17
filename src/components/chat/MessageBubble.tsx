@@ -1,6 +1,7 @@
 import { Bot, User } from "lucide-react";
 import { Markdown } from "./Markdown";
 import { ToolCallCard, ToolCallRecord } from "./ToolCallCard";
+import { ThinkingBlock, splitThinking } from "./ThinkingBlock";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -15,11 +16,13 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
   if (role === "system" || role === "tool") return null;
   const isUser = role === "user";
 
+  const segments = !isUser ? splitThinking(content || "") : [];
+
   return (
     <div className={cn("flex gap-3 py-4", isUser && "flex-row-reverse")}>
       <div
         className={cn(
-          "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+          "h-8 w-8 rounded-xl flex items-center justify-center shrink-0",
           isUser
             ? "bg-secondary text-secondary-foreground"
             : "bg-[image:var(--gradient-primary)] text-primary-foreground",
@@ -35,7 +38,7 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
                 key={i}
                 src={a.dataUrl}
                 alt={a.name}
-                className="h-32 w-32 object-cover rounded-lg border border-border"
+                className="h-32 w-32 object-cover rounded-xl border border-border"
               />
             ))}
           </div>
@@ -58,6 +61,20 @@ export function MessageBubble({ role, content, attachments, toolCalls, streaming
           >
             {isUser ? (
               <p className="whitespace-pre-wrap leading-relaxed">{content}</p>
+            ) : segments.length > 0 ? (
+              <>
+                {segments.map((seg, i) =>
+                  seg.kind === "think" ? (
+                    <ThinkingBlock key={i} content={seg.content} />
+                  ) : (
+                    <Markdown key={i} content={seg.content} />
+                  ),
+                )}
+                {streaming && !content && <span className="text-muted-foreground">…</span>}
+                {streaming && (
+                  <span className="inline-block w-1.5 h-4 ml-0.5 bg-primary animate-pulse rounded-sm align-middle" />
+                )}
+              </>
             ) : (
               <>
                 <Markdown content={content || (streaming ? "…" : "")} />

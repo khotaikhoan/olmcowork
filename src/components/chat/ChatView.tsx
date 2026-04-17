@@ -7,7 +7,7 @@ import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
-import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
+import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef, effectiveRisk } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -185,12 +185,12 @@ export function ChatView({
   // Ask user to approve a tool call
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>((resolve) => {
-      // skip dialog when allowed
-      if (!requireConfirm && tool.risk !== "high") {
+      const risk = effectiveRisk(tool.name, args);
+      if (!requireConfirm && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
         return;
       }
-      if (autoApprove[tool.name] && tool.risk !== "high") {
+      if (autoApprove[tool.name] && risk !== "high") {
         resolve({ approve: true, alwaysAllow: false });
         return;
       }
@@ -273,6 +273,7 @@ export function ChatView({
         const result = await executeTool(tc.function.name, args);
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
+        if (result.image) record.image = result.image;
         setStreamingToolCalls([...allCalls]);
 
         working.push({
@@ -281,16 +282,14 @@ export function ChatView({
           content: result.output,
         });
 
-        // Vision flow: feed screenshot back to the model as a user image message
-        if (tc.function.name === "screenshot" && result.ok && result.image) {
+        // Vision flow: screenshot → feed image back to model
+        const isScreenshot = tc.function.name === "computer" && args.action === "screenshot";
+        if (isScreenshot && result.ok && result.image) {
           working.push({
             role: "user",
-            content: "[Screenshot result attached] Analyze what you see on the screen and continue the task.",
+            content: "[Screenshot attached] Analyze what you see and continue the task.",
             images: [result.image],
           });
-          // Also surface in the UI tool card
-          record.result = (record.result || "") + "\n[image sent to vision model]";
-          setStreamingToolCalls([...allCalls]);
         }
       }
     }
@@ -366,21 +365,21 @@ export function ChatView({
         const result = await executeTool(tc.function.name, args);
         record.status = result.ok ? "done" : "error";
         record.result = result.output;
+        if (result.image) record.image = result.image;
         setStreamingToolCalls([...allCalls]);
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
 
-        // Vision: gửi screenshot lại như user message với image_url
-        if (tc.function.name === "screenshot" && result.ok && result.image) {
+        // Vision: screenshot → send back as image_url
+        const isScreenshot = tc.function.name === "computer" && args.action === "screenshot";
+        if (isScreenshot && result.ok && result.image) {
           working.push({
             role: "user",
             content: [
-              { type: "text", text: "[Screenshot result attached] Analyze what you see and continue the task." },
+              { type: "text", text: "[Screenshot attached] Analyze what you see and continue the task." },
               { type: "image_url", image_url: { url: `data:image/png;base64,${result.image}` } },
             ],
           });
-          record.result = (record.result || "") + "\n[image sent to vision model]";
-          setStreamingToolCalls([...allCalls]);
         }
       }
     }
