@@ -23,6 +23,7 @@ import {
   Keyboard,
   LogOut,
   HelpCircle,
+  Activity as ActivityIcon,
 } from "lucide-react";
 
 interface CommandPaletteContextValue {
@@ -114,6 +115,9 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
             </CommandItem>
             <CommandItem onSelect={() => run(() => nav("/schedules"))}>
               <Clock className="h-4 w-4 mr-2" /> Scheduled agents
+            </CommandItem>
+            <CommandItem onSelect={() => run(() => nav("/activity"))}>
+              <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
             </CommandItem>
             <CommandItem onSelect={() => run(() => handlers.onOpenSettings())}>
               <Settings className="h-4 w-4 mr-2" /> Cài đặt

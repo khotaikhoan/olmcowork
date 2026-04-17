@@ -22,6 +22,7 @@ import {
   Clock,
   Pin,
   PinOff,
+  Activity as ActivityIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -226,6 +227,14 @@ export function ConversationList({
           onClick={() => nav("/schedules")}
         >
           <Clock className="h-4 w-4 mr-2" /> Scheduled agents
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          onClick={() => nav("/activity")}
+        >
+          <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
         </Button>
         <Button
           variant="ghost"
