@@ -1,5 +1,5 @@
-// Edge function: proxy stream tới OpenAI Chat Completions
-// Giữ OPENAI_API_KEY ở server, không lộ cho browser.
+// Edge function: proxy tới OpenAI Chat Completions
+// Hỗ trợ cả streaming (không tools) và non-streaming (có tools, trả tool_calls).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -7,11 +7,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string | Array<any>;
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -27,7 +22,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Xác thực user qua JWT
     const authHeader = req.headers.get("Authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Thiếu Authorization" }), {
@@ -50,12 +44,21 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const model: string = body.model ?? "gpt-4o-mini";
-    const messages: ChatMessage[] = Array.isArray(body.messages) ? body.messages : [];
+    const messages: any[] = Array.isArray(body.messages) ? body.messages : [];
+    const tools: any[] | undefined = Array.isArray(body.tools) && body.tools.length > 0 ? body.tools : undefined;
+    const stream: boolean = body.stream !== false && !tools; // có tools → non-stream
+
     if (messages.length === 0) {
       return new Response(JSON.stringify({ error: "Thiếu messages" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const payload: Record<string, unknown> = { model, messages, stream };
+    if (tools) {
+      payload.tools = tools;
+      payload.tool_choice = "auto";
     }
 
     const openaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -64,10 +67,10 @@ Deno.serve(async (req) => {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages, stream: true }),
+      body: JSON.stringify(payload),
     });
 
-    if (!openaiRes.ok || !openaiRes.body) {
+    if (!openaiRes.ok) {
       const txt = await openaiRes.text();
       return new Response(
         JSON.stringify({ error: `OpenAI ${openaiRes.status}: ${txt}` }),
@@ -75,15 +78,23 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Pipe SSE stream về client
-    return new Response(openaiRes.body, {
+    if (stream && openaiRes.body) {
+      return new Response(openaiRes.body, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
+
+    // Non-streaming JSON (tools mode)
+    const json = await openaiRes.json();
+    return new Response(JSON.stringify(json), {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

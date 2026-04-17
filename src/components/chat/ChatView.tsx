@@ -6,7 +6,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
-import { streamOpenAI, OpenAIMessage } from "@/lib/openai";
+import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
@@ -298,6 +298,96 @@ export function ChatView({
     return { finalText: "(Tool loop reached max steps)", allCalls };
   };
 
+  // ----- OpenAI tool calling loop -----
+  const runToolLoopOpenAI = async (
+    history: OpenAIMessage[],
+    signal: AbortSignal,
+  ): Promise<{ finalText: string; allCalls: ToolCallRecord[] }> => {
+    const allCalls: ToolCallRecord[] = [];
+    const oaiTools: OpenAITool[] = TOOLS.map((t) => ({
+      type: "function",
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    }));
+    let working = [...history];
+    const MAX_STEPS = 8;
+
+    for (let step = 0; step < MAX_STEPS; step++) {
+      const resp = await chatOnceOpenAI(openaiModel, working, oaiTools, signal);
+
+      if (!resp.tool_calls || resp.tool_calls.length === 0) {
+        return { finalText: resp.content, allCalls };
+      }
+
+      // assistant message yêu cầu tool
+      working.push({
+        role: "assistant",
+        content: resp.content || "",
+        tool_calls: resp.tool_calls,
+      });
+
+      for (const tc of resp.tool_calls) {
+        const def = TOOLS_BY_NAME[tc.function.name];
+        const callId = crypto.randomUUID();
+        const args = typeof tc.function.arguments === "string"
+          ? safeParse(tc.function.arguments)
+          : (tc.function.arguments ?? {});
+
+        const record: ToolCallRecord = {
+          id: callId,
+          name: tc.function.name,
+          args,
+          status: "pending",
+        };
+        allCalls.push(record);
+        setStreamingToolCalls([...allCalls]);
+
+        if (!def) {
+          record.status = "error";
+          record.result = `Unknown tool: ${tc.function.name}`;
+          setStreamingToolCalls([...allCalls]);
+          working.push({ role: "tool", tool_call_id: tc.id, content: record.result });
+          continue;
+        }
+
+        const decision = await requestApproval(def, args);
+        if (!decision.approve) {
+          record.status = "denied";
+          record.result = "User denied this action.";
+          setStreamingToolCalls([...allCalls]);
+          working.push({ role: "tool", tool_call_id: tc.id, content: "DENIED by user. Do not retry without asking permission." });
+          continue;
+        }
+        if (decision.alwaysAllow) {
+          setAutoApprove((p) => ({ ...p, [tc.function.name]: true }));
+        }
+
+        record.status = "running";
+        setStreamingToolCalls([...allCalls]);
+        const result = await executeTool(tc.function.name, args);
+        record.status = result.ok ? "done" : "error";
+        record.result = result.output;
+        setStreamingToolCalls([...allCalls]);
+
+        working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
+
+        // Vision: gửi screenshot lại như user message với image_url
+        if (tc.function.name === "screenshot" && result.ok && result.image) {
+          working.push({
+            role: "user",
+            content: [
+              { type: "text", text: "[Screenshot result attached] Analyze what you see and continue the task." },
+              { type: "image_url", image_url: { url: `data:image/png;base64,${result.image}` } },
+            ],
+          });
+          record.result = (record.result || "") + "\n[image sent to vision model]";
+          setStreamingToolCalls([...allCalls]);
+        }
+      }
+    }
+
+    return { finalText: "(Tool loop reached max steps)", allCalls };
+  };
+
   // ----- Send -----
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
@@ -394,8 +484,7 @@ export function ChatView({
       let savedCalls: ToolCallRecord[] = [];
 
       if (usingOpenAI) {
-        // OpenAI streaming qua edge function (giữ key server-side)
-        // Tools/vision-image base64 chỉ hỗ trợ ở Ollama path; ở đây gửi text thuần.
+        // Build OpenAI messages (hỗ trợ vision image_url)
         const oaiMsgs: OpenAIMessage[] = history.map((m) => {
           const imgs = m.images ?? [];
           if (m.role === "user" && imgs.length) {
@@ -412,18 +501,27 @@ export function ChatView({
           }
           return { role: m.role as "system" | "user" | "assistant", content: m.content };
         });
-        let acc = "";
-        await streamOpenAI({
-          model: openaiModel,
-          messages: oaiMsgs,
-          signal: controller.signal,
-          onToken: (chunk) => {
-            acc += chunk;
-            setStreamingText(acc);
-          },
-          onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
-        });
-        finalContent = acc;
+
+        if (toolsEnabled) {
+          // OpenAI + tool loop (non-stream)
+          const { finalText, allCalls } = await runToolLoopOpenAI(oaiMsgs, controller.signal);
+          finalContent = finalText;
+          savedCalls = allCalls;
+          setStreamingText(finalText);
+        } else {
+          let acc = "";
+          await streamOpenAI({
+            model: openaiModel,
+            messages: oaiMsgs,
+            signal: controller.signal,
+            onToken: (chunk) => {
+              acc += chunk;
+              setStreamingText(acc);
+            },
+            onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
+          });
+          finalContent = acc;
+        }
       } else if (toolsEnabled) {
         // Tool calling loop (Ollama, non-streaming)
         const { finalText, allCalls } = await runToolLoop(convId, history, controller.signal);
