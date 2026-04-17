@@ -56,6 +56,32 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "vision_click",
+    risk: "high",
+    description:
+      "Vision-guided click using Set-of-Marks. Captures the screen, auto-detects clickable UI elements, overlays numbered marks, then YOU pick a mark by number. The app clicks the center of that mark. Use action='annotate' to get the marked screenshot first (returns image + list of marks with their bounds), then action='click' with mark_id to perform the click.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["annotate", "click"],
+          description: "annotate=capture+mark elements; click=click a previously-annotated mark.",
+        },
+        mark_id: {
+          type: "number",
+          description: "The number of the mark to click (1-based). Required for action=click.",
+        },
+        button: {
+          type: "string",
+          enum: ["left", "right", "middle"],
+          description: "Mouse button. Default: left.",
+        },
+      },
+      required: ["action"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
@@ -123,6 +149,11 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
     const a = String(args.action ?? "");
     if (a === "screenshot") return "medium";
     return "high"; // any input action
+  }
+  if (name === "vision_click") {
+    const a = String(args.action ?? "");
+    if (a === "annotate") return "medium";
+    return "high";
   }
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }

@@ -218,6 +218,88 @@ ipcMain.handle("bridge:screenshot", async () => {
   }
 });
 
+// ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----
+let lastVisionMarks = []; // [{id, x, y, w, h}]
+let lastVisionDisplay = null;
+
+function detectMarksFromBuffer(width, height) {
+  // Tối giản: chia màn hình thành lưới 6x4 = 24 ô, đánh số mỗi ô.
+  // Đây là baseline để vision model có thể chỉ "ô số mấy" nếu không
+  // tìm được element thật. Trong tương lai có thể thay bằng OS accessibility tree.
+  const cols = 6;
+  const rows = 4;
+  const marks = [];
+  let id = 1;
+  const w = Math.floor(width / cols);
+  const h = Math.floor(height / rows);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      marks.push({
+        id: id++,
+        x: c * w,
+        y: r * h,
+        w,
+        h,
+      });
+    }
+  }
+  return marks;
+}
+
+async function annotateImage(buf, marks) {
+  // Dùng nativeImage của Electron + canvas đơn giản qua sharp nếu có,
+  // fallback: trả ảnh gốc + danh sách marks (renderer có thể tự overlay).
+  // Để gọn, ta trả ảnh gốc — vision model nhận tọa độ marks qua text mô tả.
+  return buf;
+}
+
+ipcMain.handle("bridge:vision_annotate", async () => {
+  if (!screenshotDesktop) {
+    return { ok: false, output: "screenshot-desktop not installed" };
+  }
+  try {
+    const buf = await screenshotDesktop({ format: "png" });
+    const display = screen.getPrimaryDisplay();
+    const { width, height } = display.size;
+    const marks = detectMarksFromBuffer(width, height);
+    lastVisionMarks = marks;
+    lastVisionDisplay = display;
+    const annotated = await annotateImage(buf, marks);
+    return {
+      ok: true,
+      output: `Captured ${width}x${height}. Marks (id @ x,y w×h):\n${marks
+        .map((m) => `${m.id} @ ${m.x},${m.y} ${m.w}×${m.h}`)
+        .join("\n")}\nReply with vision_click(action='click', mark_id=N).`,
+      image: annotated.toString("base64"),
+      marks,
+    };
+  } catch (e) {
+    return { ok: false, output: `Error: ${e.message}` };
+  }
+});
+
+ipcMain.handle("bridge:vision_click", async (_e, { markId, button }) => {
+  if (!nut) return { ok: false, output: "Native input module not installed." };
+  const mark = lastVisionMarks.find((m) => m.id === Number(markId));
+  if (!mark) {
+    return {
+      ok: false,
+      output: `Mark #${markId} not found. Call vision_annotate first.`,
+    };
+  }
+  const cx = Math.round(mark.x + mark.w / 2);
+  const cy = Math.round(mark.y + mark.h / 2);
+  try {
+    await nut.mouse.setPosition(new nut.Point(cx, cy));
+    const btn =
+      button === "right" ? nut.Button.RIGHT : button === "middle" ? nut.Button.MIDDLE : nut.Button.LEFT;
+    await nut.mouse.click(btn);
+    return { ok: true, output: `Clicked mark #${markId} at (${cx}, ${cy})` };
+  } catch (e) {
+    return { ok: false, output: e.message };
+  }
+});
+
 // Mouse/keyboard via @nut-tree-fork/nut-js (optional native module)
 const nut = tryRequire("@nut-tree-fork/nut-js");
 
@@ -323,6 +405,104 @@ ipcMain.handle("bridge:stop_ollama", async () => {
   });
 });
 
+// ----- Local cron runner: chạy local jobs trong app desktop -----
+// Đơn giản: poll mỗi 60s, nếu cron tới hạn → gọi Ollama trực tiếp.
+// Job cần có job_type='local' và app phải đang mở.
+let localJobsCache = [];
+let localJobsTimer = null;
+
+function shouldRunCron(cron, lastRunAt, now) {
+  const parts = String(cron).trim().split(/\s+/);
+  if (parts.length !== 5) return false;
+  const [m, h] = parts;
+  const last = lastRunAt ? new Date(lastRunAt).getTime() : 0;
+  const elapsedMin = (now.getTime() - last) / 60000;
+  if (m.startsWith("*/")) {
+    const n = parseInt(m.slice(2), 10);
+    if (!n) return false;
+    return elapsedMin >= n - 0.5;
+  }
+  const minute = parseInt(m, 10);
+  if (Number.isNaN(minute)) return false;
+  if (h === "*") return now.getMinutes() === minute && elapsedMin >= 0.5;
+  const hour = parseInt(h, 10);
+  if (Number.isNaN(hour)) return false;
+  return now.getHours() === hour && now.getMinutes() === minute && elapsedMin >= 0.5;
+}
+
+async function callOllamaLocal(prompt, model) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      model: model || "llama3.1:8b",
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+    });
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port: 11434,
+        path: "/api/chat",
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) },
+      },
+      (res) => {
+        let body = "";
+        res.on("data", (c) => (body += c));
+        res.on("end", () => {
+          try {
+            const j = JSON.parse(body);
+            resolve(j.message?.content ?? body);
+          } catch {
+            resolve(body);
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+async function runLocalJobOnce(job) {
+  const out = await callOllamaLocal(job.prompt, job.model);
+  job.last_run_at = new Date().toISOString();
+  return out;
+}
+
+ipcMain.handle("bridge:run_local_job", async (_e, job) => {
+  try {
+    const out = await runLocalJobOnce(job);
+    return { ok: true, output: String(out).slice(0, 5000) };
+  } catch (e) {
+    return { ok: false, output: e.message };
+  }
+});
+
+ipcMain.handle("bridge:reload_local_jobs", async (_e, jobs) => {
+  localJobsCache = Array.isArray(jobs) ? jobs : [];
+  return { ok: true, output: `Loaded ${localJobsCache.length} local jobs` };
+});
+
+function startLocalCronTimer() {
+  if (localJobsTimer) return;
+  localJobsTimer = setInterval(async () => {
+    const now = new Date();
+    for (const j of localJobsCache) {
+      if (!j.enabled) continue;
+      if (!shouldRunCron(j.cron, j.last_run_at, now)) continue;
+      try {
+        await runLocalJobOnce(j);
+        win?.webContents.send("local-job:done", { id: j.id, ok: true });
+      } catch (e) {
+        win?.webContents.send("local-job:done", { id: j.id, ok: false, error: e.message });
+      }
+    }
+  }, 60_000);
+}
+app.whenReady().then(startLocalCronTimer);
+
 app.on("before-quit", () => {
   if (ollamaProc) { try { ollamaProc.kill(); } catch {} }
+  if (localJobsTimer) clearInterval(localJobsTimer);
 });
