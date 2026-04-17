@@ -244,9 +244,10 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
   }
   if (name === "vision_click") {
     const a = String(args.action ?? "");
-    if (a === "annotate") return "medium";
+    if (a === "annotate") return "low";
     return "high";
   }
+  if (name === "observe_screen") return "low";
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }
 
