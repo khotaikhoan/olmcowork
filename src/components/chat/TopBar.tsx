@@ -15,6 +15,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
+import { Menu } from "lucide-react";
 import {
   Wifi,
   WifiOff,
@@ -53,11 +54,14 @@ interface Props {
   outputTokens: number;
   totalCostUsd: number;
   costModel: string;
+  contextWindow?: number;
+  contextWindowSource?: "real" | "fallback";
   lastReplyTokens?: number;
   tokensPerSecond?: number;
   onOpenSearch: () => void;
   onExport: (format: "markdown" | "json") => void;
   canExport: boolean;
+  onToggleSidebar?: () => void;
 }
 
 
@@ -90,16 +94,30 @@ export function TopBar({
   outputTokens,
   totalCostUsd,
   costModel,
+  contextWindow,
+  contextWindowSource,
   onOpenSearch,
   onExport,
   canExport,
+  onToggleSidebar,
 }: Props) {
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-2 sm:gap-3 px-2 sm:px-4 shrink-0 overflow-x-auto">
+      {onToggleSidebar && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 md:hidden"
+          onClick={onToggleSidebar}
+          title="Mở sidebar"
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+      )}
       <Input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        className="h-8 max-w-xs border-0 bg-transparent font-medium text-base focus-visible:ring-1"
+        className="h-8 w-32 sm:max-w-xs sm:w-auto border-0 bg-transparent font-medium text-base focus-visible:ring-1 shrink"
       />
       <div className="flex-1" />
 
@@ -259,6 +277,8 @@ export function TopBar({
         totalTokens={totalTokens}
         lastReplyTokens={lastReplyTokens}
         tokensPerSecond={tokensPerSecond}
+        contextWindow={contextWindow}
+        contextWindowSource={contextWindowSource}
       />
 
       <UpdateBadge />

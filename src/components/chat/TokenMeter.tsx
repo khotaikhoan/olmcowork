@@ -12,6 +12,10 @@ interface Props {
   lastReplyTokens?: number;
   /** Tokens per second of the last reply */
   tokensPerSecond?: number;
+  /** Real context window of the active model in tokens (default 128k) */
+  contextWindow?: number;
+  /** Whether the context window came from /api/show or is a fallback */
+  contextWindowSource?: "real" | "fallback";
 }
 
 function fmt(n: number): string {
@@ -20,18 +24,36 @@ function fmt(n: number): string {
   return Math.round(n / 1000) + "k";
 }
 
+function fmtCtx(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + "M";
+  if (n >= 1000) return Math.round(n / 1000) + "k";
+  return String(n);
+}
+
 /**
  * Displays a rough token count for the current conversation. Uses the
  * 4-chars-per-token heuristic — accurate enough for budgeting at a glance.
  */
-export function TokenMeter({ totalTokens, lastReplyTokens, tokensPerSecond }: Props) {
-  const pctOf128k = Math.min(100, (totalTokens / 128_000) * 100);
+export function TokenMeter({
+  totalTokens,
+  lastReplyTokens,
+  tokensPerSecond,
+  contextWindow = 128_000,
+  contextWindowSource = "fallback",
+}: Props) {
+  const pct = Math.min(100, (totalTokens / contextWindow) * 100);
+  const nearLimit = pct >= 75;
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           title="Token đã dùng trong hội thoại này"
-          className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors font-mono"
+          className={
+            "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md transition-colors font-mono " +
+            (nearLimit
+              ? "bg-warning/15 text-warning hover:bg-warning/25"
+              : "bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground")
+          }
         >
           <Coins className="h-3 w-3" />
           {fmt(totalTokens)}
@@ -51,12 +73,17 @@ export function TokenMeter({ totalTokens, lastReplyTokens, tokensPerSecond }: Pr
           </div>
           <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${pctOf128k}%` }}
+              className={"h-full transition-all " + (nearLimit ? "bg-warning" : "bg-primary")}
+              style={{ width: `${pct}%` }}
             />
           </div>
           <div className="text-[10px] text-muted-foreground text-right">
-            {pctOf128k.toFixed(1)}% / 128k context
+            {pct.toFixed(1)}% / {fmtCtx(contextWindow)} context
+            {contextWindowSource === "real" ? (
+              <span className="ml-1 text-[hsl(var(--success))]">✓ thật</span>
+            ) : (
+              <span className="ml-1 opacity-60">(ước lượng)</span>
+            )}
           </div>
         </div>
         {lastReplyTokens != null && lastReplyTokens > 0 && (
