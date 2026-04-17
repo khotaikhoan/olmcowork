@@ -385,7 +385,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent", "send_to_agent", "report_to_parent"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser", "spawn_agent", "send_to_agent", "report_to_parent", "broadcast_to_siblings", "scratchpad_write", "scratchpad_read"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
