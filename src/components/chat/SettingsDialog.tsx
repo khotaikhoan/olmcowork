@@ -146,6 +146,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
               0 = disabled. Only works in the desktop app. Timer resets on each message.
             </p>
           </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Auto-start Ollama on first message</Label>
+              <p className="text-xs text-muted-foreground">
+                If Ollama is stopped, automatically start it before sending. Desktop app only.
+              </p>
+            </div>
+            <Switch checked={autoStart} onCheckedChange={setAutoStart} />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
