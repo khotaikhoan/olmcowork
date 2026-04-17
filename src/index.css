@@ -218,3 +218,102 @@
   100% { transform: scale(1.18); opacity: 0; }
 }
 
+/* ============== Oculo intro overlay ============== */
+.oculo-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: hsl(var(--background));
+  transition: opacity 480ms ease, backdrop-filter 480ms ease;
+  opacity: 1;
+}
+.oculo-intro-overlay[data-fading="true"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.oculo-intro-mark {
+  filter: drop-shadow(0 8px 30px hsl(var(--primary) / 0.35));
+}
+/* Pupil: starts as a tiny dot, expands to full size */
+.oculo-intro-mark .oculo-intro-pupil {
+  transform-origin: 32px 32px;
+  transform-box: fill-box;
+  animation: oculo-intro-pupil 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Iris ring: appears after pupil, scales + rotates in */
+.oculo-intro-mark .oculo-intro-ring {
+  transform-origin: 32px 32px;
+  transform-box: fill-box;
+  opacity: 0;
+  animation: oculo-intro-ring 1.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.30s;
+}
+/* Lid sweeps open (vertical scale) */
+.oculo-intro-mark .oculo-intro-lid {
+  transform-origin: 32px 32px;
+  transform-box: fill-box;
+  animation: oculo-intro-lid 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.45s;
+}
+.oculo-intro-mark .oculo-intro-glow {
+  transform-origin: 32px 32px;
+  transform-box: fill-box;
+  opacity: 0;
+  animation: oculo-intro-glow 1.0s ease-out both;
+  animation-delay: 0.55s;
+}
+.oculo-intro-mark .oculo-intro-catch {
+  opacity: 0;
+  animation: oculo-intro-fade 0.5s ease-out both;
+  animation-delay: 0.85s;
+}
+.oculo-intro-word {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  letter-spacing: 0.02em;
+  color: hsl(var(--foreground));
+  opacity: 0;
+  transform: translateY(6px);
+  animation: oculo-intro-word 0.6s ease-out both;
+  animation-delay: 0.95s;
+}
+
+@keyframes oculo-intro-pupil {
+  0%   { transform: scale(0.05); opacity: 0; }
+  25%  { transform: scale(0.18); opacity: 1; }
+  60%  { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+@keyframes oculo-intro-ring {
+  0%   { transform: scale(0.4) rotate(-90deg); opacity: 0; }
+  60%  { transform: scale(1.1) rotate(20deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes oculo-intro-lid {
+  0%   { transform: scaleY(0.04); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: scaleY(1); opacity: 1; }
+}
+@keyframes oculo-intro-glow {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+@keyframes oculo-intro-fade {
+  to { opacity: 0.9; }
+}
+@keyframes oculo-intro-word {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oculo-intro-overlay { transition: opacity 200ms ease; }
+  .oculo-intro-mark *,
+  .oculo-intro-word { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+}
+
