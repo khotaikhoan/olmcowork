@@ -950,13 +950,14 @@ export function ChatView({
         .update({ tool_calls: next as any })
         .eq("id", messageId);
       logActivity({
-        toolName: call.name,
+        user_id: user!.id,
+        tool_name: call.name,
         args: call.args,
         status: r.ok ? "done" : "error",
         output: r.output,
         risk: effectiveRisk(call.name, call.args),
-        conversationId: conversationId ?? undefined,
-        messageId,
+        conversation_id: conversationId ?? null,
+        message_id: messageId,
       });
       toast[r.ok ? "success" : "error"](r.ok ? "Chạy lại thành công" : "Vẫn lỗi");
     } catch (e: any) {
