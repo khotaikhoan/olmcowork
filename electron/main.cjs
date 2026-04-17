@@ -2,6 +2,7 @@
 const { app, BrowserWindow, ipcMain, screen, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs/promises");
+const fsSync = require("fs");
 const { exec, spawn } = require("child_process");
 const os = require("os");
 const http = require("http");
