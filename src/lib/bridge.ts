@@ -8,6 +8,10 @@ export interface VisionMark {
   y: number;
   w: number;
   h: number;
+  role?: string;
+  label?: string;
+  source?: "ax-mac" | "uia-win" | "grid";
+  app?: string;
 }
 
 export interface BridgeAPI {
