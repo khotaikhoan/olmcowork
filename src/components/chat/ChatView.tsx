@@ -21,7 +21,7 @@ import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { ControlModeBlocker } from "./ControlModeBlocker";
 import { PlanCard } from "./PlanCard";
-import { generatePlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
+import { streamPlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
 import { AgentPreset } from "@/lib/presets";
 import { getAgent } from "@/lib/agents";
 import { loadTopMemories, formatMemoriesForPrompt, type UserMemory } from "@/lib/memory";
