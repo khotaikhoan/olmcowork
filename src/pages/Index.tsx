@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listAgents, subscribeAgents } from "@/lib/agentOrchestrator";
+import { isElectron } from "@/lib/bridge";
+import { AlertTriangle } from "lucide-react";
 
 export default function Index() {
   const { user, loading } = useAuth();
