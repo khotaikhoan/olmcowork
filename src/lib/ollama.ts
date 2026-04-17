@@ -14,11 +14,39 @@ export interface OllamaChatMessage {
   images?: string[]; // base64 (no data: prefix)
 }
 
+// Detect: chạy trong Electron desktop app hay browser thường?
+function isElectronEnv(): boolean {
+  return typeof window !== "undefined" && !!(window as any).bridge?.isElectron;
+}
+
+// Detect: trang đang ở HTTPS nhưng cố gọi HTTP localhost? (mixed content sẽ chặn)
+function isMixedContentBlocked(baseUrl: string): boolean {
+  if (typeof window === "undefined") return false;
+  const isHttpsPage = window.location.protocol === "https:";
+  const isHttpTarget = baseUrl.startsWith("http://");
+  return isHttpsPage && isHttpTarget && !isElectronEnv();
+}
+
+function ollamaErrorHint(baseUrl: string): string {
+  if (isMixedContentBlocked(baseUrl)) {
+    return "Bạn đang xem ở web preview (HTTPS) nên trình duyệt chặn gọi http://localhost:11434 (mixed content). Hãy build & dùng Desktop app, hoặc chuyển Provider sang OpenAI trong Settings.";
+  }
+  if (!isElectronEnv()) {
+    return "Trình duyệt không gọi được Ollama do CORS. Chạy lại Ollama với OLLAMA_ORIGINS=* hoặc dùng Desktop app.";
+  }
+  return `Không kết nối được Ollama tại ${baseUrl}. Kiểm tra Ollama đã chạy chưa (ollama serve).`;
+}
+
 export async function listModels(baseUrl: string): Promise<OllamaModel[]> {
-  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/tags`);
-  if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
-  const data = await res.json();
-  return data.models ?? [];
+  try {
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/tags`);
+    if (!res.ok) throw new Error(`Ollama responded ${res.status}`);
+    const data = await res.json();
+    return data.models ?? [];
+  } catch (e: any) {
+    if (e?.message?.startsWith("Ollama responded")) throw e;
+    throw new Error(ollamaErrorHint(baseUrl));
+  }
 }
 
 export async function pingOllama(baseUrl: string): Promise<boolean> {
@@ -28,6 +56,11 @@ export async function pingOllama(baseUrl: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Trả về lý do cụ thể tại sao không kết nối được Ollama (để hiện banner). */
+export function getOllamaUnreachableReason(baseUrl: string): string {
+  return ollamaErrorHint(baseUrl);
 }
 
 export interface RunningModel {
@@ -158,6 +191,10 @@ export async function streamChat(opts: StreamOptions) {
     onDone?.();
   } catch (e: any) {
     if (e.name === "AbortError") return;
+    if (e?.name === "TypeError" || /Failed to fetch|NetworkError/i.test(e?.message ?? "")) {
+      onError?.(new Error(ollamaErrorHint(baseUrl)));
+      return;
+    }
     onError?.(e);
   }
 }

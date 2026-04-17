@@ -21,6 +21,8 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listAgents, subscribeAgents } from "@/lib/agentOrchestrator";
+import { isElectron } from "@/lib/bridge";
+import { AlertTriangle } from "lucide-react";
 
 export default function Index() {
   const { user, loading } = useAuth();
@@ -146,25 +148,49 @@ export default function Index() {
     );
   }
 
+  const showWebOllamaWarning = settings.provider === "ollama" && !isElectron();
+
   const chatNode = (
-    <ChatView
-      conversationId={selectedId}
-      provider={settings.provider}
-      openaiModel={settings.openai_model}
-      ollamaUrl={settings.ollama_url}
-      defaultModel={settings.default_model}
-      requireConfirm={settings.require_confirm}
-      autoStopMinutes={settings.auto_stop_minutes}
-      autoStart={settings.auto_start}
-      onCreated={(id) => {
-        setSelectedId(id);
-        setRefreshKey((k) => k + 1);
-      }}
-      onTitleUpdated={() => setRefreshKey((k) => k + 1)}
-      onArtifactsChange={setArtifacts}
-      onArtifactOpen={openArtifact}
-      onToggleSidebar={isMobile ? () => setSidebarOpen(true) : () => setSidebarMode((m) => (m === "closed" ? "expanded" : m === "mini" ? "expanded" : "mini"))}
-    />
+    <div className="flex-1 flex flex-col min-w-0 h-full">
+      {showWebOllamaWarning && (
+        <div className="flex items-start gap-2 border-b border-border bg-amber-500/10 text-amber-900 dark:text-amber-100 px-4 py-2 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <div className="font-medium">Ollama không chạy được trong web preview</div>
+            <div className="text-xs opacity-80 mt-0.5">
+              Trình duyệt HTTPS không gọi được <code>http://localhost:11434</code> (mixed content + CORS).
+              Hãy build Desktop app, hoặc mở Settings → đổi Provider sang <strong>OpenAI</strong>.
+            </div>
+          </div>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="text-xs font-medium underline shrink-0 hover:opacity-80"
+          >
+            Mở Settings
+          </button>
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        <ChatView
+          conversationId={selectedId}
+          provider={settings.provider}
+          openaiModel={settings.openai_model}
+          ollamaUrl={settings.ollama_url}
+          defaultModel={settings.default_model}
+          requireConfirm={settings.require_confirm}
+          autoStopMinutes={settings.auto_stop_minutes}
+          autoStart={settings.auto_start}
+          onCreated={(id) => {
+            setSelectedId(id);
+            setRefreshKey((k) => k + 1);
+          }}
+          onTitleUpdated={() => setRefreshKey((k) => k + 1)}
+          onArtifactsChange={setArtifacts}
+          onArtifactOpen={openArtifact}
+          onToggleSidebar={isMobile ? () => setSidebarOpen(true) : () => setSidebarMode((m) => (m === "closed" ? "expanded" : m === "mini" ? "expanded" : "mini"))}
+        />
+      </div>
+    </div>
   );
 
   // Desktop sidebar width animation: 288 (expanded) | 56 (mini) | 0 (closed).
