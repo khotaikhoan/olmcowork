@@ -695,6 +695,9 @@ export function ChatView({
         ollamaBusy={ollamaBusy}
         onToggleOllama={toggleOllama}
         running={running}
+        totalTokens={messages.reduce((s, m) => s + estimateTokens(m.content), 0) + estimateTokens(streamingText)}
+        lastReplyTokens={lastReplyStats?.tokens}
+        tokensPerSecond={lastReplyStats?.tps}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
