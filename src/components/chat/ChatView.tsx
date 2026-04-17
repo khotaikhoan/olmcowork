@@ -12,6 +12,7 @@ import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
 import { TOOLS_BY_NAME, toOllamaTools, toolsForMode, isActionAllowedInMode, ToolDef, effectiveRisk, type ConversationMode } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
+import { applyContextWindow, getWindowConfig } from "@/lib/contextWindow";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
