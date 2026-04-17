@@ -2,6 +2,9 @@ import { useRef, useState, KeyboardEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePlus, Send, Square, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 export interface PendingAttachment {
   file: File;
@@ -21,6 +24,35 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+
+  // Slash command: /schedule "<name>" <cron> -- <prompt>
+  // Ví dụ: /schedule "morning brief" 0 8 * * * -- Tóm tắt tin tức công nghệ hôm nay
+  const trySlashCommand = async (raw: string): Promise<boolean> => {
+    if (!raw.startsWith("/schedule")) return false;
+    if (!user) {
+      toast.error("Cần đăng nhập");
+      return true;
+    }
+    const m = raw.match(/^\/schedule\s+"([^"]+)"\s+(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+--\s+([\s\S]+)$/);
+    if (!m) {
+      toast.error('Cú pháp: /schedule "tên" <cron 5 phần> -- <prompt>');
+      return true;
+    }
+    const [, name, cron, prompt] = m;
+    const { error } = await supabase.from("scheduled_jobs").insert({
+      user_id: user.id,
+      name,
+      cron,
+      prompt,
+      job_type: "cloud",
+      enabled: true,
+      model: "google/gemini-3-flash-preview",
+    });
+    if (error) toast.error(error.message);
+    else toast.success(`Đã tạo job "${name}" (${cron})`);
+    return true;
+  };
 
   useEffect(() => {
     const ta = taRef.current;
@@ -46,10 +78,15 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
     setAttachments((p) => [...p, ...list]);
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (isStreaming) return;
-    if (!text.trim() && attachments.length === 0) return;
-    onSend(text.trim(), attachments);
+    const trimmed = text.trim();
+    if (!trimmed && attachments.length === 0) return;
+    if (await trySlashCommand(trimmed)) {
+      setText("");
+      return;
+    }
+    onSend(trimmed, attachments);
     setText("");
     setAttachments([]);
   };
