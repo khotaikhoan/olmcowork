@@ -60,12 +60,6 @@ interface Props {
   canExport: boolean;
 }
 
-const PRESETS: Record<string, string> = {
-  "Mặc định": "",
-  "Lập trình viên": "Bạn là một kỹ sư phần mềm chuyên nghiệp. Viết code sạch, đúng chuẩn và giải thích ngắn gọn bằng tiếng Việt.",
-  "Người viết": "Bạn là trợ lý viết lách tinh tế. Cải thiện sự rõ ràng, giọng văn và mạch lạc. Phản hồi bằng tiếng Việt.",
-  "Điều khiển máy": "Bạn là tác nhân điều khiển máy tính cẩn trọng. Lập kế hoạch ngắn, hỏi trước hành động rủi ro, giải thích từng bước bằng tiếng Việt.",
-};
 
 const PRESETS: Record<string, string> = {
   "Mặc định": "",
