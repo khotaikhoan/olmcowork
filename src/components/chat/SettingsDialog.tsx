@@ -78,9 +78,11 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     onOpenChange(false);
     nav(path);
   };
-  const [provider, setProvider] = useState<Provider>(
-    (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
-  );
+  const [provider, setProvider] = useState<Provider>(() => {
+    const saved = (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama";
+    // Web preview không gọi được Ollama → ép sang openai.
+    return !IS_DESKTOP && saved === "ollama" ? "openai" : saved;
+  });
   const [openaiModel, setOpenaiModel] = useState<string>(
     localStorage.getItem(LS_OPENAI_MODEL) || "gpt-4o-mini",
   );
