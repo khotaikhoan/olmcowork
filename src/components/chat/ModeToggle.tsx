@@ -33,7 +33,7 @@ export function ModeToggle({ value, onChange, disabled }: Props) {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <MessageSquare className="h-3.5 w-3.5" /> Chat
+              <MessageSquare className="h-3.5 w-3.5" /> <span className="hidden md:inline">Chat</span>
             </button>
           </TooltipTrigger>
           <TooltipContent side="bottom">Chỉ trò chuyện — không thao tác máy.</TooltipContent>
