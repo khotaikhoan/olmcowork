@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
@@ -20,6 +21,10 @@ import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { AgentPreset } from "@/lib/presets";
 import { estimateTokens } from "./TokenMeter";
+import { ChatSearch } from "./ChatSearch";
+import { estimateCostUsd } from "@/lib/pricing";
+import { logActivity } from "@/lib/activityLog";
+import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
 
 interface DbMessage {
   id: string;
@@ -60,6 +65,7 @@ export function ChatView({
   onArtifactOpen,
 }: Props) {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [models, setModels] = useState<OllamaModel[]>([]);
   const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
@@ -77,6 +83,15 @@ export function ChatView({
   const lastActivityRef = useRef<number>(Date.now());
   const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
   const streamStartRef = useRef<number>(0);
+
+  // Cost tracking — accumulated input/output tokens for the conversation
+  const [costInput, setCostInput] = useState(0);
+  const [costOutput, setCostOutput] = useState(0);
+
+  // Search overlay
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
