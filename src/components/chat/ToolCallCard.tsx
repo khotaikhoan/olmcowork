@@ -285,10 +285,12 @@ export function ToolCallCard({
 
           {/* web_search → list of result cards */}
           {v.kind === "search" && (() => {
-            const m = call.result?.match(/^<!--web_search:([\s\S]*?)-->/);
+            const cached = !!call.result?.includes("<!--web_search_cache_hit-->");
+            const stripped = call.result?.replace(/^<!--web_search_cache_hit-->\n?/, "") ?? "";
+            const m = stripped.match(/^<!--web_search:([\s\S]*?)-->/);
             let parsed: { query: string; results: { title: string; url: string; snippet: string }[] } | null = null;
             if (m) { try { parsed = JSON.parse(m[1]); } catch { /* ignore */ } }
-            const visibleText = call.result?.replace(/^<!--web_search:[\s\S]*?-->\n?/, "") ?? "";
+            const visibleText = stripped.replace(/^<!--web_search:[\s\S]*?-->\n?/, "");
             return (
               <div className="bg-muted/20 p-3 space-y-2">
                 {parsed && parsed.results.length > 0 ? (
