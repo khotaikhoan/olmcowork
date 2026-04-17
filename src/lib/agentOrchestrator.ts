@@ -786,6 +786,29 @@ async function execSubAgentTool(
     return r.output;
   }
 
+  // Phase 7: broadcast & scratchpad — handled in-process.
+  if (name === "broadcast_to_siblings") {
+    const r = broadcastToSiblings(node.id, String(args.text ?? ""));
+    return r.output;
+  }
+  if (name === "scratchpad_write") {
+    const r = scratchpadWrite(
+      node.id,
+      String(args.key ?? ""),
+      String(args.value ?? ""),
+      args.scope ? String(args.scope) : undefined,
+    );
+    return r.output;
+  }
+  if (name === "scratchpad_read") {
+    const r = scratchpadRead(
+      node.id,
+      args.key ? String(args.key) : undefined,
+      args.scope ? String(args.scope) : undefined,
+    );
+    return r.output;
+  }
+
   // Nested spawn → recurse via spawnAgent (depth+1).
   if (name === "spawn_agent") {
     if (node.depth >= MAX_DEPTH) {
