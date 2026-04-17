@@ -43,7 +43,13 @@ function setupAutoUpdate() {
     emitUpdater({ state: "none" });
   });
   autoUpdater.on("download-progress", (p) => {
-    emitUpdater({ state: "downloading", percent: Math.round(p.percent) });
+    emitUpdater({
+      state: "downloading",
+      percent: Math.round(p.percent),
+      bytesPerSecond: Math.round(p.bytesPerSecond || 0),
+      transferred: p.transferred || 0,
+      total: p.total || 0,
+    });
   });
   autoUpdater.on("update-downloaded", (info) => {
     emitUpdater({ state: "ready", version: info.version });
