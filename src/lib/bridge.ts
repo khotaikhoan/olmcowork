@@ -2,6 +2,14 @@
 // xuống Electron IPC, hoặc fallback mock trong browser.
 import { mockExecute, ExecResult } from "./tools";
 
+export interface VisionMark {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface BridgeAPI {
   isElectron: boolean;
   info: () => Promise<{ platform: string; arch: string; home: string; version: string; hasScreenshot: boolean }>;
@@ -10,6 +18,8 @@ export interface BridgeAPI {
   writeFile: (path: string, content: string) => Promise<ExecResult>;
   runShell: (command: string) => Promise<ExecResult>;
   screenshot: () => Promise<ExecResult & { image?: string }>;
+  visionAnnotate: () => Promise<ExecResult & { image?: string; marks?: VisionMark[] }>;
+  visionClick: (markId: number, button?: "left" | "right" | "middle") => Promise<ExecResult>;
   mouseMove: (x: number, y: number) => Promise<ExecResult>;
   mouseClick: (x: number, y: number, button?: "left" | "right" | "middle") => Promise<ExecResult>;
   typeText: (text: string) => Promise<ExecResult>;
@@ -30,6 +40,7 @@ export const isElectron = (): boolean =>
 
 export interface ToolExecResult extends ExecResult {
   image?: string;
+  marks?: VisionMark[];
 }
 
 /**
@@ -49,6 +60,20 @@ export async function executeTool(
 
   if (name === "bash") {
     return b.runShell(String(args.command ?? ""));
+  }
+
+  if (name === "vision_click") {
+    const action = String(args.action ?? "");
+    if (action === "annotate") {
+      return b.visionAnnotate();
+    }
+    if (action === "click") {
+      const id = Number(args.mark_id);
+      if (!id) return { ok: false, output: "mark_id required" };
+      const button = (args.button as "left" | "right" | "middle") ?? "left";
+      return b.visionClick(id, button);
+    }
+    return { ok: false, output: `Unknown vision_click action: ${action}` };
   }
 
   if (name === "text_editor") {
