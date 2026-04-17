@@ -36,12 +36,58 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
   }
 }
 
+/** localStorage cache key + TTL for web_search results. */
+const WEB_SEARCH_CACHE_PREFIX = "olm:web_search:";
+const WEB_SEARCH_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+interface CachedSearch {
+  ts: number;
+  output: string;
+}
+
+function readSearchCache(key: string): string | null {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedSearch;
+    if (!parsed?.ts || Date.now() - parsed.ts > WEB_SEARCH_TTL_MS) {
+      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      return null;
+    }
+    return parsed.output;
+  } catch {
+    return null;
+  }
+}
+
+function writeSearchCache(key: string, output: string): void {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const payload: CachedSearch = { ts: Date.now(), output };
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // quota exceeded — best-effort prune
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k?.startsWith(WEB_SEARCH_CACHE_PREFIX)) localStorage.removeItem(k);
+      }
+    } catch { /* ignore */ }
+  }
+}
+
 /** Read-only web search via the public `web-search` edge function (DuckDuckGo). */
 async function webSearchTool(query: string, limit?: number): Promise<ExecResult> {
   if (!query?.trim()) return { ok: false, output: "web_search requires a non-empty query." };
+  const n = limit ?? 5;
+  const cacheKey = `${WEB_SEARCH_CACHE_PREFIX}${n}:${query.trim().toLowerCase()}`;
+  const cached = readSearchCache(cacheKey);
+  if (cached) {
+    return { ok: true, output: `<!--web_search_cache_hit-->\n${cached}` };
+  }
   try {
     const { data, error } = await supabase.functions.invoke("web-search", {
-      body: { query, limit: limit ?? 5 },
+      body: { query, limit: n },
     });
     if (error) return { ok: false, output: `web_search failed: ${error.message}` };
     if (!data || (data as any).error) {
@@ -52,10 +98,10 @@ async function webSearchTool(query: string, limit?: number): Promise<ExecResult>
     const text = results
       .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
       .join("\n\n");
-    // Prepend a machine-readable marker so the UI can render rich cards while the
-    // model still sees the human-readable list.
     const marker = `<!--web_search:${JSON.stringify({ query, results })}-->\n`;
-    return { ok: true, output: marker + text };
+    const output = marker + text;
+    writeSearchCache(cacheKey, output);
+    return { ok: true, output };
   } catch (e: any) {
     return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };
   }
