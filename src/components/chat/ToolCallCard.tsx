@@ -134,24 +134,53 @@ export function ToolCallCard({
 
   return (
     <div className="my-2 rounded-xl border border-border bg-card overflow-hidden shadow-[var(--shadow-soft)]">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted/40 transition"
-      >
-        {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-        <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center">
-          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-        </div>
-        <span className="font-mono text-xs text-foreground/80">{v.label}</span>
-        {summary && (
-          <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[40ch]">
-            {summary}
-          </span>
+      <div className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-muted/40 transition">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+          aria-expanded={open}
+        >
+          {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+          <div className="h-6 w-6 rounded-md bg-muted flex items-center justify-center shrink-0">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+          </div>
+          <span className="font-mono text-xs text-foreground/80 shrink-0">{v.label}</span>
+          {summary && (
+            <span className="font-mono text-[11px] text-muted-foreground truncate">
+              {summary}
+            </span>
+          )}
+        </button>
+        {why && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                title="Tại sao AI gọi tool này?"
+                aria-label="Tại sao AI gọi tool này?"
+                className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition shrink-0"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="end"
+              className="max-w-sm text-xs leading-relaxed p-3"
+            >
+              <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <HelpCircle className="h-3 w-3" />
+                <span>Tại sao gọi tool này?</span>
+              </div>
+              <p className="text-foreground/90 whitespace-pre-wrap">{why}</p>
+            </PopoverContent>
+          </Popover>
         )}
-        <div className="ml-auto">
-          <StatusBadge status={call.status} />
-        </div>
-      </button>
+        <StatusBadge status={call.status} />
+      </div>
+
 
       {open && (
         <div className="border-t border-border">
