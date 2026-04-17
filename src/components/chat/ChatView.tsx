@@ -23,6 +23,9 @@ import { ControlModeBlocker } from "./ControlModeBlocker";
 import { PlanCard } from "./PlanCard";
 import { generatePlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
 import { AgentPreset } from "@/lib/presets";
+import { getAgent } from "@/lib/agents";
+import { loadTopMemories, formatMemoriesForPrompt, type UserMemory } from "@/lib/memory";
+import { modelSupportsVision } from "@/lib/vision";
 import { estimateTokens } from "./TokenMeter";
 import { ChatSearch } from "./ChatSearch";
 import { estimateCostUsd } from "@/lib/pricing";
@@ -87,6 +90,10 @@ export function ChatView({
   const [mode, setMode] = useState<ConversationMode>("chat");
   const [lockedApp, setLockedApp] = useState<string | null>(null);
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
+  const [agentId, setAgentId] = useState<string>(() => {
+    try { return localStorage.getItem("chat.agentId") || "default"; } catch { return "default"; }
+  });
+  const [memories, setMemories] = useState<UserMemory[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastActivityRef = useRef<number>(Date.now());
