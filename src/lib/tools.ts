@@ -424,7 +424,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent" || name === "send_to_agent" || name === "report_to_parent") return true;
+  if (name === "fetch_url" || name === "web_search" || name === "spawn_agent" || name === "send_to_agent" || name === "report_to_parent" || name === "broadcast_to_siblings" || name === "scratchpad_write" || name === "scratchpad_read") return true;
   if (name === "browser") {
     const a = String(args.action ?? "");
     return [
