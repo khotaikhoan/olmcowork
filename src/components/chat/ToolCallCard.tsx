@@ -295,8 +295,7 @@ export function ToolCallCard({
               )}
             </div>
           )}
-
-
+          {v.kind === "generic" && (
             <div className="bg-muted/20 p-3 space-y-2">
               <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-40">
                 {JSON.stringify(call.args, null, 2)}
