@@ -1,0 +1,50 @@
+name: Release Electron App
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".github/**"
+      - "supabase/**"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Bump patch version (auto)
+        id: bump
+        run: |
+          NEW_VERSION=$(npm version patch --no-git-tag-version | sed 's/v//')
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumped to $NEW_VERSION"
+
+      - name: Build & publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Bỏ code signing để build chạy được không cần Apple Developer ID
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run release
+
+      - name: Commit version bump back to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: release v${{ steps.bump.outputs.version }} [skip ci]" || echo "No changes"
+          git push
