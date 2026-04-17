@@ -676,33 +676,32 @@ export function ChatView({
    * Public send handler. In Control mode with a "complex" prompt, generates a
    * plan first and shows PlanCard for user approval. Otherwise sends immediately.
    */
+  const runPlanGeneration = async (text: string, attachments: PendingAttachment[]) => {
+    try {
+      const steps = await generatePlan(text, {
+        provider,
+        ollamaUrl,
+        ollamaModel: model,
+        openaiModel,
+      });
+      setPendingPlan((p) => {
+        if (!p || p.prompt !== text) return p;
+        return { ...p, steps, loading: false };
+      });
+    } catch (err: any) {
+      toast.error(`Không tạo được plan: ${err?.message ?? err}`);
+      // Mark as empty so the user sees the retry UI instead of being trapped.
+      setPendingPlan((p) =>
+        p && p.prompt === text ? { ...p, steps: [], loading: false } : p,
+      );
+    }
+  };
+
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
     if (mode === "control" && shouldGeneratePlan(text) && !pendingPlan) {
       setPendingPlan({ prompt: text, attachments, steps: [], loading: true });
-      try {
-        const steps = await generatePlan(text, {
-          provider,
-          ollamaUrl,
-          ollamaModel: model,
-          openaiModel,
-        });
-        if (!steps || steps.length === 0) {
-          // Plan empty → don't trap user, just run the task
-          toast.info("Không tạo được plan — chạy thẳng task.");
-          setPendingPlan(null);
-          executeSend(text, attachments);
-          return;
-        }
-        setPendingPlan((p) =>
-          p && p.prompt === text ? { ...p, steps, loading: false } : p,
-        );
-      } catch (err: any) {
-        toast.error(`Không tạo được plan: ${err?.message ?? err} — chạy thẳng task.`);
-        // Fallback: send without plan
-        setPendingPlan(null);
-        executeSend(text, attachments);
-      }
+      await runPlanGeneration(text, attachments);
       return;
     }
     executeSend(text, attachments);
