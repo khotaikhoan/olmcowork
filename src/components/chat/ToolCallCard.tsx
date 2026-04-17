@@ -285,17 +285,26 @@ export function ToolCallCard({
 
           {/* web_search → list of result cards */}
           {v.kind === "search" && (() => {
-            const m = call.result?.match(/^<!--web_search:([\s\S]*?)-->/);
+            const cached = !!call.result?.includes("<!--web_search_cache_hit-->");
+            const stripped = call.result?.replace(/^<!--web_search_cache_hit-->\n?/, "") ?? "";
+            const m = stripped.match(/^<!--web_search:([\s\S]*?)-->/);
             let parsed: { query: string; results: { title: string; url: string; snippet: string }[] } | null = null;
             if (m) { try { parsed = JSON.parse(m[1]); } catch { /* ignore */ } }
-            const visibleText = call.result?.replace(/^<!--web_search:[\s\S]*?-->\n?/, "") ?? "";
+            const visibleText = stripped.replace(/^<!--web_search:[\s\S]*?-->\n?/, "");
             return (
               <div className="bg-muted/20 p-3 space-y-2">
                 {parsed && parsed.results.length > 0 ? (
                   <>
-                    <div className="text-[11px] text-muted-foreground">
-                      {parsed.results.length} kết quả cho{" "}
-                      <span className="font-mono text-foreground">"{parsed.query}"</span>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>
+                        {parsed.results.length} kết quả cho{" "}
+                        <span className="font-mono text-foreground">"{parsed.query}"</span>
+                      </span>
+                      {cached && (
+                        <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-foreground/70">
+                          cached
+                        </span>
+                      )}
                     </div>
                     <ul className="space-y-1.5">
                       {parsed.results.map((r, i) => {
