@@ -37,12 +37,12 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md p-6 shadow-[var(--shadow-elevated)]">
         <div className="flex flex-col items-center mb-6">
-          <div className="h-12 w-12 rounded-xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-3">
-            <Bot className="h-6 w-6 text-primary-foreground" />
+          <div className="h-14 w-14 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-3 shadow-[var(--shadow-elevated)]">
+            <OculoLogo size={32} withGradient={false} className="text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-semibold">Ollama Cowork</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Oculo</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Trò chuyện và điều khiển máy tính bằng AI cục bộ
+            AI quan sát & cộng tác — local + cloud
           </p>
         </div>
 

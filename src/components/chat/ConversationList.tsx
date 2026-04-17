@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OculoLogo } from "@/components/OculoLogo";
 import {
   Plus,
   MessageSquare,
@@ -169,10 +170,10 @@ export function ConversationList({
       <div className="p-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)]">
-            <Bot className="h-4 w-4 text-primary-foreground" />
+            <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
           </div>
           <div className="font-semibold text-sidebar-foreground tracking-tight">
-            Ollama Cowork
+            Oculo
           </div>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
