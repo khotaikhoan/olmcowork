@@ -46,8 +46,11 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
+import { isElectron } from "@/lib/bridge";
 
 export type Provider = "ollama" | "openai";
+
+const IS_DESKTOP = isElectron();
 
 interface Props {
   open: boolean;
