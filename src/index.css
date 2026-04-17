@@ -174,48 +174,74 @@
     @apply rounded-2xl border-2 border-dashed border-primary bg-background/80 px-10 py-8 text-center;
   }
 
-  /* ============== Oculo animated logo ============== */
-  .oculo-logo .oculo-ring {
-    animation: oculo-ring-spin var(--oculo-ring-dur, 16s) linear infinite;
-    transform-box: fill-box;
+  /* ============== Oculo animated logo (naturalistic eye) ============== */
+  .oculo-logo { overflow: visible; }
+
+  /* Blink: upper mask slides DOWN to y=32, lower mask slides UP to y=32.
+     The two halves meet at the centreline → eye CLOSES naturally.
+     This avoids the old scaleY trick which collapsed the whole shape. */
+  .oculo-logo .oculo-mask-top {
+    transform-box: view-box;
+    animation: oculo-blink-top var(--oculo-blink-dur, 6.5s) ease-in-out infinite;
   }
+  .oculo-logo .oculo-mask-bot {
+    transform-box: view-box;
+    animation: oculo-blink-bot var(--oculo-blink-dur, 6.5s) ease-in-out infinite;
+  }
+
   .oculo-logo .oculo-pupil {
     transform-origin: center;
     transform-box: fill-box;
-    animation: oculo-pupil-pulse var(--oculo-pupil-dur, 3.2s) ease-in-out infinite;
+    animation: oculo-pupil-pulse var(--oculo-pupil-dur, 5s) ease-in-out infinite;
   }
-  .oculo-logo .oculo-lid {
+
+  .oculo-logo .oculo-gaze {
+    transform-box: view-box;
     transform-origin: 32px 32px;
+    animation: oculo-gaze var(--oculo-gaze-dur, 9s) ease-in-out infinite;
+  }
+
+  .oculo-logo .oculo-glow {
+    transform-origin: center;
     transform-box: fill-box;
-    animation: oculo-blink var(--oculo-blink-dur, 9s) ease-in-out infinite;
+    opacity: 0.25;
+    transition: opacity 400ms ease;
   }
-  .oculo-logo .oculo-lid.is-blinking {
-    animation: oculo-blink var(--oculo-blink-dur, 1.6s) ease-in-out infinite;
-  }
-  .oculo-logo .oculo-wave {
-    transform-origin: 32px 32px;
-    transform-box: fill-box;
-    opacity: 0;
-  }
-  .oculo-logo .oculo-wave.is-active {
-    animation: oculo-wave 1.4s ease-out infinite;
-  }
+  .oculo-logo .oculo-glow.is-medium { opacity: 0.45; animation: oculo-glow-pulse 2.6s ease-in-out infinite; }
+  .oculo-logo .oculo-glow.is-strong { opacity: 0.7;  animation: oculo-glow-pulse 1.4s ease-in-out infinite; }
 }
 
-@keyframes oculo-ring-spin {
-  to { transform: rotate(360deg); }
+/* Lid only closes for ~3% of the loop → most of the time eye is wide open */
+@keyframes oculo-blink-top {
+  0%, 94%, 100% { transform: translateY(0); }
+  96%, 97%      { transform: translateY(16px); }
+}
+@keyframes oculo-blink-bot {
+  0%, 94%, 100% { transform: translateY(0); }
+  96%, 97%      { transform: translateY(-16px); }
 }
 @keyframes oculo-pupil-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50%      { transform: scale(0.7); opacity: 0.85; }
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(0.86); }
 }
-@keyframes oculo-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  95%           { transform: scaleY(0.08); }
+@keyframes oculo-gaze {
+  0%, 100% { transform: translate(0, 0); }
+  18%      { transform: translate(1.4px, -0.6px); }
+  38%      { transform: translate(-1.6px, 0.4px); }
+  58%      { transform: translate(0.4px, 1.2px); }
+  78%      { transform: translate(-0.8px, -0.4px); }
 }
-@keyframes oculo-wave {
-  0%   { transform: scale(0.85); opacity: 0.6; }
-  100% { transform: scale(1.18); opacity: 0; }
+@keyframes oculo-glow-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oculo-logo .oculo-mask-top,
+  .oculo-logo .oculo-mask-bot,
+  .oculo-logo .oculo-pupil,
+  .oculo-logo .oculo-gaze,
+  .oculo-logo .oculo-glow { animation: none !important; }
 }
 
 /* ============== Oculo intro overlay ============== */
