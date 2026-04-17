@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { pingOllama } from "@/lib/ollama";
 import { OPENAI_MODELS } from "@/lib/openai";
 import { useTheme, Theme } from "@/hooks/useTheme";
-import { Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight } from "lucide-react";
+import { Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight, ListChecks } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
 
