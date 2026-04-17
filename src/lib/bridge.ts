@@ -28,6 +28,28 @@ async function fetchUrlTool(url: string): Promise<ExecResult> {
   }
 }
 
+/** Read-only web search via the public `web-search` edge function (DuckDuckGo). */
+async function webSearchTool(query: string, limit?: number): Promise<ExecResult> {
+  if (!query?.trim()) return { ok: false, output: "web_search requires a non-empty query." };
+  try {
+    const { data, error } = await supabase.functions.invoke("web-search", {
+      body: { query, limit: limit ?? 5 },
+    });
+    if (error) return { ok: false, output: `web_search failed: ${error.message}` };
+    if (!data || (data as any).error) {
+      return { ok: false, output: `web_search failed: ${(data as any)?.error ?? "no data"}` };
+    }
+    const results = ((data as any).results ?? []) as { title: string; url: string; snippet: string }[];
+    if (!results.length) return { ok: true, output: `No results for "${query}".` };
+    const text = results
+      .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
+      .join("\n\n");
+    return { ok: true, output: text };
+  } catch (e: any) {
+    return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };
+  }
+}
+
 export interface VisionMark {
   id: number;
   x: number;
@@ -85,9 +107,12 @@ export async function executeTool(
   name: string,
   args: Record<string, any>,
 ): Promise<ToolExecResult> {
-  // fetch_url is browser-safe (server-side proxy) and works without Electron.
+  // fetch_url + web_search are browser-safe (server-side proxies) and work without Electron.
   if (name === "fetch_url") {
     return fetchUrlTool(String(args.url ?? ""));
+  }
+  if (name === "web_search") {
+    return webSearchTool(String(args.query ?? ""), Number(args.limit) || undefined);
   }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);

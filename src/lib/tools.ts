@@ -95,6 +95,23 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "web_search",
+    risk: "low",
+    description:
+      "Search the web (DuckDuckGo) and return a list of results with title, url, and snippet. Read-only — safe in Chat and Control modes. Use this to find pages relevant to a question, then optionally call fetch_url on a promising result to read its content.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "The search query." },
+        limit: {
+          type: "number",
+          description: "Max number of results to return (1-10, default 5).",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
@@ -149,7 +166,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -188,7 +205,7 @@ export function isActionAllowedInMode(
   args: Record<string, any>,
 ): boolean {
   if (mode === "control") return true;
-  if (name === "fetch_url") return true;
+  if (name === "fetch_url" || name === "web_search") return true;
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
   return a === "view" || a === "list_dir";
