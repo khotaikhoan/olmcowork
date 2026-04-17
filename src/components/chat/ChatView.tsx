@@ -6,6 +6,7 @@ import { MessageBubble } from "./MessageBubble";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
+import { streamOpenAI, OpenAIMessage } from "@/lib/openai";
 import { TOOLS, TOOLS_BY_NAME, toOllamaTools, ToolDef } from "@/lib/tools";
 import { executeTool, isElectron } from "@/lib/bridge";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
@@ -27,6 +28,8 @@ interface DbMessage {
 
 interface Props {
   conversationId: string | null;
+  provider: "ollama" | "openai";
+  openaiModel: string;
   ollamaUrl: string;
   defaultModel: string | null;
   requireConfirm: boolean;
@@ -38,6 +41,8 @@ interface Props {
 
 export function ChatView({
   conversationId,
+  provider,
+  openaiModel,
   ollamaUrl,
   defaultModel,
   requireConfirm,
