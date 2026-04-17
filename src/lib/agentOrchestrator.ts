@@ -295,6 +295,225 @@ export function listRootChildren(): AgentNode[] {
   return Array.from(nodes.values()).filter((n) => n.parentId === null);
 }
 
+// ────────────── Phase 7: broadcast & scratchpad ──────────────
+
+/** Resolve the "sibling group key" for a given sender id (parent id, or ROOT). */
+function siblingGroupKey(senderId: string): string {
+  if (senderId === ROOT_PARENT_ID) return ROOT_PARENT_ID;
+  const sender = nodes.get(senderId);
+  if (!sender) return ROOT_PARENT_ID;
+  return sender.parentId ?? ROOT_PARENT_ID;
+}
+
+/** List sibling agent ids for a sender (excluding sender itself). */
+function listSiblings(senderId: string): AgentNode[] {
+  const groupKey = siblingGroupKey(senderId);
+  return Array.from(nodes.values()).filter((n) => {
+    if (n.id === senderId) return false;
+    const np = n.parentId ?? ROOT_PARENT_ID;
+    return np === groupKey;
+  });
+}
+
+/**
+ * Broadcast text to every sibling sharing the same parent.
+ *  - Each sibling receives an inbox message (auto-injected before its next step).
+ *  - The shared parent ALSO receives a copy as a report (so it has context).
+ *  - Sender does not receive its own broadcast.
+ */
+export function broadcastToSiblings(
+  senderId: string,
+  text: string,
+): { ok: boolean; output: string; deliveredTo: string[] } {
+  if (!text?.trim()) return { ok: false, output: "broadcast text is empty", deliveredTo: [] };
+  const siblings = listSiblings(senderId).filter(
+    (n) => n.status === "running" || n.status === "queued",
+  );
+  const sender = senderId === ROOT_PARENT_ID ? null : nodes.get(senderId);
+  const fromName = sender?.name ?? "user-main-agent";
+  const ts = Date.now();
+
+  for (const sib of siblings) {
+    sib.inbox.push({
+      id: crypto.randomUUID(),
+      fromId: senderId,
+      fromName,
+      text: `[BROADCAST from sibling ${fromName}]\n${text}`,
+      kind: "inbox",
+      ts,
+      consumed: false,
+    });
+  }
+
+  // Also notify the shared parent (if not root). Root parent is the user — they
+  // already see the AgentsTab UI, no need for an extra report into the void.
+  const parentKey = siblingGroupKey(senderId);
+  if (parentKey !== ROOT_PARENT_ID) {
+    const parent = nodes.get(parentKey);
+    if (parent) {
+      parent.reports.push({
+        id: crypto.randomUUID(),
+        fromId: senderId,
+        fromName,
+        text: `[BROADCAST relayed to ${siblings.length} sibling(s)]\n${text}`,
+        kind: "report",
+        ts,
+        consumed: false,
+      });
+    }
+  } else {
+    // Top-level broadcast — also surface to the user's main agent.
+    rootReports.push({
+      id: crypto.randomUUID(),
+      fromId: senderId,
+      fromName,
+      text: `[BROADCAST to ${siblings.length} sibling(s)]\n${text}`,
+      kind: "report",
+      ts,
+      consumed: false,
+    });
+  }
+
+  emit();
+  return {
+    ok: true,
+    output: `Broadcast delivered to ${siblings.length} sibling(s): ${siblings.map((s) => s.name).join(", ") || "(none)"}`,
+    deliveredTo: siblings.map((s) => s.id),
+  };
+}
+
+/**
+ * Resolve which scratchpad scope a given accessor (agent id or ROOT) is
+ * allowed to read/write.
+ *  - Sub-agent: its own sibling group (i.e. its parent's scratchpad).
+ *  - Sub-agent acting as parent: ALSO allowed to access its own children's
+ *    scratchpad (hierarchical visibility) — accessed via scope=its own id.
+ *  - ROOT: scratchpad of root children (key = ROOT_PARENT_ID).
+ *
+ * Returns the scope key to use, or null on permission denial.
+ */
+function resolveScratchpadScope(accessorId: string, requestedScope?: string): string | null {
+  // Default scope: the accessor's own sibling group.
+  const ownGroup = siblingGroupKey(accessorId);
+  if (!requestedScope || requestedScope === ownGroup) return ownGroup;
+
+  // Allowed: read/write a child-group scratchpad if accessor is that child's parent.
+  if (accessorId !== ROOT_PARENT_ID) {
+    const accessor = nodes.get(accessorId);
+    if (!accessor) return null;
+    // requestedScope must be the id of one of accessor's children (so children
+    // of that node share that scope).
+    if (accessor.childIds.includes(requestedScope)) return requestedScope;
+  } else {
+    // ROOT may read/write any of its direct children's child-scratchpad too.
+    const target = nodes.get(requestedScope);
+    if (target && target.parentId === null) return requestedScope;
+  }
+  return null;
+}
+
+function utf8Bytes(s: string): number {
+  try { return new TextEncoder().encode(s).length; } catch { return s.length; }
+}
+
+function logScratchpadOp(
+  accessorId: string,
+  op: "scratchpad_write" | "scratchpad_read",
+  args: Record<string, any>,
+  output: string,
+  ok: boolean,
+): void {
+  if (!ctx?.userId) return;
+  // Fire-and-forget; never block the agent loop.
+  void logActivity({
+    user_id: ctx.userId,
+    conversation_id: ctx.conversationId ?? null,
+    tool_name: op,
+    args: { ...args, accessor: accessorId === ROOT_PARENT_ID ? "root" : accessorId },
+    risk: "low",
+    status: ok ? "done" : "error",
+    output,
+  });
+}
+
+export function scratchpadWrite(
+  accessorId: string,
+  key: string,
+  value: string,
+  scopeOverride?: string,
+): { ok: boolean; output: string } {
+  const cleanKey = String(key ?? "").trim();
+  if (!cleanKey) {
+    const out = "scratchpad_write: key is required";
+    logScratchpadOp(accessorId, "scratchpad_write", { key, scope: scopeOverride }, out, false);
+    return { ok: false, output: out };
+  }
+  const v = String(value ?? "");
+  const bytes = utf8Bytes(v);
+  if (bytes > SCRATCHPAD_MAX_VALUE_BYTES) {
+    const out = `scratchpad_write rejected: value is ${bytes}B, exceeds ${SCRATCHPAD_MAX_VALUE_BYTES}B (10KB) limit per key.`;
+    logScratchpadOp(accessorId, "scratchpad_write", { key: cleanKey, bytes, scope: scopeOverride }, out, false);
+    return { ok: false, output: out };
+  }
+  const scope = resolveScratchpadScope(accessorId, scopeOverride);
+  if (!scope) {
+    const out = `scratchpad_write denied: accessor cannot write to scope=${scopeOverride}`;
+    logScratchpadOp(accessorId, "scratchpad_write", { key: cleanKey, scope: scopeOverride }, out, false);
+    return { ok: false, output: out };
+  }
+  const pad = getScratchpad(scope);
+  if (!pad.has(cleanKey) && pad.size >= SCRATCHPAD_MAX_KEYS) {
+    const out = `scratchpad_write rejected: scope already holds ${SCRATCHPAD_MAX_KEYS} keys (max). Delete or overwrite an existing key.`;
+    logScratchpadOp(accessorId, "scratchpad_write", { key: cleanKey, scope }, out, false);
+    return { ok: false, output: out };
+  }
+  pad.set(cleanKey, v);
+  const out = `Wrote "${cleanKey}" (${bytes}B) to scratchpad [${scope === ROOT_PARENT_ID ? "root" : scope.slice(0, 8)}]. Scope now holds ${pad.size} key(s).`;
+  logScratchpadOp(accessorId, "scratchpad_write", { key: cleanKey, bytes, scope }, out, true);
+  return { ok: true, output: out };
+}
+
+export function scratchpadRead(
+  accessorId: string,
+  key?: string,
+  scopeOverride?: string,
+): { ok: boolean; output: string } {
+  const scope = resolveScratchpadScope(accessorId, scopeOverride);
+  if (!scope) {
+    const out = `scratchpad_read denied: accessor cannot read scope=${scopeOverride}`;
+    logScratchpadOp(accessorId, "scratchpad_read", { key, scope: scopeOverride }, out, false);
+    return { ok: false, output: out };
+  }
+  const pad = getScratchpad(scope);
+  const scopeLabel = scope === ROOT_PARENT_ID ? "root" : scope.slice(0, 8);
+
+  if (key && key.trim()) {
+    const k = key.trim();
+    if (!pad.has(k)) {
+      const out = `scratchpad [${scopeLabel}] has no key "${k}". Available: ${Array.from(pad.keys()).join(", ") || "(empty)"}`;
+      logScratchpadOp(accessorId, "scratchpad_read", { key: k, scope }, out, true);
+      return { ok: true, output: out };
+    }
+    const v = pad.get(k)!;
+    const out = `[scratchpad ${scopeLabel} · ${k}]\n${v}`;
+    logScratchpadOp(accessorId, "scratchpad_read", { key: k, scope, bytes: utf8Bytes(v) }, `(${utf8Bytes(v)}B)`, true);
+    return { ok: true, output: out };
+  }
+
+  // No key → list everything.
+  if (pad.size === 0) {
+    const out = `scratchpad [${scopeLabel}] is empty.`;
+    logScratchpadOp(accessorId, "scratchpad_read", { scope }, out, true);
+    return { ok: true, output: out };
+  }
+  const lines = Array.from(pad.entries()).map(
+    ([k, v]) => `• ${k} (${utf8Bytes(v)}B): ${v.length > 200 ? v.slice(0, 200) + "…" : v}`,
+  );
+  const out = `scratchpad [${scopeLabel}] — ${pad.size} key(s):\n${lines.join("\n")}`;
+  logScratchpadOp(accessorId, "scratchpad_read", { scope, keys: pad.size }, `${pad.size} keys`, true);
+  return { ok: true, output: out };
+}
+
 // ─────────────────────────────────────────────────────────────
 
 /**
