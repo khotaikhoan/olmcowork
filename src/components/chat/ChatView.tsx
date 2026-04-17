@@ -30,6 +30,7 @@ interface Props {
   ollamaUrl: string;
   defaultModel: string | null;
   requireConfirm: boolean;
+  autoStopMinutes: number;
   onCreated: (id: string) => void;
   onTitleUpdated: () => void;
 }
@@ -39,6 +40,7 @@ export function ChatView({
   ollamaUrl,
   defaultModel,
   requireConfirm,
+  autoStopMinutes,
   onCreated,
   onTitleUpdated,
 }: Props) {
@@ -56,6 +58,7 @@ export function ChatView({
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastActivityRef = useRef<number>(Date.now());
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
@@ -277,6 +280,7 @@ export function ChatView({
     if (!user) return;
     if (!model) return toast.error("Select a model first");
     if (!bridgeOnline) return toast.error("Ollama is offline. Check Settings.");
+    lastActivityRef.current = Date.now();
 
     try {
       const convId = await ensureConversation(text);
@@ -430,6 +434,30 @@ export function ChatView({
       setOllamaBusy(false);
     }
   };
+
+  // ----- Auto-stop Ollama after idle -----
+  useEffect(() => {
+    if (!canControlOllama || autoStopMinutes <= 0) return;
+    const idleMs = autoStopMinutes * 60 * 1000;
+    const id = setInterval(async () => {
+      if (!bridgeOnline || isStreaming || ollamaBusy) return;
+      if (Date.now() - lastActivityRef.current < idleMs) return;
+      const b = (window as any).bridge;
+      if (!b?.stopOllama) return;
+      setOllamaBusy(true);
+      try {
+        const r = await b.stopOllama();
+        if (r.ok) {
+          toast.info(`Ollama auto-stopped after ${autoStopMinutes}m idle (RAM freed).`);
+          setBridgeOnline(false);
+          setModels([]);
+        }
+      } finally {
+        setOllamaBusy(false);
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [canControlOllama, autoStopMinutes, bridgeOnline, isStreaming, ollamaBusy]);
 
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">

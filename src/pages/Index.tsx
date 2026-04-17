@@ -16,6 +16,7 @@ export default function Index() {
     ollama_url: "http://localhost:11434",
     default_model: null,
     require_confirm: true,
+    auto_stop_minutes: 0,
   });
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function Index() {
             ollama_url: data.ollama_url,
             default_model: data.default_model,
             require_confirm: data.require_confirm,
+            auto_stop_minutes: (data as any).auto_stop_minutes ?? 0,
           });
         }
       });
@@ -63,6 +65,7 @@ export default function Index() {
         ollamaUrl={settings.ollama_url}
         defaultModel={settings.default_model}
         requireConfirm={settings.require_confirm}
+        autoStopMinutes={settings.auto_stop_minutes}
         onCreated={(id) => {
           setSelectedId(id);
           setRefreshKey((k) => k + 1);
