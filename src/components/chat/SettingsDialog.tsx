@@ -69,7 +69,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [autoStopMinutes, setAutoStopMinutes] = useState(0);
   const [autoStart, setAutoStart] = useState(true);
   const [browserHeadless, setBrowserHeadless] = useState<boolean>(
-    () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_headless") !== "false" : true),
+    () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_headless") === "true" : false),
   );
   const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
