@@ -259,9 +259,12 @@ export function isActionAllowedInMode(
   if (mode === "control") return true;
   if (name === "fetch_url" || name === "web_search") return true;
   if (name === "browser") {
-    // Read-only / navigation actions allowed in Chat mode; mutations require Control.
     const a = String(args.action ?? "");
-    return ["navigate", "get_html", "get_text", "screenshot", "wait_for", "close"].includes(a);
+    return [
+      "navigate", "back", "forward", "reload",
+      "new_tab", "switch_tab", "list_tabs", "close_tab",
+      "get_html", "get_text", "screenshot", "wait_for", "close",
+    ].includes(a);
   }
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
@@ -300,8 +303,13 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
   if (name === "observe_screen") return "low";
   if (name === "browser") {
     const a = String(args.action ?? "");
-    if (["navigate", "get_html", "get_text", "screenshot", "wait_for", "close", "eval"].includes(a)) return "low";
-    return "medium"; // click/fill/press = mutation in remote site
+    if ([
+      "navigate", "back", "forward", "reload",
+      "new_tab", "switch_tab", "list_tabs", "close_tab",
+      "get_html", "get_text", "screenshot", "wait_for", "close", "eval",
+    ].includes(a)) return "low";
+    if (a === "upload" || a === "download") return "high"; // touches local FS
+    return "medium"; // click/fill/press = remote site mutation
   }
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }
