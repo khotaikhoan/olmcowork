@@ -767,6 +767,13 @@ export function ChatView({
 
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
+    // Behavior learning: track total user messages so the empty-state can hide
+    // suggestions for power users (≥10 messages). Increment ONCE per send.
+    try {
+      const KEY = "chat.user_message_count";
+      const cur = parseInt(localStorage.getItem(KEY) || "0", 10) || 0;
+      localStorage.setItem(KEY, String(cur + 1));
+    } catch { /* ignore */ }
     if (mode === "control" && shouldGeneratePlan(text) && !pendingPlan) {
       setPendingPlan({ prompt: text, attachments, steps: [], loading: true });
       await runPlanGeneration(text, attachments);
