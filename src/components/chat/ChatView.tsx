@@ -365,6 +365,8 @@ export function ChatView({
       if (fullSystem) history.push({ role: "system", content: fullSystem });
       for (const m of [...messages, userMsg as unknown as DbMessage]) {
         if (m.role === "system" || m.role === "tool") continue;
+        // Skip empty assistant messages (e.g. from previous failed streams)
+        if (m.role === "assistant" && !m.content?.trim()) continue;
         const om: OllamaChatMessage = { role: m.role as any, content: m.content };
         if (m.attachments && m.role === "user") {
           const imgs = m.attachments.map((a) => a.base64).filter(Boolean) as string[];

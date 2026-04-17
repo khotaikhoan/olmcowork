@@ -77,7 +77,19 @@ export async function streamChat(opts: StreamOptions) {
       body: JSON.stringify({ model, messages, stream: true }),
       signal,
     });
-    if (!res.ok || !res.body) throw new Error(`Ollama ${res.status}`);
+    if (!res.ok || !res.body) {
+      let detail = "";
+      try {
+        const txt = await res.text();
+        try {
+          const j = JSON.parse(txt);
+          detail = j.error || txt;
+        } catch {
+          detail = txt;
+        }
+      } catch {}
+      throw new Error(`Ollama ${res.status}${detail ? `: ${detail}` : ""}`);
+    }
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
