@@ -292,38 +292,190 @@ ipcMain.handle("bridge:screenshot", async () => {
 });
 
 // ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----
-let lastVisionMarks = []; // [{id, x, y, w, h}]
+// Marks now carry optional metadata (role, label, source) so the vision/LLM has
+// semantic context, not just coordinates.
+let lastVisionMarks = []; // [{id, x, y, w, h, role?, label?, source}]
 let lastVisionDisplay = null;
+let lastVisionSource = "grid"; // "ax-mac" | "uia-win" | "grid"
 
-function detectMarksFromBuffer(width, height) {
-  // Tối giản: chia màn hình thành lưới 6x4 = 24 ô, đánh số mỗi ô.
-  // Đây là baseline để vision model có thể chỉ "ô số mấy" nếu không
-  // tìm được element thật. Trong tương lai có thể thay bằng OS accessibility tree.
-  const cols = 6;
-  const rows = 4;
+function execP(cmd, opts = {}) {
+  return new Promise((resolve) => {
+    exec(cmd, { timeout: 8000, maxBuffer: 4 * 1024 * 1024, ...opts }, (err, stdout, stderr) => {
+      resolve({ err, stdout: stdout || "", stderr: stderr || "" });
+    });
+  });
+}
+
+// macOS: dùng AppleScript `System Events` để lấy AX tree của frontmost app.
+// Lọc các UI element có role thuộc whitelist (button, link, menu item, checkbox,
+// text field, combo box, popup button) và có position+size hợp lệ.
+const MAC_AX_SCRIPT = `
+on run
+  set output to ""
+  tell application "System Events"
+    set frontApp to first application process whose frontmost is true
+    set appName to name of frontApp
+    set output to "APP=" & appName & linefeed
+    try
+      set roleList to {"AXButton","AXLink","AXMenuItem","AXMenuButton","AXCheckBox","AXRadioButton","AXTextField","AXTextArea","AXComboBox","AXPopUpButton","AXSearchField"}
+      set allWindows to windows of frontApp
+      repeat with w in allWindows
+        my collectElements(w, roleList)
+      end repeat
+    end try
+  end tell
+  return output & my dump()
+end run
+
+property dumpBuf : ""
+on dump()
+  return dumpBuf
+end dump
+
+on collectElements(parent, roleList)
+  tell application "System Events"
+    try
+      set kids to entire contents of parent
+      repeat with el in kids
+        try
+          set r to role of el
+          if roleList contains r then
+            set p to position of el
+            set s to size of el
+            set lbl to ""
+            try
+              set lbl to description of el
+            end try
+            if lbl is "" then
+              try
+                set lbl to title of el
+              end try
+            end if
+            if lbl is "" then
+              try
+                set lbl to value of el
+              end try
+            end if
+            if lbl is missing value then set lbl to ""
+            set line to r & "|" & (item 1 of p) & "|" & (item 2 of p) & "|" & (item 1 of s) & "|" & (item 2 of s) & "|" & lbl
+            set my dumpBuf to my dumpBuf & line & linefeed
+          end if
+        end try
+      end repeat
+    end try
+  end tell
+end collectElements
+`;
+
+async function detectMarksMacAX() {
+  // Ghi script vào tmp rồi gọi osascript để tránh escape phức tạp.
+  const tmp = path.join(os.tmpdir(), `cowork-ax-${Date.now()}.applescript`);
+  await fs.writeFile(tmp, MAC_AX_SCRIPT, "utf-8");
+  const { stdout } = await execP(`osascript ${JSON.stringify(tmp)}`);
+  fs.unlink(tmp).catch(() => {});
+  const lines = stdout.split(/\r?\n/).filter(Boolean);
+  let appName = "";
+  const marks = [];
+  let id = 1;
+  for (const ln of lines) {
+    if (ln.startsWith("APP=")) { appName = ln.slice(4); continue; }
+    const parts = ln.split("|");
+    if (parts.length < 5) continue;
+    const [role, x, y, w, h, ...rest] = parts;
+    const px = parseInt(x, 10), py = parseInt(y, 10);
+    const pw = parseInt(w, 10), ph = parseInt(h, 10);
+    if (!Number.isFinite(px) || !Number.isFinite(py) || pw <= 1 || ph <= 1) continue;
+    if (pw > 4000 || ph > 4000) continue; // bỏ window root
+    const label = rest.join("|").trim().slice(0, 80);
+    marks.push({ id: id++, x: px, y: py, w: pw, h: ph, role, label, source: "ax-mac", app: appName });
+  }
+  return marks;
+}
+
+// Windows: PowerShell + UIAutomation (System.Windows.Automation). Lấy frontmost
+// window (foreground) và walker.GetFirstChild để duyệt control type clickable.
+const WIN_UIA_SCRIPT = `
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class W {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+}
+"@
+$hwnd = [W]::GetForegroundWindow()
+$root = [System.Windows.Automation.AutomationElement]::FromHandle($hwnd)
+if ($root -eq $null) { exit 0 }
+Write-Output ("APP=" + $root.Current.Name)
+$types = @(
+  [System.Windows.Automation.ControlType]::Button,
+  [System.Windows.Automation.ControlType]::Hyperlink,
+  [System.Windows.Automation.ControlType]::MenuItem,
+  [System.Windows.Automation.ControlType]::CheckBox,
+  [System.Windows.Automation.ControlType]::RadioButton,
+  [System.Windows.Automation.ControlType]::Edit,
+  [System.Windows.Automation.ControlType]::ComboBox,
+  [System.Windows.Automation.ControlType]::ListItem,
+  [System.Windows.Automation.ControlType]::TabItem
+)
+$cond = [System.Windows.Automation.Condition]::TrueCondition
+$all = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $cond)
+foreach ($el in $all) {
+  try {
+    $ct = $el.Current.ControlType
+    if ($types -notcontains $ct) { continue }
+    $r = $el.Current.BoundingRectangle
+    if ($r.Width -le 1 -or $r.Height -le 1) { continue }
+    $name = $el.Current.Name
+    if ($name -eq $null) { $name = "" }
+    $name = $name -replace "[\r\n\|]", " "
+    if ($name.Length -gt 80) { $name = $name.Substring(0,80) }
+    $role = $ct.LocalizedControlType
+    Write-Output ("$role|$([int]$r.X)|$([int]$r.Y)|$([int]$r.Width)|$([int]$r.Height)|$name")
+  } catch {}
+}
+`;
+
+async function detectMarksWinUIA() {
+  const tmp = path.join(os.tmpdir(), `cowork-uia-${Date.now()}.ps1`);
+  await fs.writeFile(tmp, WIN_UIA_SCRIPT, "utf-8");
+  const { stdout } = await execP(
+    `powershell -NoProfile -ExecutionPolicy Bypass -File "${tmp}"`,
+  );
+  fs.unlink(tmp).catch(() => {});
+  const lines = stdout.split(/\r?\n/).filter(Boolean);
+  let appName = "";
+  const marks = [];
+  let id = 1;
+  for (const ln of lines) {
+    if (ln.startsWith("APP=")) { appName = ln.slice(4); continue; }
+    const parts = ln.split("|");
+    if (parts.length < 5) continue;
+    const [role, x, y, w, h, ...rest] = parts;
+    const px = parseInt(x, 10), py = parseInt(y, 10);
+    const pw = parseInt(w, 10), ph = parseInt(h, 10);
+    if (!Number.isFinite(px) || !Number.isFinite(py) || pw <= 1 || ph <= 1) continue;
+    if (pw > 4000 || ph > 4000) continue;
+    const label = rest.join("|").trim().slice(0, 80);
+    marks.push({ id: id++, x: px, y: py, w: pw, h: ph, role, label, source: "uia-win", app: appName });
+  }
+  return marks;
+}
+
+// Fallback grid 6x4
+function detectMarksGrid(width, height) {
+  const cols = 6, rows = 4;
   const marks = [];
   let id = 1;
   const w = Math.floor(width / cols);
   const h = Math.floor(height / rows);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      marks.push({
-        id: id++,
-        x: c * w,
-        y: r * h,
-        w,
-        h,
-      });
+      marks.push({ id: id++, x: c * w, y: r * h, w, h, role: "grid", label: `cell ${id - 1}`, source: "grid" });
     }
   }
   return marks;
-}
-
-async function annotateImage(buf, marks) {
-  // Dùng nativeImage của Electron + canvas đơn giản qua sharp nếu có,
-  // fallback: trả ảnh gốc + danh sách marks (renderer có thể tự overlay).
-  // Để gọn, ta trả ảnh gốc — vision model nhận tọa độ marks qua text mô tả.
-  return buf;
 }
 
 ipcMain.handle("bridge:vision_annotate", async () => {
@@ -334,16 +486,48 @@ ipcMain.handle("bridge:vision_annotate", async () => {
     const buf = await screenshotDesktop({ format: "png" });
     const display = screen.getPrimaryDisplay();
     const { width, height } = display.size;
-    const marks = detectMarksFromBuffer(width, height);
+
+    let marks = [];
+    let source = "grid";
+    let axError = "";
+    try {
+      if (process.platform === "darwin") {
+        marks = await detectMarksMacAX();
+        source = "ax-mac";
+      } else if (process.platform === "win32") {
+        marks = await detectMarksWinUIA();
+        source = "uia-win";
+      }
+    } catch (e) {
+      axError = String(e?.message || e);
+    }
+
+    if (!marks || marks.length === 0) {
+      marks = detectMarksGrid(width, height);
+      source = "grid";
+    }
+
     lastVisionMarks = marks;
     lastVisionDisplay = display;
-    const annotated = await annotateImage(buf, marks);
+    lastVisionSource = source;
+
+    const appLine = marks[0]?.app ? `Frontmost app: ${marks[0].app}\n` : "";
+    const noteFallback = source === "grid"
+      ? (process.platform === "linux"
+          ? "(Linux: AX tree không khả dụng → fallback grid 6x4)\n"
+          : `(Fallback grid 6x4 — AX/UIA không trả element. ${axError ? "Lỗi: " + axError + ". " : ""}Trên macOS hãy cấp quyền: System Settings → Privacy & Security → Accessibility cho Ollama Cowork.)\n`)
+      : `Source: ${source} (${marks.length} elements)\n`;
+
+    const lines = marks.map((m) => {
+      const lbl = m.label ? ` "${m.label}"` : "";
+      const role = m.role || "?";
+      return `${m.id}. [${role}]${lbl} @ ${m.x},${m.y} ${m.w}×${m.h}`;
+    }).join("\n");
+
     return {
       ok: true,
-      output: `Captured ${width}x${height}. Marks (id @ x,y w×h):\n${marks
-        .map((m) => `${m.id} @ ${m.x},${m.y} ${m.w}×${m.h}`)
-        .join("\n")}\nReply with vision_click(action='click', mark_id=N).`,
-      image: annotated.toString("base64"),
+      output: `Captured ${width}x${height}. ${appLine}${noteFallback}${lines}\nReply with vision_click(action='click', mark_id=N).`,
+      image: buf.toString("base64"),
       marks,
     };
   } catch (e) {

@@ -59,14 +59,14 @@ export const TOOLS: ToolDef[] = [
     name: "vision_click",
     risk: "high",
     description:
-      "Vision-guided click using Set-of-Marks. Captures the screen, auto-detects clickable UI elements, overlays numbered marks, then YOU pick a mark by number. The app clicks the center of that mark. Use action='annotate' to get the marked screenshot first (returns image + list of marks with their bounds), then action='click' with mark_id to perform the click.",
+      "Vision-guided click using OS accessibility tree (macOS AX / Windows UIA) of the FRONTMOST app, with grid fallback. action='annotate' returns numbered marks (id, role, label, bounds) for clickable controls (button, link, menu item, checkbox, text field, combo box, dropdown). Then call action='click' with mark_id to click that exact control. Pick by label/role.",
     parameters: {
       type: "object",
       properties: {
         action: {
           type: "string",
           enum: ["annotate", "click"],
-          description: "annotate=capture+mark elements; click=click a previously-annotated mark.",
+          description: "annotate=enumerate AX/UIA controls of frontmost app; click=click a previously-annotated mark.",
         },
         mark_id: {
           type: "number",
