@@ -17,6 +17,7 @@ import {
   Wrench,
   Globe,
   Search,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VisionMarksOverlay } from "./VisionMarksOverlay";
@@ -24,6 +25,8 @@ import type { VisionMark } from "@/lib/bridge";
 import { InlineDiff } from "./InlineDiff";
 import { CursorTrailOverlay, CursorPoint } from "./CursorTrailOverlay";
 import { UrlPreviewChip } from "./UrlPreviewChip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { explainWhy } from "@/lib/whyExplain";
 
 export type ToolCallStatus = "pending" | "approved" | "running" | "done" | "denied" | "error";
 
@@ -89,14 +92,18 @@ export function ToolCallCard({
   call,
   defaultOpen,
   onReannotate,
+  precedingText,
 }: {
   call: ToolCallRecord;
   defaultOpen?: boolean;
   onReannotate?: () => void;
+  /** Assistant message text immediately preceding this tool call — used by "Why?" popover */
+  precedingText?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? false);
   const v = variant(call);
   const Icon = v.icon;
+  const why = explainWhy(precedingText, call);
 
   // Header summary line (shows the most useful arg inline)
   const summary = (() => {
