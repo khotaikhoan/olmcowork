@@ -405,6 +405,32 @@ export function ChatView({
 
   const killArmed = isStreaming || !!pending || Object.keys(autoApprove).length > 0 || toolsEnabled;
 
+  // ----- Ollama process control (Electron only) -----
+  const [ollamaBusy, setOllamaBusy] = useState(false);
+  const canControlOllama = isElectron();
+  const toggleOllama = async () => {
+    const b = window.bridge;
+    if (!b?.startOllama || !b?.stopOllama) return;
+    setOllamaBusy(true);
+    try {
+      const r = bridgeOnline ? await b.stopOllama() : await b.startOllama();
+      toast[r.ok ? "success" : "error"](r.output);
+      // Re-ping immediately
+      const ok = await pingOllama(ollamaUrl);
+      setBridgeOnline(ok);
+      if (ok) {
+        try {
+          const m = await listModels(ollamaUrl);
+          setModels(m);
+        } catch {}
+      } else {
+        setModels([]);
+      }
+    } finally {
+      setOllamaBusy(false);
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">
       <TopBar
@@ -418,6 +444,9 @@ export function ChatView({
         onTitleChange={handleTitleChange}
         onKillSwitch={killSwitch}
         killArmed={killArmed}
+        canControlOllama={canControlOllama}
+        ollamaBusy={ollamaBusy}
+        onToggleOllama={toggleOllama}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">

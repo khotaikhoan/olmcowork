@@ -9,7 +9,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel } from "@/lib/ollama";
-import { Wifi, WifiOff, Sparkles, OctagonX } from "lucide-react";
+import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2 } from "lucide-react";
 
 interface Props {
   title: string;
@@ -22,6 +22,9 @@ interface Props {
   onTitleChange: (t: string) => void;
   onKillSwitch: () => void;
   killArmed: boolean;
+  canControlOllama: boolean;
+  ollamaBusy: boolean;
+  onToggleOllama: () => void;
 }
 
 const PRESETS: Record<string, string> = {
@@ -42,6 +45,9 @@ export function TopBar({
   onTitleChange,
   onKillSwitch,
   killArmed,
+  canControlOllama,
+  ollamaBusy,
+  onToggleOllama,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
@@ -112,6 +118,24 @@ export function TopBar({
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
         {bridgeOnline ? "Online" : "Offline"}
       </div>
+
+      {canControlOllama && (
+        <Button
+          variant={bridgeOnline ? "outline" : "default"}
+          size="sm"
+          onClick={onToggleOllama}
+          disabled={ollamaBusy}
+          title={bridgeOnline ? "Stop Ollama process to free RAM" : "Start Ollama process"}
+          className="h-8"
+        >
+          {ollamaBusy ? (
+            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+          ) : (
+            <Power className="h-3.5 w-3.5 mr-1" />
+          )}
+          {ollamaBusy ? (bridgeOnline ? "Stopping…" : "Starting…") : bridgeOnline ? "Stop Ollama" : "Start Ollama"}
+        </Button>
+      )}
 
       <Button
         variant="destructive"

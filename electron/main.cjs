@@ -2,10 +2,12 @@
 const { app, BrowserWindow, ipcMain, screen, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs/promises");
-const { exec } = require("child_process");
+const { exec, spawn } = require("child_process");
 const os = require("os");
+const http = require("http");
 
 let win = null;
+let ollamaProc = null;
 
 function createWindow() {
   win = new BrowserWindow({
@@ -194,4 +196,63 @@ ipcMain.handle("bridge:key_press", async (_e, { key }) => {
   } catch (e) {
     return { ok: false, output: e.message };
   }
+});
+
+// ----- Ollama process control -----
+function checkOllamaUp(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get("http://127.0.0.1:11434/api/tags", { timeout: timeoutMs }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+ipcMain.handle("bridge:ollama_status", async () => {
+  const up = await checkOllamaUp();
+  return { ok: true, output: up ? "running" : "stopped", running: up, managed: !!ollamaProc };
+});
+
+ipcMain.handle("bridge:start_ollama", async () => {
+  const already = await checkOllamaUp();
+  if (already) return { ok: true, output: "Ollama is already running.", running: true };
+  try {
+    const env = { ...process.env, OLLAMA_ORIGINS: "*" };
+    ollamaProc = spawn("ollama", ["serve"], { env, detached: false, stdio: "ignore" });
+    ollamaProc.on("exit", () => { ollamaProc = null; });
+    ollamaProc.on("error", () => { ollamaProc = null; });
+    for (let i = 0; i < 20; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      if (await checkOllamaUp()) return { ok: true, output: "Ollama started.", running: true };
+    }
+    return { ok: false, output: "Started process but Ollama did not become ready in 10s." };
+  } catch (e) {
+    return { ok: false, output: `Failed to start Ollama: ${e.message}. Is the 'ollama' CLI in PATH?` };
+  }
+});
+
+ipcMain.handle("bridge:stop_ollama", async () => {
+  return new Promise((resolve) => {
+    const killCmd = process.platform === "win32"
+      ? 'taskkill /F /IM ollama.exe /T'
+      : "pkill -f 'ollama serve' || pkill -f ollama";
+    exec(killCmd, (err, _stdout, stderr) => {
+      ollamaProc = null;
+      const matched = !err || (process.platform !== "win32" && err.code === 1);
+      resolve({
+        ok: matched,
+        output: matched ? "Ollama stopped (process killed, RAM freed)." : `Failed to stop: ${stderr || err.message}`,
+        running: false,
+      });
+    });
+  });
+});
+
+app.on("before-quit", () => {
+  if (ollamaProc) { try { ollamaProc.kill(); } catch {} }
 });

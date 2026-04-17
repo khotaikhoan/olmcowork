@@ -13,6 +13,9 @@ interface BridgeAPI {
   mouseClick: (x: number, y: number, button?: "left" | "right" | "middle") => Promise<ExecResult>;
   typeText: (text: string) => Promise<ExecResult>;
   keyPress: (key: string) => Promise<ExecResult>;
+  startOllama: () => Promise<ExecResult & { running?: boolean }>;
+  stopOllama: () => Promise<ExecResult & { running?: boolean }>;
+  ollamaStatus: () => Promise<ExecResult & { running: boolean; managed: boolean }>;
 }
 
 declare global {
