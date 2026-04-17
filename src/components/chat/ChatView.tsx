@@ -876,8 +876,8 @@ export function ChatView({
       const ollamaVision = provider === "ollama" ? modelSupportsVision(model) : true;
       let droppedImages = false;
 
-      const history: OllamaChatMessage[] = [];
-      if (fullSystem) history.push({ role: "system", content: fullSystem });
+      const rawHistory: OllamaChatMessage[] = [];
+      if (fullSystem) rawHistory.push({ role: "system", content: fullSystem });
       for (const m of [...messages, userMsg as unknown as DbMessage]) {
         if (m.role === "system" || m.role === "tool") continue;
         // Skip empty assistant messages (e.g. from previous failed streams)
@@ -890,12 +890,30 @@ export function ChatView({
             else droppedImages = true;
           }
         }
-        history.push(om);
+        rawHistory.push(om);
       }
       if (droppedImages && provider === "ollama") {
         toast.warning(
           `Model "${model}" không hỗ trợ vision — ảnh đã bị bỏ qua. Thử llava, qwen2.5vl, llama3.2-vision.`,
         );
+      }
+
+      // Phase A — sliding window + tool-output compression.
+      // Chat: 20 turns / 8k chars per old msg. Control: 10 / 4k (tool output is heavy).
+      const { history, stats: ctxStats } = applyContextWindow(
+        rawHistory,
+        getWindowConfig(mode),
+      );
+      if (ctxStats.droppedMessages > 0 || ctxStats.droppedImageCount > 0 || ctxStats.truncatedMessages > 0) {
+        console.log(
+          `[context] mode=${mode} kept ${ctxStats.totalOut}/${ctxStats.totalIn} msgs · dropped ${ctxStats.droppedMessages} old · truncated ${ctxStats.truncatedMessages} · dropped ${ctxStats.droppedImageCount} old image(s)`,
+        );
+        if (ctxStats.droppedMessages >= 5) {
+          toast.info(
+            `Context đã rút gọn: bỏ ${ctxStats.droppedMessages} lượt cũ${ctxStats.droppedImageCount ? `, ${ctxStats.droppedImageCount} ảnh cũ` : ""}.`,
+            { duration: 3000 },
+          );
+        }
       }
 
       setIsStreaming(true);
