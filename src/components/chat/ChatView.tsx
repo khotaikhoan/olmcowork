@@ -151,6 +151,20 @@ export function ChatView({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, streamingText, streamingToolCalls]);
 
+  // Lift artifacts from messages (+ in-flight stream) up to parent
+  useEffect(() => {
+    if (!onArtifactsChange) return;
+    const all: Artifact[] = [];
+    for (const m of messages) {
+      if (m.role !== "assistant") continue;
+      all.push(...extractArtifacts(m.id, m.content));
+    }
+    if (isStreaming && streamingText) {
+      all.push(...extractArtifacts("streaming", streamingText));
+    }
+    onArtifactsChange(all);
+  }, [messages, streamingText, isStreaming, onArtifactsChange]);
+
   const persistConv = async (id: string, patch: Partial<{ title: string; model: string; system_prompt: string }>) => {
     await supabase.from("conversations").update(patch).eq("id", id);
     onTitleUpdated();
@@ -713,6 +727,8 @@ export function ChatView({
                 content={m.content}
                 attachments={m.attachments}
                 toolCalls={m.tool_calls}
+                messageId={m.id}
+                onArtifactOpen={onArtifactOpen}
               />
             ))}
             {isStreaming && (
@@ -721,6 +737,8 @@ export function ChatView({
                 content={streamingText}
                 toolCalls={streamingToolCalls}
                 streaming={!streamingText && streamingToolCalls.length === 0}
+                messageId="streaming"
+                onArtifactOpen={onArtifactOpen}
               />
             )}
             <div className="h-4" />
