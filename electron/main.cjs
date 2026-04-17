@@ -860,7 +860,7 @@ let pwBrowser = null;
 let pwContext = null;
 let pwPages = [];         // ordered tabs
 let pwActiveIdx = 0;
-let pwHeadless = true;    // updated from user_settings via IPC
+let pwHeadless = false;   // updated from user_settings via IPC. Default visible so user can watch automation.
 const PW_DOWNLOAD_DIR = path.join(app.getPath("downloads"), "OllamaCowork");
 
 function pwActivePage() {
