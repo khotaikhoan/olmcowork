@@ -235,6 +235,17 @@ export function ChatView({
     })();
   }, [conversationId, defaultModel]);
 
+  // Persist agent selection
+  useEffect(() => {
+    try { localStorage.setItem("chat.agentId", agentId); } catch { /* ignore */ }
+  }, [agentId]);
+
+  // Load top memories once per user (and refresh when conversation changes)
+  useEffect(() => {
+    if (!user) return;
+    loadTopMemories(user.id).then(setMemories);
+  }, [user, conversationId]);
+
   const handleModeChange = async (next: ConversationMode) => {
     setMode(next);
     setToolsEnabled(next === "control");
@@ -637,7 +648,11 @@ export function ChatView({
       setMessages((p) => [...p, userMsg as unknown as DbMessage]);
 
       // Build Ollama history
-      const baseSystem = systemPrompt || "";
+      const agent = getAgent(agentId);
+      // Agent system prompt overrides the conversation's base system prompt
+      // (when agent != "default"); otherwise use the conversation's prompt.
+      const baseSystem = agent.systemPrompt || systemPrompt || "";
+      const memoryHint = formatMemoriesForPrompt(memories);
       const toolsHint = toolsEnabled
         ? "\n\nYou have access to local computer-use tools. Use them when helpful. Always explain what you're doing."
         : "";
@@ -651,7 +666,12 @@ export function ChatView({
         mode === "control" && lockedApp
           ? `\n\n[App focus lock] You may ONLY interact with the application "${lockedApp}". Before any computer/vision_click action, verify the frontmost window belongs to "${lockedApp}". If a different app is focused, switch back (e.g. via vision_annotate then click on the "${lockedApp}" window) instead of acting on it. Never click, type, or send keystrokes into other applications.`
           : "";
-      const fullSystem = (baseSystem + toolsHint + planHint + appLockHint).trim();
+      const fullSystem = (baseSystem + memoryHint + toolsHint + planHint + appLockHint).trim();
+
+      // Vision support: only forward image attachments to Ollama if the model
+      // accepts them. Cloud models (OpenAI/Gemini) always do via image_url.
+      const ollamaVision = provider === "ollama" ? modelSupportsVision(model) : true;
+      let droppedImages = false;
 
       const history: OllamaChatMessage[] = [];
       if (fullSystem) history.push({ role: "system", content: fullSystem });
@@ -662,9 +682,17 @@ export function ChatView({
         const om: OllamaChatMessage = { role: m.role as any, content: m.content };
         if (m.attachments && m.role === "user") {
           const imgs = m.attachments.map((a) => a.base64).filter(Boolean) as string[];
-          if (imgs.length) om.images = imgs;
+          if (imgs.length) {
+            if (ollamaVision) om.images = imgs;
+            else droppedImages = true;
+          }
         }
         history.push(om);
+      }
+      if (droppedImages && provider === "ollama") {
+        toast.warning(
+          `Model "${model}" không hỗ trợ vision — ảnh đã bị bỏ qua. Thử llava, qwen2.5vl, llama3.2-vision.`,
+        );
       }
 
       setIsStreaming(true);
