@@ -1,28 +1,22 @@
 /**
- * OculoLogo — refined animated brand mark for Oculo.
+ * OculoLogo — naturalistic animated eye for Oculo.
  *
- * A meticulously crafted SVG eye that breathes, thinks, and speaks. The mark
- * reacts to a global "agent state" via the `oculo:state` window event so it can
- * synchronize across the entire UI (sidebar, top bar, auth, intro) without
- * prop-drilling.
+ * Designed to read as a real human eye, not a geometric clockwork.
  *
- *   States:
- *   - "idle"     → slow breath, subtle iris drift (saccade), gentle catchlight twinkle
- *   - "thinking" → outer + inner rings counter-rotate, pupil pulses, orbiting spark
- *   - "speaking" → emit ripple waves, quick blink, soft glow halo
+ * Anatomy (back → front):
+ *   1. Sclera (white of the eye) inside the almond
+ *   2. Iris — solid coloured disc with radial fibre striations (not dashed rings)
+ *   3. Pupil — solid black, dilates/contracts gently
+ *   4. Specular highlights — primary catchlight + small secondary
+ *   5. Eye outline — almond, slightly asymmetric (outer corner lower)
+ *   6. Upper + lower eyelids — two paths that meet at the centre when blinking
+ *      (animated via clip-path so the lid CLOSES naturally instead of squashing)
+ *   7. Lash hint — short strokes above the upper lid
  *
- * Anyone can update state with:
- *   window.dispatchEvent(new CustomEvent("oculo:state", { detail: "thinking" }));
- *
- * Visual layers (back → front):
- *   1. Outer ripple wave (speaking only)
- *   2. Soft radial glow (intensifies in speaking/thinking)
- *   3. Eye almond lid — gradient stroke
- *   4. Outer iris ring — long dashes, slow rotation
- *   5. Inner iris ring — short dashes, counter-rotation
- *   6. Pupil — pulses
- *   7. Catchlight — fixed white highlight
- *   8. Orbiting spark — visible while thinking
+ * States (broadcast via window event "oculo:state"):
+ *   - idle     → slow breath, micro saccades, occasional natural blink
+ *   - thinking → eyes look up-left/right (searching), pupil narrows slightly
+ *   - speaking → faster blinks + faint glow halo
  */
 import { useEffect, useState, useId } from "react";
 import { cn } from "@/lib/utils";
@@ -31,14 +25,12 @@ export type OculoState = "idle" | "thinking" | "speaking";
 
 interface Props {
   size?: number;
-  /** Override the global state (e.g. on the auth/onboarding screen). */
   state?: OculoState;
   className?: string;
-  /** Force the gradient look even when used over a colored chip. */
+  /** Use the brand gradient for the iris. Set false on coloured chips. */
   withGradient?: boolean;
 }
 
-/** Broadcast a new state to every mounted Oculo logo. */
 export function setOculoState(s: OculoState) {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("oculo:state", { detail: s }));
@@ -46,33 +38,30 @@ export function setOculoState(s: OculoState) {
 
 export function OculoLogo({ size = 24, state, className, withGradient = true }: Props) {
   const [internal, setInternal] = useState<OculoState>("idle");
-  const gradId = useId().replace(/:/g, "");
+  const uid = useId().replace(/:/g, "");
   const active = state ?? internal;
 
   useEffect(() => {
-    if (state) return; // controlled mode — ignore global events
+    if (state) return;
     const onState = (e: Event) => {
       const next = (e as CustomEvent<OculoState>).detail;
-      if (next === "idle" || next === "thinking" || next === "speaking") {
-        setInternal(next);
-      }
+      if (next === "idle" || next === "thinking" || next === "speaking") setInternal(next);
     };
     window.addEventListener("oculo:state", onState as EventListener);
     return () => window.removeEventListener("oculo:state", onState as EventListener);
   }, [state]);
 
-  // Per-state animation timing (CSS variables consumed below)
-  const ringOuterDur =
-    active === "thinking" ? "3s" : active === "speaking" ? "8s" : "22s";
-  const ringInnerDur =
-    active === "thinking" ? "2s" : active === "speaking" ? "6s" : "18s";
-  const pupilDur =
-    active === "speaking" ? "0.5s" : active === "thinking" ? "1.1s" : "4s";
-  const blinkDur = active === "speaking" ? "2s" : "11s";
-  const driftDur = active === "idle" ? "7s" : "0s";
+  // Per-state timings
+  const blinkDur = active === "speaking" ? "2.6s" : "6.5s";
+  const pupilDur = active === "speaking" ? "1s" : active === "thinking" ? "1.6s" : "5s";
+  const gazeDur = active === "thinking" ? "2.4s" : "9s";
 
-  const stroke = withGradient ? `url(#oculo-grad-${gradId})` : "currentColor";
-  const fill = withGradient ? `url(#oculo-grad-${gradId})` : "currentColor";
+  const irisFill = withGradient ? `url(#oculo-iris-${uid})` : "currentColor";
+  const lidStroke = withGradient ? `url(#oculo-lid-${uid})` : "currentColor";
+
+  // Almond eye shape — slightly asymmetric for naturalness.
+  // Outer (right) corner sits 1px lower than inner (left) corner.
+  const ALMOND = "M5 33 Q 18 11 32 11 Q 48 11 59 34 Q 47 53 32 53 Q 17 53 5 33 Z";
 
   return (
     <svg
@@ -84,69 +73,60 @@ export function OculoLogo({ size = 24, state, className, withGradient = true }: 
       className={cn("oculo-logo select-none", className)}
       style={
         {
-          ["--oculo-ring-outer-dur" as any]: ringOuterDur,
-          ["--oculo-ring-inner-dur" as any]: ringInnerDur,
-          ["--oculo-pupil-dur" as any]: pupilDur,
           ["--oculo-blink-dur" as any]: blinkDur,
-          ["--oculo-drift-dur" as any]: driftDur,
+          ["--oculo-pupil-dur" as any]: pupilDur,
+          ["--oculo-gaze-dur" as any]: gazeDur,
         } as React.CSSProperties
       }
     >
       <defs>
-        {/* Primary brand gradient — terracotta → warm peach */}
-        <linearGradient id={`oculo-grad-${gradId}`} x1="0" y1="0" x2="1" y2="1">
+        {/* Iris: warm radial — bright centre, deeper rim */}
+        <radialGradient id={`oculo-iris-${uid}`} cx="50%" cy="45%" r="55%">
+          <stop offset="0%" stopColor="hsl(var(--primary-glow))" />
+          <stop offset="55%" stopColor="hsl(var(--primary))" />
+          <stop offset="100%" stopColor="hsl(15 55% 38%)" />
+        </radialGradient>
+
+        {/* Lid stroke gradient */}
+        <linearGradient id={`oculo-lid-${uid}`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="hsl(var(--primary))" />
-          <stop offset="55%" stopColor="hsl(var(--primary-glow))" />
-          <stop offset="100%" stopColor="hsl(var(--accent-foreground))" />
+          <stop offset="100%" stopColor="hsl(var(--primary-glow))" />
         </linearGradient>
 
-        {/* Iris fill — slightly darker for depth */}
-        <radialGradient id={`oculo-iris-${gradId}`} cx="50%" cy="50%" r="55%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.35" />
-          <stop offset="70%" stopColor="hsl(var(--primary))" stopOpacity="0.12" />
+        {/* Sclera: warm off-white, very subtle gradient */}
+        <radialGradient id={`oculo-sclera-${uid}`} cx="50%" cy="50%" r="60%">
+          <stop offset="0%" stopColor="hsl(36 40% 98%)" />
+          <stop offset="100%" stopColor="hsl(30 18% 88%)" />
+        </radialGradient>
+
+        {/* Soft glow halo */}
+        <radialGradient id={`oculo-glow-${uid}`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
           <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
         </radialGradient>
 
-        {/* Soft outer glow */}
-        <radialGradient id={`oculo-glow-${gradId}`} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.55" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
-        </radialGradient>
-
-        {/* Mask: clip everything to the eye almond so iris/pupil never spill out */}
-        <clipPath id={`oculo-clip-${gradId}`}>
-          <path d="M6 32 Q 32 6 58 32 Q 32 58 6 32 Z" />
+        {/* Clip the eyeball contents to the almond */}
+        <clipPath id={`oculo-eye-${uid}`}>
+          <path d={ALMOND} />
         </clipPath>
+
+        {/* BLINK MASK — two rectangles that close to the centre line.
+            White = visible, black = hidden. On blink the upper rect slides
+            down and lower rect slides up so they meet at y=32, naturally
+            covering the eye instead of squashing it. */}
+        <mask id={`oculo-blink-${uid}`} maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+          <rect x="0" y="0" width="64" height="64" fill="black" />
+          <rect className="oculo-mask-top" x="0" y="0" width="64" height="32" fill="white" />
+          <rect className="oculo-mask-bot" x="0" y="32" width="64" height="32" fill="white" />
+        </mask>
       </defs>
 
-      {/* Layer 1 — Outer ripple wave (speaking only) */}
+      {/* Glow halo (intensifies on speaking/thinking) */}
       <circle
         cx="32"
         cy="32"
-        r="29"
-        fill="none"
-        stroke="hsl(var(--primary))"
-        strokeOpacity="0.4"
-        strokeWidth="1"
-        className={cn("oculo-wave oculo-wave-1", active === "speaking" && "is-active")}
-      />
-      <circle
-        cx="32"
-        cy="32"
-        r="29"
-        fill="none"
-        stroke="hsl(var(--primary))"
-        strokeOpacity="0.3"
-        strokeWidth="1"
-        className={cn("oculo-wave oculo-wave-2", active === "speaking" && "is-active")}
-      />
-
-      {/* Layer 2 — Soft glow halo (intensifies on thinking/speaking) */}
-      <circle
-        cx="32"
-        cy="32"
-        r="22"
-        fill={`url(#oculo-glow-${gradId})`}
+        r="24"
+        fill={`url(#oculo-glow-${uid})`}
         className={cn(
           "oculo-glow",
           active === "speaking" && "is-strong",
@@ -154,87 +134,112 @@ export function OculoLogo({ size = 24, state, className, withGradient = true }: 
         )}
       />
 
-      {/* Layer 3 — Eye almond lid */}
-      <g className={cn("oculo-lid", active === "speaking" && "is-blinking")}>
-        <path
-          d="M6 32 Q 32 6 58 32 Q 32 58 6 32 Z"
-          fill="none"
-          stroke={stroke}
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </g>
+      {/* Brow hint — a subtle soft arc above the eye */}
+      <path
+        d="M10 18 Q 32 8 54 19"
+        fill="none"
+        stroke={lidStroke}
+        strokeOpacity="0.25"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
 
-      {/* Iris contents — clipped to the almond so nothing spills */}
-      <g clipPath={`url(#oculo-clip-${gradId})`}>
-        {/* Iris fill — soft radial */}
-        <circle cx="32" cy="32" r="14" fill={`url(#oculo-iris-${gradId})`} />
+      {/* === Eye group: everything inside is hidden by the blink mask === */}
+      <g mask={`url(#oculo-blink-${uid})`}>
+        {/* Sclera + iris (clipped to almond so nothing spills) */}
+        <g clipPath={`url(#oculo-eye-${uid})`}>
+          {/* Sclera */}
+          <path d={ALMOND} fill={`url(#oculo-sclera-${uid})`} />
 
-        {/* Drift wrapper — gentle saccade on idle */}
-        <g className="oculo-drift">
-          {/* Layer 4 — Outer iris ring (slow, long dashes) */}
-          <g className="oculo-ring-outer" style={{ transformOrigin: "32px 32px" }}>
+          {/* Gaze group — moves the iris a few px for saccades / look-around */}
+          <g className="oculo-gaze">
+            {/* Iris */}
+            <circle cx="32" cy="32" r="11" fill={irisFill} />
+
+            {/* Iris fibre striations — short radial strokes for realism */}
+            <g
+              stroke="hsl(15 60% 30%)"
+              strokeOpacity="0.45"
+              strokeWidth="0.6"
+              strokeLinecap="round"
+            >
+              {Array.from({ length: 18 }).map((_, i) => {
+                const a = (i / 18) * Math.PI * 2;
+                const x1 = 32 + Math.cos(a) * 5.5;
+                const y1 = 32 + Math.sin(a) * 5.5;
+                const x2 = 32 + Math.cos(a) * 10.5;
+                const y2 = 32 + Math.sin(a) * 10.5;
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} />;
+              })}
+            </g>
+
+            {/* Iris rim — thin darker ring */}
             <circle
               cx="32"
               cy="32"
-              r="13"
+              r="11"
               fill="none"
-              stroke={stroke}
-              strokeWidth="1.6"
-              strokeDasharray="6 4"
-              strokeLinecap="round"
+              stroke="hsl(15 60% 25%)"
+              strokeOpacity="0.55"
+              strokeWidth="0.7"
             />
+
+            {/* Pupil */}
+            <circle cx="32" cy="32" r="4.2" fill="hsl(20 15% 8%)" className="oculo-pupil" />
+
+            {/* Primary catchlight — upper-right, soft blob */}
+            <ellipse
+              cx="34.6"
+              cy="29.4"
+              rx="1.7"
+              ry="1.3"
+              fill="hsl(0 0% 100%)"
+              opacity="0.95"
+            />
+            {/* Secondary tiny highlight */}
+            <circle cx="30.4" cy="33.4" r="0.55" fill="hsl(0 0% 100%)" opacity="0.7" />
           </g>
 
-          {/* Layer 5 — Inner iris ring (counter-rotates, short dashes) */}
-          <g className="oculo-ring-inner" style={{ transformOrigin: "32px 32px" }}>
-            <circle
-              cx="32"
-              cy="32"
-              r="9"
-              fill="none"
-              stroke={stroke}
-              strokeOpacity="0.7"
-              strokeWidth="1"
-              strokeDasharray="2 2.5"
-              strokeLinecap="round"
-            />
-          </g>
-
-          {/* Layer 6 — Pupil */}
-          <circle
-            cx="32"
-            cy="32"
-            r="4.2"
-            fill={fill}
-            className="oculo-pupil"
-          />
-
-          {/* Layer 7 — Catchlight (gives life) */}
-          <circle
-            cx="34.5"
-            cy="29.5"
-            r="1.5"
-            fill="hsl(var(--primary-foreground))"
-            opacity="0.95"
-            className="oculo-catch"
-          />
-          <circle
-            cx="30"
-            cy="33.5"
-            r="0.7"
-            fill="hsl(var(--primary-foreground))"
-            opacity="0.6"
+          {/* Lower lid shadow inside the eye for depth */}
+          <path
+            d="M5 33 Q 32 48 59 34"
+            fill="none"
+            stroke="hsl(20 15% 20%)"
+            strokeOpacity="0.18"
+            strokeWidth="1.2"
+            strokeLinecap="round"
           />
         </g>
 
-        {/* Layer 8 — Orbiting spark (visible while thinking) */}
-        {active === "thinking" && (
-          <g className="oculo-orbit" style={{ transformOrigin: "32px 32px" }}>
-            <circle cx="32" cy="17" r="1.4" fill="hsl(var(--primary-glow))" />
-          </g>
-        )}
+        {/* Eye outline (almond) — drawn on top of sclera/iris */}
+        <path
+          d={ALMOND}
+          fill="none"
+          stroke={lidStroke}
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {/* Inner-corner caruncle hint */}
+        <circle cx="6.5" cy="33" r="1" fill="hsl(15 50% 70%)" opacity="0.55" />
+      </g>
+
+      {/* Upper lash hint — a few short strokes above the upper lid.
+          These don't blink (they're outside the mask) but they help sell
+          the "real eye" silhouette. */}
+      <g
+        stroke={lidStroke}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        opacity="0.55"
+        className="oculo-lashes"
+      >
+        <line x1="18" y1="14" x2="17" y2="10" />
+        <line x1="25" y1="11.5" x2="24.5" y2="7" />
+        <line x1="32" y1="11" x2="32" y2="6.5" />
+        <line x1="39" y1="11.5" x2="39.8" y2="7" />
+        <line x1="46" y1="14" x2="47.2" y2="10" />
       </g>
     </svg>
   );
