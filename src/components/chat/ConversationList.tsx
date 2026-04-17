@@ -245,30 +245,6 @@ export function ConversationList({
           variant="ghost"
           size="sm"
           className="w-full justify-start"
-          onClick={() => nav("/schedules")}
-        >
-          <Clock className="h-4 w-4 mr-2" /> Scheduled agents
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => nav("/activity")}
-        >
-          <ActivityIcon className="h-4 w-4 mr-2" /> Nhật ký hoạt động
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
-          onClick={() => nav("/memories")}
-        >
-          <Brain className="h-4 w-4 mr-2" /> Bộ nhớ dài hạn
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start"
           onClick={onOpenSettings}
         >
           <Settings className="h-4 w-4 mr-2" /> Cài đặt
