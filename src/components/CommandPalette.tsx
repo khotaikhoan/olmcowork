@@ -24,6 +24,7 @@ import {
   LogOut,
   HelpCircle,
   Activity as ActivityIcon,
+  ListChecks,
   
 } from "lucide-react";
 
