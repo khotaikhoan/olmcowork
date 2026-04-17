@@ -78,6 +78,14 @@ export default function Schedules() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Job | null>(null);
+  const [filter, setFilter] = useState<"all" | "cloud" | "local">("all");
+  const [now, setNow] = useState(() => Date.now());
+
+  // tick clock for countdowns
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Form
   const [name, setName] = useState("");
@@ -106,7 +114,27 @@ export default function Schedules() {
   };
 
   useEffect(() => {
-    if (user) load();
+    if (!user) return;
+    load();
+
+    // Realtime: push job_runs as they happen (insert/update)
+    const channel = supabase
+      .channel("schedules-runs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "job_runs", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "scheduled_jobs", filter: `user_id=eq.${user.id}` },
+        () => load(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const reset = () => {
