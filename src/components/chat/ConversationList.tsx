@@ -19,7 +19,6 @@ import {
   Search,
   Settings,
   LogOut,
-  MessageSquare,
   Clock,
   Pin,
   PinOff,
