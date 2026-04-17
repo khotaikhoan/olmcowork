@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { Copy, Check, RefreshCw, Pencil, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface Props {
   content: string;
   onRegenerate?: () => void;
+  onEdit?: () => void;
+  onBranch?: () => void;
   className?: string;
 }
 
-export function MessageActions({ content, onRegenerate, className }: Props) {
+export function MessageActions({ content, onRegenerate, onEdit, onBranch, className }: Props) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -38,6 +40,28 @@ export function MessageActions({ content, onRegenerate, className }: Props) {
           <Copy className="h-3 w-3" />
         )}
       </Button>
+      {onEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onEdit}
+          title="Sửa"
+        >
+          <Pencil className="h-3 w-3" />
+        </Button>
+      )}
+      {onBranch && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onBranch}
+          title="Tạo nhánh từ message này"
+        >
+          <GitBranch className="h-3 w-3" />
+        </Button>
+      )}
       {onRegenerate && (
         <Button
           variant="ghost"

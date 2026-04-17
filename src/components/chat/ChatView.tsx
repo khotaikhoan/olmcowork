@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { TopBar } from "./TopBar";
@@ -20,6 +21,10 @@ import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { AgentPreset } from "@/lib/presets";
 import { estimateTokens } from "./TokenMeter";
+import { ChatSearch } from "./ChatSearch";
+import { estimateCostUsd } from "@/lib/pricing";
+import { logActivity } from "@/lib/activityLog";
+import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
 
 interface DbMessage {
   id: string;
@@ -60,6 +65,7 @@ export function ChatView({
   onArtifactOpen,
 }: Props) {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [models, setModels] = useState<OllamaModel[]>([]);
   const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
@@ -77,6 +83,15 @@ export function ChatView({
   const lastActivityRef = useRef<number>(Date.now());
   const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
   const streamStartRef = useRef<number>(0);
+
+  // Cost tracking — accumulated input/output tokens for the conversation
+  const [costInput, setCostInput] = useState(0);
+  const [costOutput, setCostOutput] = useState(0);
+
+  // Search overlay
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
 
   // Tool approval dialog state
   const [pending, setPending] = useState<{
@@ -126,6 +141,11 @@ export function ChatView({
 
   // ----- Load conversation -----
   useEffect(() => {
+    setCostInput(0);
+    setCostOutput(0);
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchIndex(0);
     if (!conversationId) {
       setMessages([]);
       setTitle("New chat");
@@ -628,6 +648,118 @@ export function ChatView({
 
   const killArmed = isStreaming || !!pending || Object.keys(autoApprove).length > 0 || toolsEnabled;
 
+  // ----- Cost tracking: update after every send -----
+  useEffect(() => {
+    if (!lastReplyStats) return;
+    const inTok = messages.reduce((s, m) => s + estimateTokens(m.content), 0);
+    setCostInput(inTok);
+    setCostOutput((p) => p + lastReplyStats.tokens);
+  }, [lastReplyStats]);
+
+  // ----- Search keyboard shortcut + matches -----
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const searchMatches = searchQuery
+    ? messages.filter((m) => m.content?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
+
+  const navigateSearch = (dir: 1 | -1) => {
+    if (searchMatches.length === 0) return;
+    const next = (searchIndex + dir + searchMatches.length) % searchMatches.length;
+    setSearchIndex(next);
+    const target = document.querySelector(`[data-message-id="${searchMatches[next].id}"]`);
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  // ----- Export -----
+  const handleExport = (format: "markdown" | "json") => {
+    const exportable = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      created_at: m.created_at,
+      attachments: m.attachments,
+      tool_calls: m.tool_calls,
+    }));
+    const fname = safeFilename(title);
+    if (format === "markdown") {
+      downloadFile(`${fname}.md`, toMarkdown(title, exportable), "text/markdown");
+    } else {
+      downloadFile(`${fname}.json`, toJson(title, exportable), "application/json");
+    }
+    toast.success(`Đã xuất ${format.toUpperCase()}`);
+  };
+
+  // ----- Edit user message: rewrite + delete trailing + re-send -----
+  const handleEditMessage = async (msgId: string, newContent: string) => {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx < 0 || !conversationId) return;
+    const trailing = messages.slice(idx).map((m) => m.id);
+    await supabase.from("messages").delete().in("id", trailing);
+    const kept = messages.slice(0, idx);
+    setMessages(kept);
+    await send(newContent, []);
+  };
+
+  // ----- Branch: fork conversation up to a message -----
+  const handleBranch = async (msgId: string) => {
+    if (!user || !conversationId) return;
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx < 0) return;
+    const slice = messages.slice(0, idx + 1);
+    const { data: newConv, error } = await supabase
+      .from("conversations")
+      .insert({
+        user_id: user.id,
+        title: `${title} (nhánh)`,
+        model: provider === "openai" ? openaiModel : model,
+        system_prompt: systemPrompt || null,
+        branch_of_message_id: msgId,
+      })
+      .select("id")
+      .single();
+    if (error || !newConv) return toast.error(error?.message ?? "Branch failed");
+    const rows = slice.map((m) => ({
+      conversation_id: newConv.id,
+      user_id: user.id,
+      role: m.role,
+      content: m.content,
+      attachments: m.attachments as any,
+      tool_calls: m.tool_calls as any,
+    }));
+    if (rows.length) await supabase.from("messages").insert(rows);
+    toast.success("Đã tạo nhánh mới");
+    onCreated(newConv.id);
+  };
+
+  // ----- Re-annotate (auto after vision click) -----
+  const handleReannotate = async () => {
+    if (!isElectron() || !window.bridge) return;
+    const r = await window.bridge.visionAnnotate();
+    if (r.ok) {
+      const newCall: ToolCallRecord = {
+        id: crypto.randomUUID(),
+        name: "vision_click",
+        args: { action: "annotate" },
+        status: "done",
+        result: r.output,
+        image: (r as any).image,
+        marks: (r as any).marks,
+      };
+      setStreamingToolCalls((p) => [...p, newCall]);
+    }
+  };
+
+  const costModel = provider === "openai" ? openaiModel : model;
+
   // ----- Ollama process control (Electron only) -----
   const [ollamaBusy, setOllamaBusy] = useState(false);
   const canControlOllama = isElectron();
@@ -698,6 +830,13 @@ export function ChatView({
         totalTokens={messages.reduce((s, m) => s + estimateTokens(m.content), 0) + estimateTokens(streamingText)}
         lastReplyTokens={lastReplyStats?.tokens}
         tokensPerSecond={lastReplyStats?.tps}
+        inputTokens={costInput}
+        outputTokens={costOutput}
+        totalCostUsd={estimateCostUsd(costModel, costInput, costOutput)}
+        costModel={costModel}
+        onOpenSearch={() => setSearchOpen(true)}
+        onExport={handleExport}
+        canExport={messages.length > 0}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
@@ -741,7 +880,10 @@ export function ChatView({
                 attachments={m.attachments}
                 toolCalls={m.tool_calls}
                 messageId={m.id}
+                searchQuery={searchOpen ? searchQuery : undefined}
                 onArtifactOpen={onArtifactOpen}
+                onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
+                onBranch={() => handleBranch(m.id)}
               />
             ))}
             {isStreaming && (
@@ -752,6 +894,7 @@ export function ChatView({
                 streaming={!streamingText && streamingToolCalls.length === 0}
                 messageId="streaming"
                 onArtifactOpen={onArtifactOpen}
+                onReannotate={handleReannotate}
               />
             )}
             <div className="h-4" />

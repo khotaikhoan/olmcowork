@@ -76,8 +76,16 @@ function StatusBadge({ status }: { status: ToolCallStatus }) {
   );
 }
 
-export function ToolCallCard({ call }: { call: ToolCallRecord }) {
-  const [open, setOpen] = useState(false);
+export function ToolCallCard({
+  call,
+  defaultOpen,
+  onReannotate,
+}: {
+  call: ToolCallRecord;
+  defaultOpen?: boolean;
+  onReannotate?: () => void;
+}) {
+  const [open, setOpen] = useState(defaultOpen ?? false);
   const v = variant(call);
   const Icon = v.icon;
 
@@ -131,7 +139,7 @@ export function ToolCallCard({ call }: { call: ToolCallRecord }) {
           {v.kind === "vision" && (
             <div className="p-3 space-y-2 bg-muted/20">
               {call.image && call.marks ? (
-                <VisionMarksOverlay image={call.image} marks={call.marks} />
+                <VisionMarksOverlay image={call.image} marks={call.marks} onReannotate={onReannotate} />
               ) : call.image ? (
                 <img
                   src={`data:image/png;base64,${call.image}`}

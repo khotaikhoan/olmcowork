@@ -6,12 +6,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
-import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2, Cpu, MemoryStick } from "lucide-react";
+import {
+  Wifi,
+  WifiOff,
+  Sparkles,
+  OctagonX,
+  Power,
+  Loader2,
+  Cpu,
+  MemoryStick,
+  Search,
+  Download,
+  FileJson,
+  FileText,
+} from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
 import { TokenMeter } from "./TokenMeter";
+import { CostMeter } from "./CostMeter";
 
 interface Props {
   title: string;
@@ -29,9 +49,17 @@ interface Props {
   onToggleOllama: () => void;
   running: RunningModel[];
   totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalCostUsd: number;
+  costModel: string;
   lastReplyTokens?: number;
   tokensPerSecond?: number;
+  onOpenSearch: () => void;
+  onExport: (format: "markdown" | "json") => void;
+  canExport: boolean;
 }
+
 
 const PRESETS: Record<string, string> = {
   "Mặc định": "",
@@ -58,6 +86,13 @@ export function TopBar({
   totalTokens,
   lastReplyTokens,
   tokensPerSecond,
+  inputTokens,
+  outputTokens,
+  totalCostUsd,
+  costModel,
+  onOpenSearch,
+  onExport,
+  canExport,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
@@ -180,6 +215,45 @@ export function TopBar({
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
         {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onOpenSearch}
+        title="Tìm trong chat (⌘/Ctrl+F)"
+        className="h-8 w-8"
+      >
+        <Search className="h-3.5 w-3.5" />
+      </Button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!canExport}
+            title="Xuất hội thoại"
+            className="h-8 w-8"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onExport("markdown")}>
+            <FileText className="h-3.5 w-3.5 mr-2" /> Markdown (.md)
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onExport("json")}>
+            <FileJson className="h-3.5 w-3.5 mr-2" /> JSON (.json)
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <CostMeter
+        model={costModel}
+        inputTokens={inputTokens}
+        outputTokens={outputTokens}
+        totalCostUsd={totalCostUsd}
+      />
 
       <TokenMeter
         totalTokens={totalTokens}
