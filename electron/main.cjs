@@ -1010,8 +1010,14 @@ function emitBrowserStatus() {
 }
 
 async function pwShutdown() {
-  try { await pwContext?.close(); } catch {}
-  try { await pwBrowser?.close(); } catch {}
+  // If we're attached over CDP to the user's real Chrome, just disconnect —
+  // do NOT close their browser. Otherwise close everything we own.
+  if (pwUseRealProfile && pwBrowser && !pwPersistent) {
+    try { await pwBrowser.close(); } catch {} // close() on CDP only disconnects
+  } else {
+    try { await pwContext?.close(); } catch {}
+    try { await pwBrowser?.close(); } catch {}
+  }
   pwPages = [];
   pwActiveIdx = 0;
   pwContext = null;
