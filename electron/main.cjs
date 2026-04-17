@@ -19,46 +19,63 @@ try {
 let win = null;
 let ollamaProc = null;
 
+// Cache last updater status so the renderer can sync after refresh / late mount.
+let updaterState = { state: "idle", currentVersion: null };
+
+function emitUpdater(payload) {
+  updaterState = { ...updaterState, ...payload };
+  win?.webContents.send("updater:status", updaterState);
+}
+
 function setupAutoUpdate() {
-  if (!autoUpdater || !app.isPackaged) return;
+  updaterState.currentVersion = app.getVersion();
+  if (!autoUpdater || !app.isPackaged) {
+    emitUpdater({ state: "disabled" });
+    return;
+  }
+  emitUpdater({ state: "checking" });
+  autoUpdater.on("checking-for-update", () => emitUpdater({ state: "checking" }));
   autoUpdater.on("update-available", (info) => {
-    win?.webContents.send("updater:status", { state: "available", version: info.version });
+    emitUpdater({ state: "available", version: info.version });
   });
   autoUpdater.on("update-not-available", () => {
-    win?.webContents.send("updater:status", { state: "none" });
+    emitUpdater({ state: "none" });
   });
   autoUpdater.on("download-progress", (p) => {
-    win?.webContents.send("updater:status", { state: "downloading", percent: Math.round(p.percent) });
+    emitUpdater({ state: "downloading", percent: Math.round(p.percent) });
   });
-  autoUpdater.on("update-downloaded", async (info) => {
-    win?.webContents.send("updater:status", { state: "ready", version: info.version });
-    const { response } = await dialog.showMessageBox(win, {
-      type: "info",
-      buttons: ["Cài & khởi động lại", "Để sau"],
-      defaultId: 0,
-      title: "Có bản cập nhật",
-      message: `Phiên bản ${info.version} đã tải xong.`,
-      detail: "Bạn muốn cài và khởi động lại app ngay bây giờ?",
-    });
-    if (response === 0) autoUpdater.quitAndInstall();
+  autoUpdater.on("update-downloaded", (info) => {
+    emitUpdater({ state: "ready", version: info.version });
   });
   autoUpdater.on("error", (err) => {
-    win?.webContents.send("updater:status", { state: "error", message: String(err?.message || err) });
+    emitUpdater({ state: "error", message: String(err?.message || err) });
   });
-  // Check now and every 30 minutes.
   autoUpdater.checkForUpdates().catch(() => {});
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 30 * 60 * 1000);
 }
+
+ipcMain.handle("bridge:updater_state", async () => updaterState);
 
 ipcMain.handle("bridge:check_updates", async () => {
   if (!autoUpdater) return { ok: false, output: "electron-updater not installed" };
   if (!app.isPackaged) return { ok: false, output: "Auto-update only works in packaged builds" };
   try {
+    emitUpdater({ state: "checking" });
     const r = await autoUpdater.checkForUpdates();
     return { ok: true, output: r?.updateInfo?.version ? `Latest: ${r.updateInfo.version}` : "No update info" };
   } catch (e) {
+    emitUpdater({ state: "error", message: String(e?.message || e) });
     return { ok: false, output: String(e?.message || e) };
   }
+});
+
+ipcMain.handle("bridge:install_update", async () => {
+  if (!autoUpdater) return { ok: false, output: "electron-updater not installed" };
+  if (updaterState.state !== "ready") {
+    return { ok: false, output: `No update ready (state: ${updaterState.state})` };
+  }
+  setTimeout(() => autoUpdater.quitAndInstall(), 200);
+  return { ok: true, output: "Installing…" };
 });
 
 function createWindow() {

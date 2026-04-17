@@ -18,4 +18,13 @@ contextBridge.exposeInMainWorld("bridge", {
   startOllama: () => invoke("bridge:start_ollama"),
   stopOllama: () => invoke("bridge:stop_ollama"),
   ollamaStatus: () => invoke("bridge:ollama_status"),
+  // Auto-updater
+  checkUpdates: () => invoke("bridge:check_updates"),
+  installUpdate: () => invoke("bridge:install_update"),
+  getUpdaterState: () => invoke("bridge:updater_state"),
+  onUpdaterStatus: (cb) => {
+    const listener = (_e, payload) => cb(payload);
+    ipcRenderer.on("updater:status", listener);
+    return () => ipcRenderer.removeListener("updater:status", listener);
+  },
 });
