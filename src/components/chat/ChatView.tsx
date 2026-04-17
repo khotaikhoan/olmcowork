@@ -392,7 +392,7 @@ export function ChatView({
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
         <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
         <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
-          Computer-use tools (mock)
+          Computer-use tools {isElectron() ? "(live)" : "(mock — open in Electron for real bridge)"}
         </Label>
         <Switch id="tools-switch" checked={toolsEnabled} onCheckedChange={setToolsEnabled} />
         <span className="text-xs text-muted-foreground">
