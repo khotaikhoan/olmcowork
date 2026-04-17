@@ -176,9 +176,15 @@ export function PlanCard({ steps: initial, loading, empty, onApprove, onSkip, on
           <Button
             size="sm"
             onClick={() => onApprove(valid)}
-            disabled={loading || valid.length === 0}
+            disabled={valid.length === 0 || (loading && valid.length < 3)}
+            title={
+              loading && valid.length >= 3
+                ? "Bắt đầu sớm với các bước đã có (huỷ phần còn lại)"
+                : undefined
+            }
           >
-            <Play className="h-3 w-3 mr-1" /> Bắt đầu
+            <Play className="h-3 w-3 mr-1" />
+            {loading && valid.length >= 3 ? `Bắt đầu sớm (${valid.length})` : "Bắt đầu"}
           </Button>
         </div>
       </div>

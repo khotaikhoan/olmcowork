@@ -97,8 +97,9 @@ export interface StreamPlanOpts extends GenerateOpts {
 }
 
 /**
- * Streaming variant of generatePlan: emits partial step lists as tokens arrive
- * so the UI can show steps appearing one by one. Resolves with the final list.
+ * Streaming variant: emits partial step lists as tokens arrive so the UI can
+ * show steps appearing one by one. Resolves with the final list. Pass a signal
+ * to allow the user to cancel mid-stream (e.g. "Bắt đầu sớm").
  */
 export async function streamPlan(prompt: string, opts: StreamPlanOpts): Promise<PlanStep[]> {
   const userMsg = `Goal: ${prompt.trim()}\n\nGenerate the step list now.`;
@@ -106,8 +107,6 @@ export async function streamPlan(prompt: string, opts: StreamPlanOpts): Promise<
   let lastEmittedCount = -1;
 
   const emit = (final = false) => {
-    // Only parse complete lines (ending with \n) so we don't show half-typed steps,
-    // unless this is the final flush.
     const idx = buffer.lastIndexOf("\n");
     const parsable = final ? buffer : idx >= 0 ? buffer.slice(0, idx) : "";
     if (!parsable && !final) return;
@@ -127,7 +126,15 @@ export async function streamPlan(prompt: string, opts: StreamPlanOpts): Promise<
       emit(true);
       resolve(parseSteps(buffer));
     };
-    const onError = (err: Error) => reject(err);
+    const onError = (err: Error) => {
+      // AbortError → resolve with whatever we got so caller can keep partial steps.
+      if (err?.name === "AbortError") {
+        emit(true);
+        resolve(parseSteps(buffer));
+        return;
+      }
+      reject(err);
+    };
 
     if (opts.provider === "openai") {
       const messages: OpenAIMessage[] = [

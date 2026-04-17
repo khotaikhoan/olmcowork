@@ -676,17 +676,24 @@ export function ChatView({
    * Public send handler. In Control mode with a "complex" prompt, generates a
    * plan first and shows PlanCard for user approval. Otherwise sends immediately.
    */
+  // Allows "Bắt đầu sớm" / Retry / Cancel to abort an in-flight plan stream.
+  const planAbortRef = useRef<AbortController | null>(null);
+
   const runPlanGeneration = async (text: string, _attachments: PendingAttachment[]) => {
+    planAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    planAbortRef.current = ctrl;
     try {
       const finalSteps = await streamPlan(text, {
         provider,
         ollamaUrl,
         ollamaModel: model,
         openaiModel,
+        signal: ctrl.signal,
         onSteps: (partial) => {
-          // Stream partial steps into the card as they parse
           setPendingPlan((p) => {
             if (!p || p.prompt !== text) return p;
+            // If user already started early, p will be null — guarded above.
             return { ...p, steps: partial, loading: true };
           });
         },
@@ -700,6 +707,8 @@ export function ChatView({
       setPendingPlan((p) =>
         p && p.prompt === text ? { ...p, steps: [], loading: false } : p,
       );
+    } finally {
+      if (planAbortRef.current === ctrl) planAbortRef.current = null;
     }
   };
 
@@ -1446,22 +1455,30 @@ export function ChatView({
             loading={pendingPlan.loading}
             empty={!pendingPlan.loading && pendingPlan.steps.length === 0}
             onRetry={() => {
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan({ prompt, attachments, steps: [], loading: true });
               runPlanGeneration(prompt, attachments);
             }}
             onApprove={(approvedSteps) => {
+              // Early start: abort any in-flight stream so we don't waste tokens.
+              const wasLoading = pendingPlan.loading;
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
+              if (wasLoading) {
+                toast.info(`Bắt đầu sớm với ${approvedSteps.length} bước.`);
+              }
               executeSend(prompt, attachments, approvedSteps);
             }}
             onSkip={() => {
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
               executeSend(prompt, attachments);
             }}
             onCancel={() => {
-              // Cancel = drop the task entirely; warn so user knows
+              planAbortRef.current?.abort();
               toast.message("Đã huỷ task. Gõ lại nếu muốn chạy.");
               setPendingPlan(null);
             }}
