@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Wrench } from "lucide-react";
+import { Wrench, MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { AgentPreset } from "@/lib/presets";
@@ -923,18 +923,25 @@ export function ChatView({
         onModeChange={handleModeChange}
       />
 
-      <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">
-        <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-        <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
-          Công cụ điều khiển máy {isElectron() ? "(thật)" : "(giả lập — mở trong Electron để dùng thật)"}
-        </Label>
-        <Switch id="tools-switch" checked={toolsEnabled} onCheckedChange={setToolsEnabled} />
-        <span className="text-xs text-muted-foreground">
-          {toolsEnabled
-            ? `${TOOLS.length} công cụ khả dụng • ${requireConfirm ? "Xác nhận trước khi chạy" : "Tự chạy mức thấp/trung bình"}`
-            : "Bật để cho phép AI yêu cầu công cụ"}
-        </span>
-      </div>
+      {mode === "control" ? (
+        <div className="border-b border-border bg-[hsl(var(--warning)/0.08)] px-4 py-2 flex items-center gap-3">
+          <Wrench className="h-3.5 w-3.5 text-warning" />
+          <Label htmlFor="tools-switch" className="text-sm cursor-pointer">
+            Công cụ điều khiển máy {isElectron() ? "(thật)" : "(giả lập — mở trong desktop app để dùng thật)"}
+          </Label>
+          <Switch id="tools-switch" checked={toolsEnabled} onCheckedChange={setToolsEnabled} />
+          <span className="text-xs text-muted-foreground">
+            {toolsEnabled
+              ? `${toolsForMode("control").length} công cụ • ${requireConfirm ? "Xác nhận trước khi chạy" : "Tự chạy mức thấp/trung bình"}`
+              : "Bật để cho phép AI yêu cầu công cụ"}
+          </span>
+        </div>
+      ) : (
+        <div className="border-b border-border bg-muted/30 px-4 py-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <MessageSquare className="h-3.5 w-3.5" />
+          Chế độ Chat — chỉ trò chuyện, không thao tác máy. Có thể đọc file/URL khi cần.
+        </div>
+      )}
 
       <div className="flex-1 relative min-h-0">
         <ChatSearch
