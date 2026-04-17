@@ -1038,6 +1038,74 @@ ipcMain.handle("bridge:browser_set_use_real_profile", async (_e, { enabled }) =>
   };
 });
 
+// ── Chrome process detect + quit (used by "real profile" toggle UX) ──────────
+// Returns { running: boolean, count: number } so the renderer can ask the user
+// to quit Chrome before launching Playwright with their real user-data-dir.
+ipcMain.handle("bridge:chrome_detect", async () => {
+  try {
+    let count = 0;
+    if (process.platform === "darwin") {
+      // pgrep -x matches process name exactly; "Google Chrome" is the macOS bundle name.
+      const { stdout } = await execP(`pgrep -x "Google Chrome" || true`);
+      count = stdout.split(/\r?\n/).filter(Boolean).length;
+    } else if (process.platform === "win32") {
+      const { stdout } = await execP(
+        `powershell -NoProfile -Command "@(Get-Process chrome -ErrorAction SilentlyContinue).Count"`,
+      );
+      count = Number(stdout.trim()) || 0;
+    } else {
+      const { stdout } = await execP(`pgrep -c -x chrome || true`);
+      count = Number(stdout.trim()) || 0;
+    }
+    return { ok: true, output: `chrome processes: ${count}`, running: count > 0, count };
+  } catch (e) {
+    return { ok: false, output: String(e?.message ?? e), running: false, count: 0 };
+  }
+});
+
+ipcMain.handle("bridge:chrome_quit", async (_e, { force } = {}) => {
+  try {
+    if (process.platform === "darwin") {
+      // Try graceful AppleScript quit first (saves session, prompts for unsaved tabs).
+      if (!force) {
+        await execP(`osascript -e 'tell application "Google Chrome" to quit'`).catch(() => {});
+        // Wait up to 4s for processes to disappear.
+        for (let i = 0; i < 8; i++) {
+          const { stdout } = await execP(`pgrep -x "Google Chrome" || true`);
+          if (!stdout.trim()) return { ok: true, output: "Chrome đã thoát." };
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+      // Force kill remaining processes.
+      await execP(`pkill -9 -x "Google Chrome" || true`);
+      await execP(`pkill -9 -f "Google Chrome Helper" || true`);
+    } else if (process.platform === "win32") {
+      await execP(`taskkill /IM chrome.exe ${force ? "/F" : ""} /T`).catch(() => {});
+    } else {
+      await execP(`pkill ${force ? "-9" : ""} -x chrome || true`);
+    }
+    // Re-check.
+    await new Promise((r) => setTimeout(r, 400));
+    const recheck = await execP(
+      process.platform === "darwin"
+        ? `pgrep -x "Google Chrome" || true`
+        : process.platform === "win32"
+          ? `powershell -NoProfile -Command "@(Get-Process chrome -ErrorAction SilentlyContinue).Count"`
+          : `pgrep -c -x chrome || true`,
+    );
+    const remaining =
+      process.platform === "darwin"
+        ? recheck.stdout.split(/\r?\n/).filter(Boolean).length
+        : Number(recheck.stdout.trim()) || 0;
+    if (remaining > 0) {
+      return { ok: false, output: `Vẫn còn ${remaining} tiến trình Chrome — thử lại với force.`, remaining };
+    }
+    return { ok: true, output: "Chrome đã thoát hoàn toàn.", remaining: 0 };
+  } catch (e) {
+    return { ok: false, output: String(e?.message ?? e) };
+  }
+});
+
 /**
  * Resolve a Playwright Locator from one of: selector (CSS), text, role+name, label, placeholder.
  * Returns null + reason if no resolver provided.
