@@ -491,6 +491,7 @@ export function ChatView({
         canControlOllama={canControlOllama}
         ollamaBusy={ollamaBusy}
         onToggleOllama={toggleOllama}
+        running={running}
       />
 
       <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-3">

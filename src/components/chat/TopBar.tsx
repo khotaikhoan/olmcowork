@@ -8,8 +8,8 @@ import {
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { OllamaModel } from "@/lib/ollama";
-import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2 } from "lucide-react";
+import { OllamaModel, RunningModel, formatBytes } from "@/lib/ollama";
+import { Wifi, WifiOff, Sparkles, OctagonX, Power, Loader2, Cpu, MemoryStick } from "lucide-react";
 
 interface Props {
   title: string;
@@ -25,6 +25,7 @@ interface Props {
   canControlOllama: boolean;
   ollamaBusy: boolean;
   onToggleOllama: () => void;
+  running: RunningModel[];
 }
 
 const PRESETS: Record<string, string> = {
@@ -48,6 +49,7 @@ export function TopBar({
   canControlOllama,
   ollamaBusy,
   onToggleOllama,
+  running,
 }: Props) {
   return (
     <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-3 px-4 shrink-0">
