@@ -68,6 +68,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [requireConfirm, setRequireConfirm] = useState(true);
   const [autoStopMinutes, setAutoStopMinutes] = useState(0);
   const [autoStart, setAutoStart] = useState(true);
+  const [browserHeadless, setBrowserHeadless] = useState<boolean>(
+    () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.browser_headless") !== "false" : true),
+  );
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"unknown" | "ok" | "fail">("unknown");
 
@@ -103,6 +106,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     setBusy(true);
     localStorage.setItem(LS_PROVIDER, provider);
     localStorage.setItem(LS_OPENAI_MODEL, openaiModel);
+    localStorage.setItem("chat.browser_headless", String(browserHeadless));
+    // Push headless mode to Electron bridge if available; safe no-op in browser.
+    try { await (window as any).bridge?.browserSetHeadless?.(browserHeadless); } catch { /* ignore */ }
     const payload = {
       user_id: user.id,
       ollama_url: url,
@@ -275,6 +281,15 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
               </p>
             </div>
             <Switch checked={autoStart} onCheckedChange={setAutoStart} />
+          </div>
+          <div className="flex items-center justify-between rounded-md border border-border p-3">
+            <div>
+              <Label>Trình duyệt hiển thị (headful)</Label>
+              <p className="text-xs text-muted-foreground">
+                Tắt = headless (ngầm, nhanh). Bật = mở cửa sổ Chrome để bạn xem AI làm gì. Đổi xong sẽ relaunch ở lần dùng tiếp theo.
+              </p>
+            </div>
+            <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
           </div>
         </div>
         <DialogFooter>
