@@ -122,9 +122,11 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     localStorage.setItem(LS_PROVIDER, provider);
     localStorage.setItem(LS_OPENAI_MODEL, openaiModel);
     localStorage.setItem("chat.browser_headless", String(browserHeadless));
+    localStorage.setItem("chat.browser_use_real_profile", browserUseRealProfile ? "1" : "0");
     localStorage.setItem("chat.auto_install_update", autoInstallUpdate ? "1" : "0");
-    // Push headless mode to Electron bridge if available; safe no-op in browser.
+    // Push browser settings to Electron bridge if available; safe no-op in browser.
     try { await (window as any).bridge?.browserSetHeadless?.(browserHeadless); } catch { /* ignore */ }
+    try { await (window as any).bridge?.browserSetUseRealProfile?.(browserUseRealProfile); } catch { /* ignore */ }
     const payload = {
       user_id: user.id,
       ollama_url: url,
