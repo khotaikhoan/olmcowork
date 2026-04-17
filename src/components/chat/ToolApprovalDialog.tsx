@@ -23,9 +23,9 @@ interface Props {
 }
 
 const RISK_STYLE = {
-  low: { icon: ShieldCheck, label: "Low risk", cls: "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]" },
-  medium: { icon: Shield, label: "Medium risk", cls: "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" },
-  high: { icon: ShieldAlert, label: "High risk", cls: "bg-destructive/15 text-destructive" },
+  low: { icon: ShieldCheck, label: "Rủi ro thấp", cls: "bg-[hsl(var(--success)/0.15)] text-[hsl(var(--success))]" },
+  medium: { icon: Shield, label: "Rủi ro trung bình", cls: "bg-[hsl(var(--warning)/0.15)] text-[hsl(var(--warning))]" },
+  high: { icon: ShieldAlert, label: "Rủi ro cao", cls: "bg-destructive/15 text-destructive" },
 } as const;
 
 export function ToolApprovalDialog({ open, tool, args, onApprove, onDeny }: Props) {
@@ -45,12 +45,12 @@ export function ToolApprovalDialog({ open, tool, args, onApprove, onDeny }: Prop
               {tool.name}
             </Badge>
           </div>
-          <AlertDialogTitle>AI wants to run a tool</AlertDialogTitle>
+          <AlertDialogTitle>AI muốn thực thi một công cụ</AlertDialogTitle>
           <AlertDialogDescription>{tool.description}</AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="rounded-lg border border-border bg-muted/40 p-3">
-          <div className="text-xs font-medium text-muted-foreground mb-1.5">Arguments</div>
+          <div className="text-xs font-medium text-muted-foreground mb-1.5">Tham số</div>
           <ScrollArea className="max-h-60">
             <pre className="text-xs font-mono whitespace-pre-wrap break-all">
               {JSON.stringify(args ?? {}, null, 2)}
@@ -59,13 +59,13 @@ export function ToolApprovalDialog({ open, tool, args, onApprove, onDeny }: Prop
         </div>
 
         <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-          <AlertDialogCancel onClick={onDeny}>Deny</AlertDialogCancel>
+          <AlertDialogCancel onClick={onDeny}>Từ chối</AlertDialogCancel>
           {tool.risk !== "high" && (
             <Button variant="outline" onClick={() => onApprove(true)}>
-              Allow & auto-approve
+              Cho phép & tự duyệt sau
             </Button>
           )}
-          <AlertDialogAction onClick={() => onApprove(false)}>Approve once</AlertDialogAction>
+          <AlertDialogAction onClick={() => onApprove(false)}>Cho phép một lần</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

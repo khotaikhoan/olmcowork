@@ -48,7 +48,7 @@ export default function Index() {
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading…</div>
+        <div className="text-muted-foreground">Đang tải…</div>
       </div>
     );
   }

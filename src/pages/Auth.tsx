@@ -29,7 +29,7 @@ export default function AuthPage() {
     if (error) {
       toast.error(error.message);
     } else if (mode === "up") {
-      toast.success("Account created — you're signed in.");
+      toast.success("Tạo tài khoản thành công — bạn đã đăng nhập.");
     }
   };
 
@@ -42,14 +42,14 @@ export default function AuthPage() {
           </div>
           <h1 className="text-2xl font-semibold">Ollama Cowork</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Chat & control your computer with local AI
+            Trò chuyện và điều khiển máy tính bằng AI cục bộ
           </p>
         </div>
 
         <Tabs defaultValue="in">
           <TabsList className="grid grid-cols-2 w-full mb-4">
-            <TabsTrigger value="in">Sign in</TabsTrigger>
-            <TabsTrigger value="up">Sign up</TabsTrigger>
+            <TabsTrigger value="in">Đăng nhập</TabsTrigger>
+            <TabsTrigger value="up">Đăng ký</TabsTrigger>
           </TabsList>
 
           {(["in", "up"] as const).map((mode) => (
@@ -67,7 +67,7 @@ export default function AuthPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor={`pw-${mode}`}>Password</Label>
+                  <Label htmlFor={`pw-${mode}`}>Mật khẩu</Label>
                   <Input
                     id={`pw-${mode}`}
                     type="password"
@@ -79,7 +79,7 @@ export default function AuthPage() {
                   />
                 </div>
                 <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Please wait…" : mode === "in" ? "Sign in" : "Create account"}
+                  {busy ? "Vui lòng chờ…" : mode === "in" ? "Đăng nhập" : "Tạo tài khoản"}
                 </Button>
               </form>
             </TabsContent>

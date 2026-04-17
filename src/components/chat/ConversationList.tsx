@@ -56,7 +56,7 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
   };
 
   const rename = async (id: string, current: string) => {
-    const t = window.prompt("Rename conversation", current);
+    const t = window.prompt("Đổi tên cuộc trò chuyện", current);
     if (!t) return;
     const { error } = await supabase.from("conversations").update({ title: t }).eq("id", id);
     if (error) return toast.error(error.message);
@@ -75,7 +75,7 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
           <div className="font-semibold text-sidebar-foreground">Ollama Cowork</div>
         </div>
         <Button onClick={onNew} className="w-full" size="sm">
-          <Plus className="h-4 w-4 mr-1" /> New chat
+          <Plus className="h-4 w-4 mr-1" /> Cuộc trò chuyện mới
         </Button>
       </div>
 
@@ -85,7 +85,7 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search…"
+            placeholder="Tìm kiếm…"
             className="pl-8 h-8 text-sm bg-sidebar-accent border-sidebar-border"
           />
         </div>
@@ -95,7 +95,7 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
         <div className="space-y-0.5 pb-2">
           {filtered.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8 px-3">
-              No conversations yet
+              Chưa có cuộc trò chuyện nào
             </p>
           )}
           {filtered.map((c) => (
@@ -122,13 +122,13 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                   <DropdownMenuItem onClick={() => rename(c.id, c.title)}>
-                    <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+                    <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => remove(c.id)}
                     className="text-destructive focus:text-destructive"
                   >
-                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                    <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -140,10 +140,10 @@ export function ConversationList({ selectedId, onSelect, onNew, refreshKey, onOp
       <div className="border-t border-sidebar-border p-2 space-y-1">
         <div className="px-2 py-1 text-xs text-muted-foreground truncate">{user?.email}</div>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={onOpenSettings}>
-          <Settings className="h-4 w-4 mr-2" /> Settings
+          <Settings className="h-4 w-4 mr-2" /> Cài đặt
         </Button>
         <Button variant="ghost" size="sm" className="w-full justify-start" onClick={signOut}>
-          <LogOut className="h-4 w-4 mr-2" /> Sign out
+          <LogOut className="h-4 w-4 mr-2" /> Đăng xuất
         </Button>
       </div>
     </aside>

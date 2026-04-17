@@ -18,16 +18,16 @@ export function ToolCallCard({ call }: { call: ToolCallRecord }) {
   const statusUI = () => {
     switch (call.status) {
       case "pending":
-        return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, label: "Awaiting approval", cls: "text-[hsl(var(--warning))]" };
+        return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, label: "Chờ duyệt", cls: "text-[hsl(var(--warning))]" };
       case "approved":
       case "running":
-        return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, label: "Running…", cls: "text-primary" };
+        return { icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />, label: "Đang chạy…", cls: "text-primary" };
       case "done":
-        return { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Completed", cls: "text-[hsl(var(--success))]" };
+        return { icon: <CheckCircle2 className="h-3.5 w-3.5" />, label: "Hoàn thành", cls: "text-[hsl(var(--success))]" };
       case "denied":
-        return { icon: <XCircle className="h-3.5 w-3.5" />, label: "Denied", cls: "text-muted-foreground" };
+        return { icon: <XCircle className="h-3.5 w-3.5" />, label: "Đã từ chối", cls: "text-muted-foreground" };
       case "error":
-        return { icon: <XCircle className="h-3.5 w-3.5" />, label: "Error", cls: "text-destructive" };
+        return { icon: <XCircle className="h-3.5 w-3.5" />, label: "Lỗi", cls: "text-destructive" };
     }
   };
 
@@ -50,14 +50,14 @@ export function ToolCallCard({ call }: { call: ToolCallRecord }) {
       {open && (
         <div className="px-3 pb-3 space-y-2 border-t border-border bg-muted/20">
           <div>
-            <div className="text-[11px] font-medium text-muted-foreground my-1.5">Arguments</div>
+            <div className="text-[11px] font-medium text-muted-foreground my-1.5">Tham số</div>
             <pre className="text-xs font-mono bg-background border border-border rounded p-2 overflow-x-auto">
               {JSON.stringify(call.args, null, 2)}
             </pre>
           </div>
           {call.result !== undefined && (
             <div>
-              <div className="text-[11px] font-medium text-muted-foreground my-1.5">Result</div>
+              <div className="text-[11px] font-medium text-muted-foreground my-1.5">Kết quả</div>
               <pre className="text-xs font-mono bg-background border border-border rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-60">
                 {call.result}
               </pre>

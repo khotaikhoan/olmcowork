@@ -29,10 +29,10 @@ interface Props {
 }
 
 const PRESETS: Record<string, string> = {
-  "Default": "",
-  "Coder": "You are an expert software engineer. Write clean, idiomatic code with concise explanations.",
-  "Writer": "You are a thoughtful writing assistant. Improve clarity, tone, and flow.",
-  "Computer Agent": "You are a careful computer-use agent. Plan briefly, ask before risky actions, and explain each step.",
+  "Mặc định": "",
+  "Lập trình viên": "Bạn là một kỹ sư phần mềm chuyên nghiệp. Viết code sạch, đúng chuẩn và giải thích ngắn gọn bằng tiếng Việt.",
+  "Người viết": "Bạn là trợ lý viết lách tinh tế. Cải thiện sự rõ ràng, giọng văn và mạch lạc. Phản hồi bằng tiếng Việt.",
+  "Điều khiển máy": "Bạn là tác nhân điều khiển máy tính cẩn trọng. Lập kế hoạch ngắn, hỏi trước hành động rủi ro, giải thích từng bước bằng tiếng Việt.",
 };
 
 export function TopBar({
@@ -62,11 +62,11 @@ export function TopBar({
 
       <Select value={model} onValueChange={onModelChange}>
         <SelectTrigger className="h-8 w-[200px] text-sm">
-          <SelectValue placeholder="Select model" />
+          <SelectValue placeholder="Chọn model" />
         </SelectTrigger>
         <SelectContent>
           {models.length === 0 && (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">No models found</div>
+            <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
           )}
           {models.map((m) => (
             <SelectItem key={m.name} value={m.name}>
@@ -79,12 +79,12 @@ export function TopBar({
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="h-8">
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> System
+            <Sparkles className="h-3.5 w-3.5 mr-1" /> Hệ thống
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-96">
           <div className="space-y-3">
-            <Label>System prompt</Label>
+            <Label>Lời nhắc hệ thống</Label>
             <div className="flex flex-wrap gap-1">
               {Object.entries(PRESETS).map(([k, v]) => (
                 <Button
@@ -102,7 +102,7 @@ export function TopBar({
               value={systemPrompt}
               onChange={(e) => onSystemPromptChange(e.target.value)}
               rows={6}
-              placeholder="Define the assistant's behavior…"
+              placeholder="Định nghĩa hành vi của trợ lý…"
             />
           </div>
         </PopoverContent>
@@ -112,7 +112,7 @@ export function TopBar({
         <Popover>
           <PopoverTrigger asChild>
             <button
-              title="Loaded models — click for details"
+              title="Model đang nạp — bấm xem chi tiết"
               className="flex items-center gap-1.5 text-xs px-2 py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-mono"
             >
               <MemoryStick className="h-3 w-3" />
@@ -127,7 +127,7 @@ export function TopBar({
             </button>
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-3">
-            <div className="text-xs font-medium mb-2">Loaded models (RAM/VRAM)</div>
+            <div className="text-xs font-medium mb-2">Model đang nạp (RAM/VRAM)</div>
             <div className="space-y-2">
               {running.map((r) => {
                 const cpuBytes = Math.max(0, r.size - r.size_vram);
@@ -136,8 +136,8 @@ export function TopBar({
                   <div key={r.name} className="rounded-md border border-border p-2">
                     <div className="font-mono text-xs font-semibold mb-1 truncate">{r.name}</div>
                     <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
-                      <span>Total {formatBytes(r.size)}</span>
-                      <span>{vramPct}% on GPU</span>
+                      <span>Tổng {formatBytes(r.size)}</span>
+                      <span>{vramPct}% trên GPU</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-muted overflow-hidden flex">
                       <div className="bg-[hsl(var(--success))]" style={{ width: `${vramPct}%` }} />
@@ -149,7 +149,7 @@ export function TopBar({
                     </div>
                     {r.expires_at && (
                       <div className="text-[10px] text-muted-foreground mt-1">
-                        Unloads at {new Date(r.expires_at).toLocaleTimeString()}
+                        Tự gỡ lúc {new Date(r.expires_at).toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -161,7 +161,7 @@ export function TopBar({
       )}
 
       <div
-        title={bridgeOnline ? "Ollama connected" : "Ollama offline"}
+        title={bridgeOnline ? "Đã kết nối Ollama" : "Ollama ngoại tuyến"}
         className={
           "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md " +
           (bridgeOnline
@@ -170,7 +170,7 @@ export function TopBar({
         }
       >
         {bridgeOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-        {bridgeOnline ? "Online" : "Offline"}
+        {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
       </div>
 
       {canControlOllama && (
@@ -179,7 +179,7 @@ export function TopBar({
           size="sm"
           onClick={onToggleOllama}
           disabled={ollamaBusy}
-          title={bridgeOnline ? "Stop Ollama process to free RAM" : "Start Ollama process"}
+          title={bridgeOnline ? "Dừng Ollama để giải phóng RAM" : "Khởi động Ollama"}
           className="h-8"
         >
           {ollamaBusy ? (
@@ -187,7 +187,7 @@ export function TopBar({
           ) : (
             <Power className="h-3.5 w-3.5 mr-1" />
           )}
-          {ollamaBusy ? (bridgeOnline ? "Stopping…" : "Starting…") : bridgeOnline ? "Stop Ollama" : "Start Ollama"}
+          {ollamaBusy ? (bridgeOnline ? "Đang dừng…" : "Đang khởi động…") : bridgeOnline ? "Dừng Ollama" : "Khởi động Ollama"}
         </Button>
       )}
 
@@ -196,11 +196,11 @@ export function TopBar({
         size="sm"
         onClick={onKillSwitch}
         disabled={!killArmed}
-        title="Stop the agent immediately and revoke all auto-approvals"
+        title="Dừng tác nhân ngay lập tức và thu hồi mọi quyền tự duyệt"
         className="h-8 font-semibold shadow-[var(--shadow-soft)] disabled:opacity-40"
       >
         <OctagonX className="h-4 w-4 mr-1" />
-        Kill Switch
+        Dừng khẩn
       </Button>
     </header>
   );
