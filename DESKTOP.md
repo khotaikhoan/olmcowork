@@ -27,7 +27,11 @@ npm install
 npm install --save-dev electron @electron/packager
 # Optional native modules — required for screenshot + mouse/keyboard control
 npm install screenshot-desktop @nut-tree-fork/nut-js
+# Optional — Phase 3 browser automation (Playwright). playwright-core uses your installed Chrome.
+npm install playwright-core
 ```
+
+> **Phase 3 lưu ý**: `playwright-core` không tải Chromium kèm. Bạn cần Google Chrome (hoặc Chromium) đã cài sẵn trên máy. Nếu không có, tool `browser` sẽ fail với "Executable doesn't exist". Cài Chrome từ https://www.google.com/chrome/.
 
 > The native modules build C++ addons. On Linux you may need `build-essential libxtst-dev libpng-dev`. On macOS, grant **Accessibility** + **Screen Recording** permissions to the Electron app the first time it asks.
 
