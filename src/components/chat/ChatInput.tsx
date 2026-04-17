@@ -1,11 +1,13 @@
 import { useRef, useState, KeyboardEvent, useEffect, ClipboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ImagePlus, Send, Square, X } from "lucide-react";
+import { ImagePlus, Send, Square, X, Mic } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { UrlPreviewChip, UrlMeta } from "./UrlPreviewChip";
+import { createVoiceController, isVoiceInputSupported, type VoiceController } from "@/lib/voiceInput";
+import { cn } from "@/lib/utils";
 
 export interface PendingAttachment {
   file: File;
@@ -26,9 +28,51 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [urlPreviews, setUrlPreviews] = useState<UrlMeta[]>([]);
+  const [listening, setListening] = useState(false);
+  const [interim, setInterim] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const voiceRef = useRef<VoiceController | null>(null);
+  const voiceSupported = isVoiceInputSupported();
   const { user } = useAuth();
+
+  useEffect(() => {
+    return () => voiceRef.current?.stop();
+  }, []);
+
+  const toggleVoice = () => {
+    if (!voiceSupported) {
+      toast.error("Trình duyệt không hỗ trợ nhận diện giọng nói");
+      return;
+    }
+    if (listening) {
+      voiceRef.current?.stop();
+      return;
+    }
+    setInterim("");
+    const ctrl = createVoiceController({
+      lang: "vi-VN",
+      onInterim: (t) => setInterim(t),
+      onFinal: (t) => {
+        setText((prev) => (prev ? prev.replace(/\s+$/, "") + " " + t : t));
+        setInterim("");
+      },
+      onError: (err) => {
+        if (err !== "no-speech" && err !== "aborted") {
+          toast.error(`Lỗi giọng nói: ${err}`);
+        }
+        setListening(false);
+        setInterim("");
+      },
+      onEnd: () => {
+        setListening(false);
+        setInterim("");
+      },
+    });
+    voiceRef.current = ctrl;
+    ctrl.start();
+    setListening(true);
+  };
 
   // Slash command: /schedule "<name>" <cron> -- <prompt>
   const trySlashCommand = async (raw: string): Promise<boolean> => {
