@@ -107,9 +107,12 @@ export async function executeTool(
   name: string,
   args: Record<string, any>,
 ): Promise<ToolExecResult> {
-  // fetch_url is browser-safe (server-side proxy) and works without Electron.
+  // fetch_url + web_search are browser-safe (server-side proxies) and work without Electron.
   if (name === "fetch_url") {
     return fetchUrlTool(String(args.url ?? ""));
+  }
+  if (name === "web_search") {
+    return webSearchTool(String(args.query ?? ""), Number(args.limit) || undefined);
   }
   const b = typeof window !== "undefined" ? window.bridge : undefined;
   if (!b) return mockExecute(name, args);
