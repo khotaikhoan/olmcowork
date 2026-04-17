@@ -122,41 +122,43 @@ export const TOOLS: ToolDef[] = [
     name: "browser",
     risk: "medium",
     description:
-      "Headless Chromium browser automation (Playwright). Persists 1 page across calls. Use for: web scraping, form filling, login flows, multi-step web tasks. Always navigate first, then click_selector/fill/press, then get_html/get_text/screenshot to observe. CSS selectors only (no XPath). Close when done.",
+      "Stealth Chromium automation (Playwright + stealth plugin). Persists multiple tabs across calls. Workflow: navigate → (wait_for) → click/fill via SMART selectors → get_text/screenshot. PREFER role+name, text, or label over CSS — much more robust. Use new_tab/switch_tab for multi-page tasks. Use download/upload for file operations. Call close when done.",
     parameters: {
       type: "object",
       properties: {
         action: {
           type: "string",
           enum: [
-            "navigate",
-            "click_selector",
-            "fill",
-            "press",
-            "get_html",
-            "get_text",
-            "screenshot",
-            "wait_for",
-            "eval",
+            "navigate", "back", "forward", "reload",
+            "new_tab", "switch_tab", "list_tabs", "close_tab",
+            "click", "click_selector", "fill", "press", "wait_for",
+            "get_html", "get_text", "screenshot", "eval",
+            "download", "upload",
             "close",
           ],
           description:
-            "navigate=goto URL; click_selector=click CSS selector; fill=type into input; press=keyboard key (Enter, Tab…); get_html/get_text=read page or selector; screenshot=PNG of page; wait_for=wait for selector to appear; eval=run JS expression; close=shut down browser.",
+            "Navigation: navigate/back/forward/reload. Tabs: new_tab(url?)/list_tabs/switch_tab(index)/close_tab(index?). Interaction: click/fill/press/wait_for (use locator args). Read: get_html/get_text/screenshot/eval. Files: download (clicks loc that triggers download, saved to ~/Downloads/OllamaCowork) / upload (sets file input). close=shut down browser.",
         },
-        url: { type: "string", description: "Absolute http(s) URL. Required for action=navigate." },
-        selector: {
-          type: "string",
-          description:
-            "CSS selector (e.g. 'input[name=q]', '#submit', '.btn-primary'). Required for click_selector/fill/wait_for; optional for press/get_html/get_text.",
-        },
-        value: { type: "string", description: "Text to type. Required for action=fill." },
-        key: { type: "string", description: "Key name (e.g. 'Enter', 'Tab'). Default: Enter. For action=press." },
-        timeout: { type: "number", description: "Timeout ms for wait_for. Default 15000." },
+        url: { type: "string", description: "Absolute http(s) URL. For navigate, new_tab(optional)." },
+        // Smart selector — provide ONE of these (in order of preference):
+        role: { type: "string", description: "ARIA role: 'button','link','textbox','heading','checkbox','combobox'... Pair with name." },
+        name: { type: "string", description: "Accessible name to match with role (e.g. role='button', name='Submit')." },
+        text: { type: "string", description: "Visible text content to match. Use for links/buttons with stable text." },
+        label: { type: "string", description: "Form field label (the <label> text, e.g. 'Email')." },
+        placeholder: { type: "string", description: "Input placeholder text." },
+        testId: { type: "string", description: "data-testid attribute value." },
+        selector: { type: "string", description: "CSS selector — last resort, brittle. Prefer role/text/label." },
+        exact: { type: "boolean", description: "Exact text match (default false = substring/case-insensitive)." },
+        // Action-specific:
+        value: { type: "string", description: "Text to type. For action=fill." },
+        key: { type: "string", description: "Key name (Enter, Tab, Escape, ArrowDown...). For action=press. Default Enter." },
+        state: { type: "string", description: "wait_for state: visible|attached|hidden|detached. Default visible." },
+        timeout: { type: "number", description: "Timeout ms. Default 15000." },
         fullPage: { type: "boolean", description: "Full-page screenshot. Default false." },
-        expression: {
-          type: "string",
-          description: "JS expression evaluated in page context. For action=eval. Returns JSON-stringified result.",
-        },
+        expression: { type: "string", description: "JS expression for action=eval." },
+        index: { type: "number", description: "Tab index for switch_tab/close_tab. 0-based." },
+        file: { type: "string", description: "Single file path for upload. Must be in allowed paths." },
+        files: { type: "array", items: { type: "string" }, description: "Multiple file paths for upload." },
       },
       required: ["action"],
     },
@@ -257,9 +259,12 @@ export function isActionAllowedInMode(
   if (mode === "control") return true;
   if (name === "fetch_url" || name === "web_search") return true;
   if (name === "browser") {
-    // Read-only / navigation actions allowed in Chat mode; mutations require Control.
     const a = String(args.action ?? "");
-    return ["navigate", "get_html", "get_text", "screenshot", "wait_for", "close"].includes(a);
+    return [
+      "navigate", "back", "forward", "reload",
+      "new_tab", "switch_tab", "list_tabs", "close_tab",
+      "get_html", "get_text", "screenshot", "wait_for", "close",
+    ].includes(a);
   }
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
@@ -298,8 +303,13 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
   if (name === "observe_screen") return "low";
   if (name === "browser") {
     const a = String(args.action ?? "");
-    if (["navigate", "get_html", "get_text", "screenshot", "wait_for", "close", "eval"].includes(a)) return "low";
-    return "medium"; // click/fill/press = mutation in remote site
+    if ([
+      "navigate", "back", "forward", "reload",
+      "new_tab", "switch_tab", "list_tabs", "close_tab",
+      "get_html", "get_text", "screenshot", "wait_for", "close", "eval",
+    ].includes(a)) return "low";
+    if (a === "upload" || a === "download") return "high"; // touches local FS
+    return "medium"; // click/fill/press = remote site mutation
   }
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }
