@@ -16,6 +16,7 @@ import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Schedules from "./pages/Schedules.tsx";
 import Activity from "./pages/Activity.tsx";
+import { OnboardingTour } from "./components/chat/OnboardingTour";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CommandPaletteProvider>
+            <OnboardingTour />
           </AuthProvider>
         </Router>
       </TooltipProvider>
