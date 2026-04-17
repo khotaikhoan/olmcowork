@@ -1455,22 +1455,30 @@ export function ChatView({
             loading={pendingPlan.loading}
             empty={!pendingPlan.loading && pendingPlan.steps.length === 0}
             onRetry={() => {
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan({ prompt, attachments, steps: [], loading: true });
               runPlanGeneration(prompt, attachments);
             }}
             onApprove={(approvedSteps) => {
+              // Early start: abort any in-flight stream so we don't waste tokens.
+              const wasLoading = pendingPlan.loading;
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
+              if (wasLoading) {
+                toast.info(`Bắt đầu sớm với ${approvedSteps.length} bước.`);
+              }
               executeSend(prompt, attachments, approvedSteps);
             }}
             onSkip={() => {
+              planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
               executeSend(prompt, attachments);
             }}
             onCancel={() => {
-              // Cancel = drop the task entirely; warn so user knows
+              planAbortRef.current?.abort();
               toast.message("Đã huỷ task. Gõ lại nếu muốn chạy.");
               setPendingPlan(null);
             }}
