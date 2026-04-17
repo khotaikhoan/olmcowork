@@ -24,7 +24,8 @@ import { toast } from "sonner";
 import { pingOllama } from "@/lib/ollama";
 import { OPENAI_MODELS } from "@/lib/openai";
 import { useTheme, Theme } from "@/hooks/useTheme";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export type Provider = "ollama" | "openai";
 
@@ -50,6 +51,11 @@ const LS_OPENAI_MODEL = "chat.openai_model";
 export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
+  const nav = useNavigate();
+  const goTo = (path: string) => {
+    onOpenChange(false);
+    nav(path);
+  };
   const [provider, setProvider] = useState<Provider>(
     (localStorage.getItem(LS_PROVIDER) as Provider) || "ollama",
   );
@@ -131,6 +137,32 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto pr-1">
+          {/* Quick links to management pages */}
+          <div className="space-y-1.5 rounded-md border border-border p-2">
+            <Label className="px-1.5 text-xs text-muted-foreground uppercase tracking-wider">
+              Quản lý
+            </Label>
+            {[
+              { icon: Clock, label: "Scheduled agents", desc: "Lên lịch tác nhân tự động", path: "/schedules" },
+              { icon: ActivityIcon, label: "Nhật ký hoạt động", desc: "Lịch sử công cụ đã chạy", path: "/activity" },
+              { icon: Brain, label: "Bộ nhớ dài hạn", desc: "Sự kiện AI ghi nhớ về bạn", path: "/memories" },
+            ].map(({ icon: Icon, label, desc, path }) => (
+              <button
+                key={path}
+                type="button"
+                onClick={() => goTo(path)}
+                className="w-full flex items-center gap-3 px-2 py-2 rounded-md hover:bg-muted/50 transition-colors text-left group"
+              >
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{label}</div>
+                  <div className="text-xs text-muted-foreground truncate">{desc}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            ))}
+          </div>
+
           <div className="space-y-2 rounded-md border border-border p-3">
             <Label>Giao diện</Label>
             <div className="grid grid-cols-3 gap-2">
