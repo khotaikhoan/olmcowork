@@ -48,7 +48,7 @@ export function FullAutoToggle() {
         <Switch checked={on} onCheckedChange={setFullAuto} />
       </div>
       {on && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+        <div className="mt-2 flex items-start gap-1.5 rounded-md bg-destructive/10 border border-destructive/30 px-2 py-1.5 text-[11px] text-destructive">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
             AI có thể chạy lệnh nguy hiểm mà không cần bạn duyệt. Chỉ bật khi

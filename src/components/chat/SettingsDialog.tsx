@@ -26,6 +26,7 @@ import { OPENAI_MODELS } from "@/lib/openai";
 import { useTheme, Theme } from "@/hooks/useTheme";
 import { Sun, Moon, Monitor, Clock, Activity as ActivityIcon, Brain, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { FullAutoToggle } from "./FullAutoToggle";
 
 export type Provider = "ollama" | "openai";
 
