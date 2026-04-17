@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useUpdater } from "@/hooks/useUpdater";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
+import { toast } from "sonner";
 
 function fmtBytes(n: number): string {
   if (!n || n < 0) return "0 B";
