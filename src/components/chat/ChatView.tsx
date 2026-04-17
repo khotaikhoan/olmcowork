@@ -1438,6 +1438,12 @@ export function ChatView({
           <PlanCard
             steps={pendingPlan.steps}
             loading={pendingPlan.loading}
+            empty={!pendingPlan.loading && pendingPlan.steps.length === 0}
+            onRetry={() => {
+              const { prompt, attachments } = pendingPlan;
+              setPendingPlan({ prompt, attachments, steps: [], loading: true });
+              runPlanGeneration(prompt, attachments);
+            }}
             onApprove={(approvedSteps) => {
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
