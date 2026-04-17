@@ -106,7 +106,22 @@ export function ToolCallCard({
       return `(${call.args.coordinate[0]}, ${call.args.coordinate[1]})`;
     if (call.name === "computer" && call.args.text)
       return `"${String(call.args.text).slice(0, 60)}"`;
+    if (call.name === "fetch_url") return String(call.args.url ?? "");
+    if (call.name === "web_search") return `"${String(call.args.query ?? "").slice(0, 60)}"`;
     return "";
+  })();
+
+  // Parse fetch_url result text (produced in src/lib/bridge.ts) into structured fields.
+  const urlInfo = (() => {
+    if (v.kind !== "url" || !call.result) return null;
+    const r = call.result;
+    const url = r.match(/^URL:\s*(.+)$/m)?.[1]?.trim() ?? String(call.args.url ?? "");
+    const title = r.match(/^Title:\s*(.+)$/m)?.[1]?.trim();
+    const description = r.match(/^Description:\s*(.+)$/m)?.[1]?.trim();
+    const image = r.match(/^Image:\s*(.+)$/m)?.[1]?.trim();
+    const bodyMatch = r.match(/\nContent[^\n]*:\n([\s\S]+)$/);
+    const body = bodyMatch?.[1]?.trim();
+    return { url, title, description, image, body };
   })();
 
   return (
