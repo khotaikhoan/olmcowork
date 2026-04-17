@@ -5,6 +5,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Button } from "@/components/ui/button";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
+import { CodeRunner } from "./CodeRunner";
 
 function CodeBlock({ language, value }: { language: string; value: string }) {
   const [copied, setCopied] = useState(false);
@@ -17,14 +18,17 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
     <div className="relative group my-3 rounded-lg overflow-hidden border border-border">
       <div className="flex items-center justify-between px-3 py-1.5 bg-muted text-xs text-muted-foreground">
         <span>{language || "text"}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 px-2"
-          onClick={copy}
-        >
-          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          <CodeRunner code={value} language={language || "text"} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2"
+            onClick={copy}
+          >
+            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          </Button>
+        </div>
       </div>
       <SyntaxHighlighter
         language={language || "text"}
