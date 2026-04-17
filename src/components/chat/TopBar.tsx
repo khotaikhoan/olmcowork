@@ -124,6 +124,7 @@ export function TopBar({
   onLockedAppChange,
   agentId,
   onAgentChange,
+  extraSlot,
 }: Props) {
   const activeAgent = getAgent(agentId);
   const ActiveAgentIcon = activeAgent.icon;
