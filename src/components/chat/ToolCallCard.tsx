@@ -283,18 +283,67 @@ export function ToolCallCard({
             </div>
           )}
 
-          {/* web_search → numbered list of result chips */}
-          {v.kind === "search" && (
-            <div className="bg-muted/20 p-3 space-y-2">
-              {call.result ? (
-                <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-72 whitespace-pre-wrap">
-                  {call.result}
-                </pre>
-              ) : (
-                <div className="text-xs text-muted-foreground">Đang tìm…</div>
-              )}
-            </div>
-          )}
+          {/* web_search → list of result cards */}
+          {v.kind === "search" && (() => {
+            const m = call.result?.match(/^<!--web_search:([\s\S]*?)-->/);
+            let parsed: { query: string; results: { title: string; url: string; snippet: string }[] } | null = null;
+            if (m) { try { parsed = JSON.parse(m[1]); } catch { /* ignore */ } }
+            const visibleText = call.result?.replace(/^<!--web_search:[\s\S]*?-->\n?/, "") ?? "";
+            return (
+              <div className="bg-muted/20 p-3 space-y-2">
+                {parsed && parsed.results.length > 0 ? (
+                  <>
+                    <div className="text-[11px] text-muted-foreground">
+                      {parsed.results.length} kết quả cho{" "}
+                      <span className="font-mono text-foreground">"{parsed.query}"</span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {parsed.results.map((r, i) => {
+                        let host = "";
+                        try { host = new URL(r.url).hostname; } catch { /* ignore */ }
+                        return (
+                          <li key={i}>
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group block rounded-lg border border-border bg-card hover:bg-muted/40 transition px-3 py-2"
+                            >
+                              <div className="flex items-center gap-2 mb-0.5">
+                                {host && (
+                                  <img
+                                    src={`https://www.google.com/s2/favicons?domain=${host}&sz=32`}
+                                    alt=""
+                                    className="h-3.5 w-3.5 rounded-sm shrink-0"
+                                    onError={(e) => ((e.currentTarget.style.display = "none"))}
+                                  />
+                                )}
+                                <span className="text-[11px] text-muted-foreground truncate">{host || r.url}</span>
+                              </div>
+                              <div className="text-sm font-medium text-foreground group-hover:text-primary line-clamp-1">
+                                {r.title}
+                              </div>
+                              {r.snippet && (
+                                <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                  {r.snippet}
+                                </div>
+                              )}
+                            </a>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                ) : visibleText ? (
+                  <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-72 whitespace-pre-wrap">
+                    {visibleText}
+                  </pre>
+                ) : (
+                  <div className="text-xs text-muted-foreground">Đang tìm…</div>
+                )}
+              </div>
+            );
+          })()}
           {v.kind === "generic" && (
             <div className="bg-muted/20 p-3 space-y-2">
               <pre className="p-2 rounded-md border border-border bg-background text-xs font-mono overflow-auto max-h-40">

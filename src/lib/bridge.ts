@@ -52,7 +52,10 @@ async function webSearchTool(query: string, limit?: number): Promise<ExecResult>
     const text = results
       .map((r, i) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.snippet}`)
       .join("\n\n");
-    return { ok: true, output: text };
+    // Prepend a machine-readable marker so the UI can render rich cards while the
+    // model still sees the human-readable list.
+    const marker = `<!--web_search:${JSON.stringify({ query, results })}-->\n`;
+    return { ok: true, output: marker + text };
   } catch (e: any) {
     return { ok: false, output: `web_search failed: ${e?.message ?? String(e)}` };
   }
