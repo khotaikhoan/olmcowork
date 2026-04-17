@@ -95,7 +95,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder="Message Ollama… (Shift+Enter for newline, drop images to attach)"
+          placeholder="Nhắn cho Ollama… (Shift+Enter để xuống dòng, kéo thả ảnh để đính kèm)"
           disabled={disabled}
           className="min-h-[52px] max-h-60 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
         />
@@ -116,22 +116,22 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
               disabled={disabled}
             >
               <ImagePlus className="h-4 w-4 mr-1" />
-              Image
+              Ảnh
             </Button>
           </div>
           {isStreaming ? (
             <Button onClick={onStop} variant="destructive" size="sm">
-              <Square className="h-3.5 w-3.5 mr-1" /> Stop
+              <Square className="h-3.5 w-3.5 mr-1" /> Dừng
             </Button>
           ) : (
             <Button onClick={submit} size="sm" disabled={disabled || (!text.trim() && attachments.length === 0)}>
-              <Send className="h-3.5 w-3.5 mr-1" /> Send
+              <Send className="h-3.5 w-3.5 mr-1" /> Gửi
             </Button>
           )}
         </div>
       </div>
       <p className="text-[11px] text-muted-foreground text-center mt-2">
-        Connects directly to your local Ollama. Set <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> when using in browser.
+        Kết nối trực tiếp tới Ollama trên máy bạn. Đặt <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> khi dùng trong trình duyệt.
       </p>
     </div>
   );
