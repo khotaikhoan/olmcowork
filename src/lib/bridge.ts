@@ -144,6 +144,8 @@ export interface BridgeAPI {
   ollamaStatus: () => Promise<ExecResult & { running: boolean; managed: boolean }>;
   getFrontmostApp: () => Promise<ExecResult & { app: string | null }>;
   listApps: () => Promise<ExecResult & { apps: string[] }>;
+  /** Phase 3: Playwright browser automation. Returns image base64 only for action=screenshot. */
+  browser: (payload: Record<string, any>) => Promise<ExecResult & { image?: string }>;
 }
 
 declare global {
@@ -199,6 +201,9 @@ export async function executeTool(
     return { ok: r.ok, output: summary, image: r.image, marks };
   }
 
+  if (name === "browser") {
+    return b.browser(args);
+  }
   if (name === "vision_click") {
     const action = String(args.action ?? "");
     if (action === "annotate") {

@@ -119,6 +119,49 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "browser",
+    risk: "medium",
+    description:
+      "Headless Chromium browser automation (Playwright). Persists 1 page across calls. Use for: web scraping, form filling, login flows, multi-step web tasks. Always navigate first, then click_selector/fill/press, then get_html/get_text/screenshot to observe. CSS selectors only (no XPath). Close when done.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: [
+            "navigate",
+            "click_selector",
+            "fill",
+            "press",
+            "get_html",
+            "get_text",
+            "screenshot",
+            "wait_for",
+            "eval",
+            "close",
+          ],
+          description:
+            "navigate=goto URL; click_selector=click CSS selector; fill=type into input; press=keyboard key (Enter, Tab…); get_html/get_text=read page or selector; screenshot=PNG of page; wait_for=wait for selector to appear; eval=run JS expression; close=shut down browser.",
+        },
+        url: { type: "string", description: "Absolute http(s) URL. Required for action=navigate." },
+        selector: {
+          type: "string",
+          description:
+            "CSS selector (e.g. 'input[name=q]', '#submit', '.btn-primary'). Required for click_selector/fill/wait_for; optional for press/get_html/get_text.",
+        },
+        value: { type: "string", description: "Text to type. Required for action=fill." },
+        key: { type: "string", description: "Key name (e.g. 'Enter', 'Tab'). Default: Enter. For action=press." },
+        timeout: { type: "number", description: "Timeout ms for wait_for. Default 15000." },
+        fullPage: { type: "boolean", description: "Full-page screenshot. Default false." },
+        expression: {
+          type: "string",
+          description: "JS expression evaluated in page context. For action=eval. Returns JSON-stringified result.",
+        },
+      },
+      required: ["action"],
+    },
+  },
+  {
     name: "bash",
     anthropic_type: "bash_20241022",
     risk: "high",
@@ -173,7 +216,7 @@ export const TOOLS_BY_NAME: Record<string, ToolDef> = Object.fromEntries(
 export type ConversationMode = "chat" | "control";
 
 /** Names of tools allowed in Chat mode (read-only inspection only). */
-export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search"]);
+export const CHAT_MODE_TOOL_NAMES = new Set<string>(["text_editor", "fetch_url", "web_search", "browser"]);
 
 /**
  * Filter the tool registry by mode. In chat mode we still expose `text_editor`
@@ -213,6 +256,11 @@ export function isActionAllowedInMode(
 ): boolean {
   if (mode === "control") return true;
   if (name === "fetch_url" || name === "web_search") return true;
+  if (name === "browser") {
+    // Read-only / navigation actions allowed in Chat mode; mutations require Control.
+    const a = String(args.action ?? "");
+    return ["navigate", "get_html", "get_text", "screenshot", "wait_for", "close"].includes(a);
+  }
   if (name !== "text_editor") return false;
   const a = String(args.action ?? "");
   return a === "view" || a === "list_dir";
@@ -248,6 +296,11 @@ export function effectiveRisk(name: string, args: Record<string, any>): RiskLeve
     return "high";
   }
   if (name === "observe_screen") return "low";
+  if (name === "browser") {
+    const a = String(args.action ?? "");
+    if (["navigate", "get_html", "get_text", "screenshot", "wait_for", "close", "eval"].includes(a)) return "low";
+    return "medium"; // click/fill/press = mutation in remote site
+  }
   return TOOLS_BY_NAME[name]?.risk ?? "high";
 }
 

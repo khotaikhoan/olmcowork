@@ -474,15 +474,18 @@ export function ChatView({
           content: result.output,
         });
 
-        // Vision flow: screenshot OR observe_screen → feed image back to model
+        // Vision flow: screenshot OR observe_screen OR browser.screenshot → feed image back
         const isVisionCapture =
           (tc.function.name === "computer" && args.action === "screenshot") ||
-          tc.function.name === "observe_screen";
+          tc.function.name === "observe_screen" ||
+          (tc.function.name === "browser" && args.action === "screenshot");
         if (isVisionCapture && result.ok && result.image) {
           const note =
             tc.function.name === "observe_screen"
               ? "[Screen observation attached] Use the marks list above + image to pick next vision_click(mark_id) or computer.* action."
-              : "[Screenshot attached] Analyze what you see and continue the task.";
+              : tc.function.name === "browser"
+                ? "[Browser screenshot attached] Decide the next browser.* action (click_selector/fill/navigate)."
+                : "[Screenshot attached] Analyze what you see and continue the task.";
           working.push({
             role: "user",
             content: note,
@@ -578,15 +581,18 @@ export function ChatView({
 
         working.push({ role: "tool", tool_call_id: tc.id, content: result.output });
 
-        // Vision: screenshot OR observe_screen → send back as image_url
+        // Vision: screenshot OR observe_screen OR browser.screenshot → image_url back to model
         const isVisionCapture =
           (tc.function.name === "computer" && args.action === "screenshot") ||
-          tc.function.name === "observe_screen";
+          tc.function.name === "observe_screen" ||
+          (tc.function.name === "browser" && args.action === "screenshot");
         if (isVisionCapture && result.ok && result.image) {
           const note =
             tc.function.name === "observe_screen"
               ? "[Screen observation attached] Use marks list + image to choose next vision_click(mark_id) or computer.* action."
-              : "[Screenshot attached] Analyze what you see and continue the task.";
+              : tc.function.name === "browser"
+                ? "[Browser screenshot attached] Decide the next browser.* action."
+                : "[Screenshot attached] Analyze what you see and continue the task.";
           working.push({
             role: "user",
             content: [

@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("bridge", {
   // Focus app lock (Control mode)
   getFrontmostApp: () => invoke("bridge:get_frontmost_app"),
   listApps: () => invoke("bridge:list_apps"),
+  // Phase 3: Playwright browser automation
+  browser: (payload) => invoke("bridge:browser", payload),
   startOllama: () => invoke("bridge:start_ollama"),
   stopOllama: () => invoke("bridge:stop_ollama"),
   ollamaStatus: () => invoke("bridge:ollama_status"),
