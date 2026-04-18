@@ -63,6 +63,10 @@ interface DbMessage {
   attachments: { name: string; dataUrl: string; base64?: string }[] | null;
   tool_calls: ToolCallRecord[] | null;
   created_at: string;
+  /** Optimistic state — true while the row is in-flight to Supabase. */
+  pending?: boolean;
+  /** Set when the optimistic insert fails; used to render a Retry button. */
+  failed?: boolean;
 }
 
 interface Props {
