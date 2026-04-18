@@ -105,6 +105,8 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
   );
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => isSoundEnabled());
+  const [soundBgOnly, setSoundBgOnlyState] = useState<boolean>(() => isBackgroundOnly());
   const [openSections, setOpenSections] = useState<string[]>(() => {
     if (typeof localStorage === "undefined") return ["ai"];
     try {
