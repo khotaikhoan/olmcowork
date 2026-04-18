@@ -245,8 +245,16 @@ export function MessageBubble({
             )}
           </div>
         )}
-        {!streaming && content && !editing && (
-          <MessageActions
+        {!isUser && !streaming && onContinue && (
+          <button
+            onClick={onContinue}
+            className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors animate-fade-in"
+            title={continueReason ? `Có vẻ bị cắt: ${continueReason}` : "Tiếp tục câu trả lời từ chỗ này"}
+          >
+            <ArrowDownToLine className="h-3 w-3" />
+            Tiếp tục từ đây
+          </button>
+        )}
             content={content}
             onRegenerate={!isUser ? onRegenerate : undefined}
             onEdit={isUser && onEditSubmit ? () => setEditing(true) : undefined}
