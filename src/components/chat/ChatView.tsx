@@ -1054,19 +1054,51 @@ export function ChatView({
         base64: a.base64,
       }));
 
-      const { data: userMsg, error: e1 } = await supabase
-        .from("messages")
-        .insert({
-          conversation_id: convId,
-          user_id: user.id,
-          role: "user",
-          content: text,
-          attachments: atts.length > 0 ? atts : null,
-        })
-        .select("id,role,content,attachments,tool_calls,created_at")
-        .single();
-      if (e1) throw e1;
-      setMessages((p) => [...p, userMsg as unknown as DbMessage]);
+      // ── Optimistic insert ───────────────────────────────────────────────
+      // Show the user's message instantly with a temp id + pending flag, then
+      // swap with the real row once Supabase confirms. On failure, mark the
+      // optimistic row as `failed` so the bubble can offer a Retry button.
+      const optimisticId = `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const optimisticMsg: DbMessage = {
+        id: optimisticId,
+        role: "user",
+        content: text,
+        attachments: atts.length > 0 ? atts : null,
+        tool_calls: null,
+        created_at: new Date().toISOString(),
+        pending: true,
+      };
+      setMessages((p) => [...p, optimisticMsg]);
+
+      let userMsg: DbMessage | null = null;
+      try {
+        const { data, error: e1 } = await supabase
+          .from("messages")
+          .insert({
+            conversation_id: convId,
+            user_id: user.id,
+            role: "user",
+            content: text,
+            attachments: atts.length > 0 ? atts : null,
+          })
+          .select("id,role,content,attachments,tool_calls,created_at")
+          .single();
+        if (e1) throw e1;
+        userMsg = data as unknown as DbMessage;
+        // Replace the optimistic row with the real one.
+        setMessages((p) =>
+          p.map((m) => (m.id === optimisticId ? (userMsg as DbMessage) : m)),
+        );
+      } catch (insertErr: any) {
+        // Mark the optimistic row as failed so the user can retry.
+        setMessages((p) =>
+          p.map((m) =>
+            m.id === optimisticId ? { ...m, pending: false, failed: true } : m,
+          ),
+        );
+        throw insertErr;
+      }
+
 
       // Build Ollama history
       const agent = getAgent(agentId);
