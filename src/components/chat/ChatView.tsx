@@ -862,6 +862,9 @@ export function ChatView({
 
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
+    // User actively engaging — clear the unread divider.
+    setFirstUnreadId(null);
+    lastSeenIdRef.current = null;
     // Behavior learning: track total user messages so the empty-state can hide
     // suggestions for power users (≥10 messages). Increment ONCE per send.
     try {
