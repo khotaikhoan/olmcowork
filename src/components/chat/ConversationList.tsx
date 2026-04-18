@@ -1,30 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { OculoLogo } from "@/components/OculoLogo";
 import {
   Plus,
-  MessageSquare,
-  MoreHorizontal,
-  Trash2,
-  Pencil,
   Search,
   Settings,
   LogOut,
-  Pin,
-  PinOff,
-  Monitor,
   PanelLeftClose,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -32,6 +28,7 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getPins, togglePin } from "@/lib/pins";
 import type { ConversationMode } from "@/lib/tools";
+import { ConversationItem } from "./ConversationItem";
 
 export interface Conversation {
   id: string;
@@ -64,6 +61,7 @@ export function ConversationList({
   const [items, setItems] = useState<Conversation[]>([]);
   const [q, setQ] = useState("");
   const [pinSet, setPinSet] = useState<Set<string>>(new Set(getPins()));
+  const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -78,19 +76,20 @@ export function ConversationList({
     load();
   }, [refreshKey]);
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("conversations").delete().eq("id", id);
+  const confirmDelete = async () => {
+    const target = pendingDelete;
+    if (!target) return;
+    setPendingDelete(null);
+    const { error } = await supabase.from("conversations").delete().eq("id", target.id);
     if (error) return toast.error(error.message);
-    if (selectedId === id) onNew();
+    if (selectedId === target.id) onNew();
     load();
   };
 
-  const rename = async (id: string, current: string) => {
-    const t = window.prompt("Đổi tên cuộc trò chuyện", current);
-    if (!t) return;
+  const rename = async (id: string, newTitle: string) => {
     const { error } = await supabase
       .from("conversations")
-      .update({ title: t })
+      .update({ title: newTitle })
       .eq("id", id);
     if (error) return toast.error(error.message);
     load();
@@ -101,63 +100,17 @@ export function ConversationList({
     setPinSet(new Set(getPins()));
   };
 
-  const filtered = items.filter((i) => i.title.toLowerCase().includes(q.toLowerCase()));
-  const pinned = filtered.filter((i) => pinSet.has(i.id));
-  const others = filtered.filter((i) => !pinSet.has(i.id));
-
-  const renderItem = (c: Conversation) => (
-    <div
-      key={c.id}
-      onClick={() => onSelect(c.id)}
-      className={cn(
-        "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer text-sm transition-all duration-150",
-        selectedId === c.id
-          ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-          : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-      )}
-    >
-      {pinSet.has(c.id) ? (
-        <Pin className="h-3.5 w-3.5 shrink-0 text-primary fill-primary/30" />
-      ) : c.mode === "control" ? (
-        <Monitor className="h-3.5 w-3.5 shrink-0 text-warning" />
-      ) : (
-        <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-60" />
-      )}
-      <span className="flex-1 truncate">{c.title}</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            onClick={(e) => e.stopPropagation()}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-sidebar-border transition"
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuItem onClick={() => handlePin(c.id)}>
-            {pinSet.has(c.id) ? (
-              <>
-                <PinOff className="h-3.5 w-3.5 mr-2" /> Bỏ ghim
-              </>
-            ) : (
-              <>
-                <Pin className="h-3.5 w-3.5 mr-2" /> Ghim
-              </>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => rename(c.id, c.title)}>
-            <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => remove(c.id)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
-  );
+  const { pinned, others, hasMatches } = useMemo(() => {
+    const needle = q.toLowerCase();
+    const filtered = needle
+      ? items.filter((i) => i.title.toLowerCase().includes(needle))
+      : items;
+    return {
+      pinned: filtered.filter((i) => pinSet.has(i.id)),
+      others: filtered.filter((i) => !pinSet.has(i.id)),
+      hasMatches: filtered.length > 0,
+    };
+  }, [items, q, pinSet]);
 
   return (
     <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen">
@@ -216,7 +169,7 @@ export function ConversationList({
 
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-0.5 pb-2">
-          {filtered.length === 0 && (
+          {!hasMatches && (
             <p className="text-xs text-muted-foreground text-center py-8 px-3">
               Chưa có cuộc trò chuyện nào
             </p>
@@ -226,11 +179,33 @@ export function ConversationList({
               <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Đã ghim
               </div>
-              {pinned.map(renderItem)}
+              {pinned.map((c) => (
+                <ConversationItem
+                  key={c.id}
+                  conversation={c}
+                  selected={selectedId === c.id}
+                  pinned
+                  onSelect={() => onSelect(c.id)}
+                  onPin={() => handlePin(c.id)}
+                  onRenameSubmit={(t) => rename(c.id, t)}
+                  onRequestDelete={() => setPendingDelete(c)}
+                />
+              ))}
               {others.length > 0 && <div className="h-px bg-sidebar-border my-2 mx-2" />}
             </>
           )}
-          {others.map(renderItem)}
+          {others.map((c) => (
+            <ConversationItem
+              key={c.id}
+              conversation={c}
+              selected={selectedId === c.id}
+              pinned={false}
+              onSelect={() => onSelect(c.id)}
+              onPin={() => handlePin(c.id)}
+              onRenameSubmit={(t) => rename(c.id, t)}
+              onRequestDelete={() => setPendingDelete(c)}
+            />
+          ))}
         </div>
       </ScrollArea>
 
@@ -249,6 +224,27 @@ export function ConversationList({
           <LogOut className="h-4 w-4 mr-2" /> Đăng xuất
         </Button>
       </div>
+
+      <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xoá cuộc trò chuyện?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{pendingDelete?.title}" cùng toàn bộ tin nhắn sẽ bị xoá vĩnh viễn.
+              Hành động này không thể hoàn tác.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Xoá
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </aside>
   );
 }
