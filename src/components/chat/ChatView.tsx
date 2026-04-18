@@ -976,14 +976,18 @@ export function ChatView({
       // Resume helper — persists partial text per conversation while streaming.
       // Only used for plain (no-tools) streaming paths; tool loops are not resumable.
       resumeSavedAtThisSessionRef.current = false;
+      latestPartialRef.current = null;
       const persistPartial = (acc: string) => {
         if (toolsEnabled) return;
         if (acc.length < 20) return; // avoid noise on first few tokens
+        latestPartialRef.current = { convId, text: acc };
         throttledSaveRef.current(() => {
-          saveResumeState(convId, {
+          const lp = latestPartialRef.current;
+          if (!lp) return;
+          saveResumeState(lp.convId, {
             prompt: text,
             attachmentsMeta: attachmentsToMeta(attachments),
-            partial: acc,
+            partial: lp.text,
             provider,
             model: usingOpenAI ? openaiModel : model,
             startedAt: streamStartRef.current,
