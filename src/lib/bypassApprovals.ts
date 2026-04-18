@@ -58,8 +58,8 @@ export function getBypass(convId: string | null): boolean {
 
 export function setBypass(convId: string, v: boolean) {
   const m = readMap();
-  if (v) m[convId] = true;
-  else delete m[convId];
+  // Always store explicit value so per-conv choice overrides the global default.
+  m[convId] = v;
   writeMap(m);
   listeners.forEach((fn) => fn(convId, v));
 }
