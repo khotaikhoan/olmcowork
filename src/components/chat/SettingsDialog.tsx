@@ -47,6 +47,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
 import { isElectron } from "@/lib/bridge";
+import {
+  isSoundEnabled, setSoundEnabled,
+  isBackgroundOnly, setBackgroundOnly,
+  playSound,
+} from "@/lib/sounds";
 
 export type Provider = "ollama" | "openai";
 
