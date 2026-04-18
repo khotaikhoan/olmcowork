@@ -78,16 +78,6 @@ function bucketOf(iso: string): GroupKey {
   return "older";
 }
 
-function cleanPreview(s: string): string {
-  // Strip code fences, markdown headings, leading whitespace; collapse newlines.
-  return s
-    .replace(/```[\s\S]*?```/g, "[code]")
-    .replace(/^\s*#{1,6}\s+/gm, "")
-    .replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 export function ConversationList({
   selectedId,
   onSelect,
