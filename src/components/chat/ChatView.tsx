@@ -529,10 +529,59 @@ export function ChatView({
     }
   };
 
+  // ── Smart scroll: only auto-stick to bottom when user is already near it.
+  // If they scrolled up to read history, we keep their position and surface a
+  // floating "↓ N tin mới" pill instead of yanking them down.
+  const NEAR_BOTTOM_PX = 120;
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [newSinceScroll, setNewSinceScroll] = useState(0);
+  const lastMessageCountRef = useRef(0);
+
+  // Resolve the actual scrollable viewport (Radix ScrollArea wraps it).
+  const getViewport = (): HTMLElement | null => {
+    const inner = scrollRef.current;
+    if (!inner) return null;
+    return (
+      (inner.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null) ??
+      inner
+    );
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    const vp = getViewport();
+    if (!vp) return;
+    vp.scrollTo({ top: vp.scrollHeight, behavior });
+    setNewSinceScroll(0);
+    setIsAtBottom(true);
+  };
+
+  // Track scroll position to know whether we're "stuck to bottom".
   useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, streamingText, streamingToolCalls]);
+    const vp = getViewport();
+    if (!vp) return;
+    const onScroll = () => {
+      const distance = vp.scrollHeight - vp.scrollTop - vp.clientHeight;
+      const atBottom = distance < NEAR_BOTTOM_PX;
+      setIsAtBottom(atBottom);
+      if (atBottom) setNewSinceScroll(0);
+    };
+    vp.addEventListener("scroll", onScroll, { passive: true });
+    return () => vp.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Auto-scroll only when user is at/near the bottom; otherwise count new msgs.
+  useEffect(() => {
+    const vp = getViewport();
+    if (!vp) return;
+    if (isAtBottom) {
+      vp.scrollTo({ top: vp.scrollHeight, behavior: "auto" });
+    } else {
+      const delta = messages.length - lastMessageCountRef.current;
+      if (delta > 0) setNewSinceScroll((c) => c + delta);
+    }
+    lastMessageCountRef.current = messages.length;
+  }, [messages, streamingText, streamingToolCalls, isAtBottom]);
+
 
   // Lift artifacts from messages (+ in-flight stream) up to parent
   useEffect(() => {
