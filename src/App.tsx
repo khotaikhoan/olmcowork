@@ -28,7 +28,7 @@ function Root() {
   if (loading) return null;
   return user ? <Index /> : <Landing />;
 }
-import { OnboardingTour } from "./components/chat/OnboardingTour";
+
 import { OculoIntro } from "./components/OculoIntro";
 
 const queryClient = new QueryClient();
@@ -53,7 +53,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </CommandPaletteProvider>
-            <OnboardingTour />
+            
             <OculoIntro />
           </AuthProvider>
         </Router>
