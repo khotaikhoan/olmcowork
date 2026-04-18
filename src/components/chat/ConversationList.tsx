@@ -121,6 +121,37 @@ export function ConversationList({
     load();
   }, [refreshKey]);
 
+  // Realtime: refresh sidebar when conversations or messages change.
+  // Debounced to coalesce streaming token bursts into a single reload.
+  useEffect(() => {
+    if (!user?.id) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        load();
+      }, 400);
+    };
+    const channel = supabase
+      .channel("sidebar-conv-sync")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations", filter: `user_id=eq.${user.id}` },
+        schedule,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages", filter: `user_id=eq.${user.id}` },
+        schedule,
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const confirmDelete = async () => {
     const target = pendingDelete;
     if (!target) return;
