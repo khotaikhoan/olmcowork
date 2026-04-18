@@ -28,7 +28,6 @@ import {
   Cpu,
   MemoryStick,
   Search,
-  Download,
   FileJson,
   FileText,
   ChevronDown,
@@ -155,13 +154,6 @@ export function TopBar({
         </Button>
       )}
 
-      {/* Title — hidden on very narrow screens to save space */}
-      <Input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        className="h-8 w-32 sm:w-44 max-w-xs border-0 bg-transparent font-medium text-sm focus-visible:ring-1 shrink min-w-0 px-2 hidden sm:block"
-      />
-
       {/* Essentials: Mode + Model */}
       <ModeToggle value={mode} onChange={onModeChange} />
 
@@ -169,24 +161,37 @@ export function TopBar({
         <AppLockSelect value={lockedApp} onChange={onLockedAppChange} />
       )}
 
-      <Select value={model} onValueChange={onModelChange}>
-        <SelectTrigger
-          title={provider === "ollama" ? `Model Ollama: ${model || "—"}` : `OpenAI: ${openaiModel}`}
-          className="h-8 w-[110px] sm:w-[160px] lg:w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1 shrink min-w-0"
+      {provider === "ollama" ? (
+        <Select value={model} onValueChange={onModelChange}>
+          <SelectTrigger
+            title={`Model Ollama: ${model || "—"}`}
+            className="h-8 w-[110px] sm:w-[160px] lg:w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1 shrink min-w-0"
+          >
+            <SelectValue placeholder="Chọn model" />
+          </SelectTrigger>
+          <SelectContent>
+            {models.length === 0 && (
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
+            )}
+            {models.map((m) => (
+              <SelectItem key={m.name} value={m.name}>
+                {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="h-8 px-2 text-xs font-mono max-w-[180px] truncate"
+          title={`OpenAI model: ${openaiModel}\nBấm để mở Cài đặt`}
+          onClick={onOpenSettings}
         >
-          <SelectValue placeholder="Chọn model" />
-        </SelectTrigger>
-        <SelectContent>
-          {models.length === 0 && (
-            <div className="px-2 py-1.5 text-xs text-muted-foreground">Không có model nào</div>
-          )}
-          {models.map((m) => (
-            <SelectItem key={m.name} value={m.name}>
-              {m.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          {openaiModel}
+        </Button>
+      )}
 
       <ArmedBadge />
 
@@ -310,22 +315,65 @@ export function TopBar({
         </PopoverContent>
       </Popover>
 
-      {/* Agent picker — minimal icon */}
+      {/* Search + Settings — frequent */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onOpenSearch}
+        title="Tìm trong chat (⌘/Ctrl+F)"
+        className="h-8 w-8"
+      >
+        <Search className="h-3.5 w-3.5" />
+      </Button>
+      {onOpenSettings && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onOpenSettings}
+          title="Cài đặt (⌘,)"
+          className="h-8 w-8"
+        >
+          <Settings2 className="h-4 w-4" />
+        </Button>
+      )}
+
+      {/* Overflow menu: ít dùng (agent, title, system prompt, export, ollama) */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 gap-1.5 px-2"
-            title={`Agent: ${activeAgent.name}\n${activeAgent.description}`}
-          >
-            <ActiveAgentIcon className="h-3.5 w-3.5" />
-            <ChevronDown className="h-3 w-3 opacity-60" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Thêm">
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
-            Chọn agent
+            Hội thoại
+          </DropdownMenuLabel>
+          <Popover>
+            <PopoverTrigger asChild>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2">
+                <Sparkles className="h-3.5 w-3.5" /> Đổi tên…
+              </DropdownMenuItem>
+            </PopoverTrigger>
+            <PopoverContent align="end" side="left" className="w-80">
+              <div className="space-y-2">
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={title}
+                  onChange={(e) => onTitleChange(e.target.value)}
+                  className="h-8"
+                  placeholder="New chat"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  Tip: đổi tiêu đề giúp tìm lại nhanh hơn trong sidebar.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
+            Agent
           </DropdownMenuLabel>
           {AGENTS.map((a) => {
             const Icon = a.icon;
@@ -352,28 +400,7 @@ export function TopBar({
               </DropdownMenuItem>
             );
           })}
-        </DropdownMenuContent>
-      </DropdownMenu>
 
-      {/* Search — keep visible (frequent) */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onOpenSearch}
-        title="Tìm trong chat (⌘/Ctrl+F)"
-        className="h-8 w-8"
-      >
-        <Search className="h-3.5 w-3.5" />
-      </Button>
-
-      {/* Overflow menu: System prompt, Export, Ollama toggle */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Thêm">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel className="text-[11px] text-muted-foreground font-normal">
             Lời nhắc hệ thống
           </DropdownMenuLabel>
