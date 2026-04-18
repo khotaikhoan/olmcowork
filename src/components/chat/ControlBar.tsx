@@ -105,29 +105,32 @@ export function ControlBarCompact(props: ControlBarProps) {
           {toolsEnabled && (
             <div
               className={
-                "flex items-center gap-2 px-2.5 py-2 rounded-md border " +
+                "flex flex-col gap-2 px-2.5 py-2 rounded-md border " +
                 (bypass
                   ? "bg-destructive/10 border-destructive/40 text-destructive"
                   : "bg-background/60 border-border")
               }
             >
-              <ShieldOff className={"h-3.5 w-3.5 " + (bypass ? "" : "opacity-60")} />
-              <div className="flex-1 min-w-0">
-                <Label
-                  htmlFor="bypass-switch-compact"
-                  className="text-xs font-medium cursor-pointer select-none block"
-                >
-                  Bypass duyệt
-                </Label>
-                <div className="text-[10px] text-muted-foreground leading-tight">
-                  Tự duyệt mọi tool — chỉ dùng khi tin tưởng prompt
+              <div className="flex items-center gap-2">
+                <ShieldOff className={"h-3.5 w-3.5 " + (bypass ? "" : "opacity-60")} />
+                <div className="flex-1 min-w-0">
+                  <Label
+                    htmlFor="bypass-switch-compact"
+                    className="text-xs font-medium cursor-pointer select-none block"
+                  >
+                    Bypass duyệt
+                  </Label>
+                  <div className="text-[10px] text-muted-foreground leading-tight">
+                    Tự duyệt mọi tool — chỉ dùng khi tin tưởng prompt
+                  </div>
                 </div>
+                <Switch
+                  id="bypass-switch-compact"
+                  checked={bypass}
+                  onCheckedChange={onBypassChange}
+                />
               </div>
-              <Switch
-                id="bypass-switch-compact"
-                checked={bypass}
-                onCheckedChange={onBypassChange}
-              />
+              <BypassDefaultRow />
             </div>
           )}
 
