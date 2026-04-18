@@ -213,7 +213,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     const ok = await pingOllama(url);
     setStatus(ok ? "ok" : "fail");
     toast[ok ? "success" : "error"](
-      ok ? "Đã kết nối Ollama" : "Không kết nối được Ollama (kiểm tra OLLAMA_ORIGINS=*)",
+      ok
+        ? "Đã kết nối Ollama"
+        : "Không kết nối được Ollama (kiểm tra Ollama đang chạy, OLLAMA_ORIGINS=* trong trình duyệt; macOS Apple Silicon + Homebrew: thử GGML_METAL_TENSOR_DISABLE=1)",
     );
   };
 
@@ -259,7 +261,10 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
           <DialogTitle>Cài đặt</DialogTitle>
           <DialogDescription>
             Cấu hình kết nối tới Ollama trên máy bạn. Để cho phép trình duyệt truy cập, khởi động Ollama bằng{" "}
-            <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>.
+            <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>. Nếu chat báo lỗi tải model
+            (HTTP 500) trên macOS Apple Silicon khi cài Ollama qua Homebrew, thử{" "}
+            <code className="px-1 bg-muted rounded">GGML_METAL_TENSOR_DISABLE=1 OLLAMA_ORIGINS=* ollama serve</code>{" "}
+            (bản Desktop có thể tự đặt biến này khi bấm khởi động Ollama trong app).
           </DialogDescription>
         </DialogHeader>
         <div className="py-1 max-h-[70vh] overflow-y-auto pr-1">

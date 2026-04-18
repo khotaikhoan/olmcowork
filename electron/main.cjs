@@ -783,6 +783,22 @@ ipcMain.handle("bridge:list_apps", async () => {
 });
 
 // ----- Ollama process control -----
+function buildOllamaServeEnv() {
+  const env = { ...process.env, OLLAMA_ORIGINS: "*" };
+  // Homebrew-built Ollama on Apple Silicon can fail Metal shader compilation inside
+  // MetalPerformancePrimitives when probing the Metal 4 "tensor" API (bf16/f16 mismatch),
+  // which surfaces as HTTP 500 "model failed to load" / "llama runner process has terminated".
+  // Upstream workaround: disable the Metal tensor path (Metal still works for normal kernels).
+  if (
+    process.platform === "darwin" &&
+    process.arch === "arm64" &&
+    env.GGML_METAL_TENSOR_DISABLE === undefined
+  ) {
+    env.GGML_METAL_TENSOR_DISABLE = "1";
+  }
+  return env;
+}
+
 function checkOllamaUp(timeoutMs = 1500) {
   return new Promise((resolve) => {
     const req = http.get("http://127.0.0.1:11434/api/tags", { timeout: timeoutMs }, (res) => {
@@ -806,7 +822,7 @@ ipcMain.handle("bridge:start_ollama", async () => {
   const already = await checkOllamaUp();
   if (already) return { ok: true, output: "Ollama is already running.", running: true };
   try {
-    const env = { ...process.env, OLLAMA_ORIGINS: "*" };
+    const env = buildOllamaServeEnv();
     ollamaProc = spawn("ollama", ["serve"], { env, detached: false, stdio: "ignore" });
     ollamaProc.on("exit", () => { ollamaProc = null; });
     ollamaProc.on("error", () => { ollamaProc = null; });
