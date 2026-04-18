@@ -1189,6 +1189,7 @@ export function ChatView({
       const replyTokens = estimateTokens(finalContent);
       setLastReplyStats({ tokens: replyTokens, tps: replyTokens / elapsedSec });
 
+      let savedAssistantId: string | undefined;
       if (finalContent || savedCalls.length) {
         const { data: aMsg } = await supabase
           .from("messages")
@@ -1201,14 +1202,20 @@ export function ChatView({
           })
           .select("id,role,content,attachments,tool_calls,created_at")
           .single();
-        if (aMsg) setMessages((p) => [...p, aMsg as unknown as DbMessage]);
+        if (aMsg) {
+          savedAssistantId = (aMsg as any).id as string;
+          setMessages((p) => [...p, aMsg as unknown as DbMessage]);
+        }
       }
       setStreamingText("");
       setStreamingToolCalls([]);
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
       onTitleUpdated();
-      // Native notification when tab is in background
-      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
+      // Native notification when tab is in background — clicking it focuses
+      // the tab and scrolls the new message into view.
+      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ", {
+        messageId: savedAssistantId,
+      });
     } catch (e: any) {
       setIsStreaming(false);
       setAgentStep(null);
