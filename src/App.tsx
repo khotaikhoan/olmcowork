@@ -29,7 +29,7 @@ function Root() {
   return user ? <Index /> : <Landing />;
 }
 
-import { OculoIntro } from "./components/OculoIntro";
+import { OchatIntro } from "./components/OchatIntro";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +54,7 @@ const App = () => (
               </Routes>
             </CommandPaletteProvider>
             
-            <OculoIntro />
+            <OchatIntro />
           </AuthProvider>
         </Router>
       </TooltipProvider>

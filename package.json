@@ -19,12 +19,12 @@
     "test:watch": "vitest",
     "electron:dev": "ELECTRON_DEV_URL=http://localhost:8080 electron .",
     "electron:build": "vite build && electron .",
-    "electron:package": "vite build && electron-packager . Oculo --overwrite --out=electron-release --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/supabase",
+    "electron:package": "vite build && electron-packager . Ochat --overwrite --out=electron-release --ignore=^/src --ignore=^/public --ignore=^/electron-release --ignore=^/supabase",
     "release": "vite build && electron-builder --mac --publish always"
   },
   "build": {
-    "appId": "com.oculo.app",
-    "productName": "Oculo",
+    "appId": "com.ochat.app",
+    "productName": "Ochat",
     "files": [
       "dist/**/*",
       "electron/**/*",

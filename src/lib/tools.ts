@@ -137,7 +137,7 @@ export const TOOLS: ToolDef[] = [
             "close",
           ],
           description:
-            "Navigation: navigate/back/forward/reload. Tabs: new_tab(url?)/list_tabs/switch_tab(index)/close_tab(index?). Interaction: click/fill/press/wait_for (use locator args). Read: get_html/get_text/screenshot/eval. Files: download (clicks loc that triggers download, saved to ~/Downloads/Oculo) / upload (sets file input). close=shut down browser.",
+            "Navigation: navigate/back/forward/reload. Tabs: new_tab(url?)/list_tabs/switch_tab(index)/close_tab(index?). Interaction: click/fill/press/wait_for (use locator args). Read: get_html/get_text/screenshot/eval. Files: download (clicks loc that triggers download, saved to ~/Downloads/Ochat) / upload (sets file input). close=shut down browser.",
         },
         url: { type: "string", description: "Absolute http(s) URL. For navigate, new_tab(optional)." },
         // Smart selector — provide ONE of these (in order of preference):

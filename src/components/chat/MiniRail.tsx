@@ -5,7 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { OculoLogo } from "@/components/OculoLogo";
+import { OchatLogo } from "@/components/OchatLogo";
 import {
   Plus,
   Search,
@@ -67,7 +67,7 @@ export function MiniRail({ onNew, onOpenSettings, onExpand }: Props) {
               onClick={onExpand}
               className="h-9 w-9 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)] hover:scale-105 transition-transform"
             >
-              <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
+              <OchatLogo size={20} withGradient={false} className="text-primary-foreground" />
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Mở rộng sidebar</TooltipContent>

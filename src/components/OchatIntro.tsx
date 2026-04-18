@@ -1,5 +1,5 @@
 /**
- * OculoIntro — Apple-style cinematic intro played once per session.
+ * OchatIntro — Apple-style cinematic intro played once per session.
  *
  * Design principles (Apple HIG-inspired):
  *   • Single hero element (the eye mark) — no busy concurrent motion.
@@ -18,9 +18,9 @@
  */
 import { useEffect, useState } from "react";
 
-const SESSION_KEY = "oculo.intro.played";
+const SESSION_KEY = "ochat.intro.played";
 
-export function OculoIntro() {
+export function OchatIntro() {
   const [show, setShow] = useState(false);
   const [fading, setFading] = useState(false);
 
@@ -45,28 +45,28 @@ export function OculoIntro() {
 
   return (
     <div
-      className="oculo-intro-overlay"
+      className="ochat-intro-overlay"
       data-fading={fading ? "true" : "false"}
       aria-hidden="true"
     >
       {/* Soft radial spotlight backdrop */}
-      <div className="oculo-intro-spotlight" />
+      <div className="ochat-intro-spotlight" />
 
-      <div className="oculo-intro-stage">
+      <div className="ochat-intro-stage">
         <svg
           viewBox="0 0 64 64"
           width={120}
           height={120}
-          className="oculo-intro-mark"
+          className="ochat-intro-mark"
           role="img"
-          aria-label="Oculo"
+          aria-label="Ochat"
         >
           <defs>
-            <linearGradient id="oculo-intro-grad" x1="0" y1="0" x2="1" y2="1">
+            <linearGradient id="ochat-intro-grad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stopColor="hsl(var(--primary))" />
               <stop offset="100%" stopColor="hsl(var(--accent))" />
             </linearGradient>
-            <radialGradient id="oculo-intro-iris" cx="50%" cy="50%" r="50%">
+            <radialGradient id="ochat-intro-iris" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.0" />
               <stop offset="60%" stopColor="hsl(var(--primary))" stopOpacity="0.18" />
               <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.35" />
@@ -77,13 +77,13 @@ export function OculoIntro() {
           <path
             d="M6 32 Q 32 6 58 32 Q 32 58 6 32 Z"
             fill="none"
-            stroke="url(#oculo-intro-grad)"
+            stroke="url(#ochat-intro-grad)"
             strokeWidth="2.2"
             strokeLinejoin="round"
           />
 
           {/* Iris fill */}
-          <circle cx="32" cy="32" r="13" fill="url(#oculo-intro-iris)" />
+          <circle cx="32" cy="32" r="13" fill="url(#ochat-intro-iris)" />
 
           {/* Iris ring */}
           <circle
@@ -91,7 +91,7 @@ export function OculoIntro() {
             cy="32"
             r="13"
             fill="none"
-            stroke="url(#oculo-intro-grad)"
+            stroke="url(#ochat-intro-grad)"
             strokeWidth="1.4"
             opacity="0.7"
           />
@@ -104,11 +104,11 @@ export function OculoIntro() {
           <circle cx="29" cy="33" r="0.7" fill="hsl(var(--background))" opacity="0.6" />
         </svg>
 
-        <div className="oculo-intro-word" aria-hidden="true">
-          {"Oculo".split("").map((ch, i) => (
+        <div className="ochat-intro-word" aria-hidden="true">
+          {"Ochat".split("").map((ch, i) => (
             <span
               key={i}
-              className="oculo-intro-letter"
+              className="ochat-intro-letter"
               style={{ animationDelay: `${0.55 + i * 0.05}s` }}
             >
               {ch}
@@ -119,3 +119,4 @@ export function OculoIntro() {
     </div>
   );
 }
+

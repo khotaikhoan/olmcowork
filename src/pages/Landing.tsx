@@ -1,9 +1,9 @@
 /**
- * Landing — public hero page for Oculo.
+ * Landing — public hero page for Ochat.
  *
  * Shown at "/" when the visitor is not signed in. Authenticated users are
  * redirected straight to the chat (handled in App routing). Features:
- *   - Large animated OculoLogo as the hero mark
+ *   - Large animated OchatLogo as the hero mark
  *   - Tagline + dual CTAs (Đăng nhập / Dùng thử)
  *   - 3 feature cards: Local Ollama, Cloud AI, Computer Use
  *   - Soft radial gradient background using design tokens
@@ -11,7 +11,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { OculoLogo } from "@/components/OculoLogo";
+import { OchatLogo } from "@/components/OchatLogo";
 import { Cpu, Cloud, MousePointerClick, ArrowRight, Sparkles } from "lucide-react";
 
 const FEATURES = [
@@ -30,7 +30,7 @@ const FEATURES = [
   {
     icon: MousePointerClick,
     title: "Computer Use",
-    body: "Oculo quan sát màn hình, click chuột và gõ phím giúp bạn — agent thật, không chỉ chat.",
+    body: "Ochat quan sát màn hình, click chuột và gõ phím giúp bạn — agent thật, không chỉ chat.",
     accent: "from-primary/25 to-primary/0",
   },
 ];
@@ -61,10 +61,10 @@ export default function Landing() {
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[image:var(--gradient-primary)] shadow-[var(--shadow-soft)]">
-            <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
+            <OchatLogo size={20} withGradient={false} className="text-primary-foreground" />
           </div>
           <span className="font-serif text-lg font-semibold tracking-tight">
-            Oculo
+            Ochat
           </span>
         </div>
         <nav className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export default function Landing() {
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 text-center">
         <div className="mx-auto mb-8 flex h-32 w-32 items-center justify-center">
-          <OculoLogo size={128} />
+          <OchatLogo size={128} />
         </div>
 
         <div className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
@@ -94,7 +94,7 @@ export default function Landing() {
           AI quan sát <span className="bg-[image:var(--gradient-primary)] bg-clip-text text-transparent">&amp; cộng tác</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-          Oculo là người đồng hành AI nhìn được màn hình của bạn, suy nghĩ cùng bạn,
+          Ochat là người đồng hành AI nhìn được màn hình của bạn, suy nghĩ cùng bạn,
           và thao tác máy tính khi bạn cho phép — chạy local hoặc trên cloud.
         </p>
 

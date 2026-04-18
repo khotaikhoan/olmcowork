@@ -102,7 +102,7 @@ async function checkGithubLatest() {
     const req = https.request({
       hostname: "api.github.com",
       path: `/repos/${owner}/${repo}/releases/latest`,
-      headers: { "User-Agent": "ollama-cowork-updater", Accept: "application/vnd.github+json" },
+      headers: { "User-Agent": "ochat-updater", Accept: "application/vnd.github+json" },
     }, (res) => {
       let body = "";
       res.on("data", (c) => (body += c));
@@ -175,7 +175,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: "Ollama Cowork",
+    title: "Ochat",
     backgroundColor: "#0f0f10",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

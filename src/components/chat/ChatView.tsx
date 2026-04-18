@@ -49,7 +49,7 @@ import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
 import { notifyDone, primeNotificationPermission } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
-import { setOculoState } from "@/components/OculoLogo";
+import { setOchatState } from "@/components/OchatLogo";
 import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
 import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
@@ -89,7 +89,7 @@ interface Props {
   onOpenSettings?: () => void;
 }
 
-const CONTROL_SAFETY_SESSION_KEY = "oculo.controlSafety.dismissed";
+const CONTROL_SAFETY_SESSION_KEY = "ochat.controlSafety.dismissed";
 
 function focusChatInput() {
   requestAnimationFrame(() => {
@@ -690,14 +690,14 @@ export function ChatView({
     onArtifactsChange(all);
   }, [messages, streamingText, isStreaming, onArtifactsChange]);
 
-  // Drive the global Oculo logo state — thinking when streaming with no
+  // Drive the global Ochat logo state — thinking when streaming with no
   // text yet, speaking once tokens arrive, idle otherwise.
   useEffect(() => {
     if (!isStreaming) {
-      setOculoState("idle");
+      setOchatState("idle");
       return;
     }
-    setOculoState(streamingText ? "speaking" : "thinking");
+    setOchatState(streamingText ? "speaking" : "thinking");
   }, [isStreaming, streamingText]);
 
   const persistConv = async (id: string, patch: Partial<{ title: string; model: string; system_prompt: string }>) => {

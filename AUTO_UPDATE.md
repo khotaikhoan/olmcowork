@@ -24,8 +24,8 @@ Thêm block `build` cùng cấp với `dependencies` (thay `<USERNAME>` và `<RE
 
 ```json
 "build": {
-  "appId": "com.ollamacowork.app",
-  "productName": "OllamaCowork",
+  "appId": "com.ochat.app",
+  "productName": "Ochat",
   "files": ["dist/**/*", "electron/**/*", "package.json"],
   "mac": {
     "target": ["dmg", "zip"],

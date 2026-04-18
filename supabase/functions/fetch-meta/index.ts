@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const res = await fetch(u.toString(), {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (compatible; Oculo-Preview/1.0; +https://olmcowork.lovable.app)",
+          "Mozilla/5.0 (compatible; Ochat-Preview/1.0; +https://olmcowork.lovable.app)",
         Accept: "text/html,application/xhtml+xml",
       },
       signal: ctrl.signal,

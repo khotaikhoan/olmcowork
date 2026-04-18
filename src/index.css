@@ -225,79 +225,79 @@
     @apply rounded-2xl border-2 border-dashed border-primary bg-background/80 px-10 py-8 text-center;
   }
 
-  /* ============== Oculo animated logo (naturalistic eye) ============== */
-  .oculo-logo { overflow: visible; }
+  /* ============== Ochat animated logo (naturalistic eye) ============== */
+  .ochat-logo { overflow: visible; }
 
   /* Blink: upper mask slides DOWN to y=32, lower mask slides UP to y=32.
      The two halves meet at the centreline → eye CLOSES naturally.
      This avoids the old scaleY trick which collapsed the whole shape. */
-  .oculo-logo .oculo-mask-top {
+  .ochat-logo .ochat-mask-top {
     transform-box: view-box;
-    animation: oculo-blink-top var(--oculo-blink-dur, 6.5s) ease-in-out infinite;
+    animation: ochat-blink-top var(--ochat-blink-dur, 6.5s) ease-in-out infinite;
   }
-  .oculo-logo .oculo-mask-bot {
+  .ochat-logo .ochat-mask-bot {
     transform-box: view-box;
-    animation: oculo-blink-bot var(--oculo-blink-dur, 6.5s) ease-in-out infinite;
+    animation: ochat-blink-bot var(--ochat-blink-dur, 6.5s) ease-in-out infinite;
   }
 
-  .oculo-logo .oculo-pupil {
+  .ochat-logo .ochat-pupil {
     transform-origin: center;
     transform-box: fill-box;
-    animation: oculo-pupil-pulse var(--oculo-pupil-dur, 5s) ease-in-out infinite;
+    animation: ochat-pupil-pulse var(--ochat-pupil-dur, 5s) ease-in-out infinite;
   }
 
-  .oculo-logo .oculo-gaze {
+  .ochat-logo .ochat-gaze {
     transform-box: view-box;
     transform-origin: 32px 32px;
-    animation: oculo-gaze var(--oculo-gaze-dur, 9s) ease-in-out infinite;
+    animation: ochat-gaze var(--ochat-gaze-dur, 9s) ease-in-out infinite;
   }
 
-  .oculo-logo .oculo-glow {
+  .ochat-logo .ochat-glow {
     transform-origin: center;
     transform-box: fill-box;
     opacity: 0.25;
     transition: opacity 400ms ease;
   }
-  .oculo-logo .oculo-glow.is-medium { opacity: 0.45; animation: oculo-glow-pulse 2.6s ease-in-out infinite; }
-  .oculo-logo .oculo-glow.is-strong { opacity: 0.7;  animation: oculo-glow-pulse 1.4s ease-in-out infinite; }
+  .ochat-logo .ochat-glow.is-medium { opacity: 0.45; animation: ochat-glow-pulse 2.6s ease-in-out infinite; }
+  .ochat-logo .ochat-glow.is-strong { opacity: 0.7;  animation: ochat-glow-pulse 1.4s ease-in-out infinite; }
 }
 
 /* Lid only closes for ~3% of the loop → most of the time eye is wide open */
-@keyframes oculo-blink-top {
+@keyframes ochat-blink-top {
   0%, 94%, 100% { transform: translateY(0); }
   96%, 97%      { transform: translateY(16px); }
 }
-@keyframes oculo-blink-bot {
+@keyframes ochat-blink-bot {
   0%, 94%, 100% { transform: translateY(0); }
   96%, 97%      { transform: translateY(-16px); }
 }
-@keyframes oculo-pupil-pulse {
+@keyframes ochat-pupil-pulse {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(0.86); }
 }
-@keyframes oculo-gaze {
+@keyframes ochat-gaze {
   0%, 100% { transform: translate(0, 0); }
   18%      { transform: translate(1.4px, -0.6px); }
   38%      { transform: translate(-1.6px, 0.4px); }
   58%      { transform: translate(0.4px, 1.2px); }
   78%      { transform: translate(-0.8px, -0.4px); }
 }
-@keyframes oculo-glow-pulse {
+@keyframes ochat-glow-pulse {
   0%, 100% { transform: scale(1); }
   50%      { transform: scale(1.08); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .oculo-logo .oculo-mask-top,
-  .oculo-logo .oculo-mask-bot,
-  .oculo-logo .oculo-pupil,
-  .oculo-logo .oculo-gaze,
-  .oculo-logo .oculo-glow { animation: none !important; }
+  .ochat-logo .ochat-mask-top,
+  .ochat-logo .ochat-mask-bot,
+  .ochat-logo .ochat-pupil,
+  .ochat-logo .ochat-gaze,
+  .ochat-logo .ochat-glow { animation: none !important; }
 }
 
-/* ============== Oculo intro overlay (Apple-style) ============== */
+/* ============== Ochat intro overlay (Apple-style) ============== */
 /* Apple's signature spring easing — used across iOS for natural deceleration */
-.oculo-intro-overlay {
+.ochat-intro-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
@@ -311,14 +311,14 @@
     filter 500ms cubic-bezier(0.32, 0.72, 0, 1);
   will-change: opacity, filter;
 }
-.oculo-intro-overlay[data-fading="true"] {
+.ochat-intro-overlay[data-fading="true"] {
   opacity: 0;
   filter: blur(8px);
   pointer-events: none;
 }
 
 /* Soft radial spotlight — fades in first, hints at depth */
-.oculo-intro-spotlight {
+.ochat-intro-spotlight {
   position: absolute;
   inset: -20%;
   background:
@@ -329,11 +329,11 @@
       transparent 55%
     );
   opacity: 0;
-  animation: oculo-intro-spotlight 1.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: ochat-intro-spotlight 1.4s cubic-bezier(0.32, 0.72, 0, 1) both;
   filter: blur(40px);
 }
 
-.oculo-intro-stage {
+.ochat-intro-stage {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -342,16 +342,16 @@
 }
 
 /* Mark: blur-to-focus reveal, like iOS app launch */
-.oculo-intro-mark {
+.ochat-intro-mark {
   filter: drop-shadow(0 12px 40px hsl(var(--primary) / 0.28)) blur(14px);
   opacity: 0;
   transform: scale(1.18);
-  animation: oculo-intro-focus 1.1s cubic-bezier(0.32, 0.72, 0, 1) 0.1s forwards;
+  animation: ochat-intro-focus 1.1s cubic-bezier(0.32, 0.72, 0, 1) 0.1s forwards;
   will-change: filter, opacity, transform;
 }
 
 /* Wordmark: per-letter stagger, settles from below with kerning ease */
-.oculo-intro-word {
+.ochat-intro-word {
   font-family: var(--font-serif);
   font-size: 2rem;
   font-weight: 500;
@@ -361,21 +361,21 @@
   /* Compensate for trailing letter-spacing so text appears centered */
   padding-left: 0.18em;
 }
-.oculo-intro-letter {
+.ochat-intro-letter {
   display: inline-block;
   opacity: 0;
   transform: translateY(8px);
   filter: blur(6px);
-  animation: oculo-intro-letter 0.7s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: ochat-intro-letter 0.7s cubic-bezier(0.32, 0.72, 0, 1) both;
   will-change: opacity, transform, filter;
 }
 
-@keyframes oculo-intro-spotlight {
+@keyframes ochat-intro-spotlight {
   0%   { opacity: 0; transform: scale(0.85); }
   100% { opacity: 1; transform: scale(1); }
 }
 
-@keyframes oculo-intro-focus {
+@keyframes ochat-intro-focus {
   0% {
     opacity: 0;
     transform: scale(1.18);
@@ -392,7 +392,7 @@
   }
 }
 
-@keyframes oculo-intro-letter {
+@keyframes ochat-intro-letter {
   0% {
     opacity: 0;
     transform: translateY(8px);
@@ -407,24 +407,24 @@
 
 /* Reduced motion: simple fade, no blur/scale */
 @media (prefers-reduced-motion: reduce) {
-  .oculo-intro-mark,
-  .oculo-intro-letter,
-  .oculo-intro-spotlight {
-    animation: oculo-intro-simple-fade 0.4s ease-out both !important;
+  .ochat-intro-mark,
+  .ochat-intro-letter,
+  .ochat-intro-spotlight {
+    animation: ochat-intro-simple-fade 0.4s ease-out both !important;
     filter: none !important;
     transform: none !important;
   }
-  .oculo-intro-overlay[data-fading="true"] { filter: none; }
+  .ochat-intro-overlay[data-fading="true"] { filter: none; }
 }
-@keyframes oculo-intro-simple-fade {
+@keyframes ochat-intro-simple-fade {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
 
 @media (prefers-reduced-motion: reduce) {
-  .oculo-intro-overlay { transition: opacity 200ms ease; }
-  .oculo-intro-mark *,
-  .oculo-intro-word { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
+  .ochat-intro-overlay { transition: opacity 200ms ease; }
+  .ochat-intro-mark *,
+  .ochat-intro-word { animation-duration: 0.01ms !important; animation-delay: 0ms !important; }
 }
 

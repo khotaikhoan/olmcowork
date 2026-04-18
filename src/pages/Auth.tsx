@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { OculoLogo } from "@/components/OculoLogo";
+import { OchatLogo } from "@/components/OchatLogo";
 
 export default function AuthPage() {
   const { user, signIn, signUp } = useAuth();
@@ -38,9 +38,9 @@ export default function AuthPage() {
       <Card className="w-full max-w-md p-6 shadow-[var(--shadow-elevated)]">
         <div className="flex flex-col items-center mb-6">
           <div className="h-14 w-14 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-3 shadow-[var(--shadow-elevated)]">
-            <OculoLogo size={32} withGradient={false} className="text-primary-foreground" />
+            <OchatLogo size={32} withGradient={false} className="text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Oculo</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Ochat</h1>
           <p className="text-sm text-muted-foreground mt-1">
             AI quan sát & cộng tác — local + cloud
           </p>

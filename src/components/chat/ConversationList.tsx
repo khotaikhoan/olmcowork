@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { OculoLogo } from "@/components/OculoLogo";
+import { OchatLogo } from "@/components/OchatLogo";
 import {
   Plus,
   Search,
@@ -237,10 +237,10 @@ export function ConversationList({
       <div className="p-3 border-b border-sidebar-border">
         <div className="flex items-center gap-2 mb-3">
           <div className="h-8 w-8 rounded-lg bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)]">
-            <OculoLogo size={20} withGradient={false} className="text-primary-foreground" />
+            <OchatLogo size={20} withGradient={false} className="text-primary-foreground" />
           </div>
           <div className="font-semibold text-sidebar-foreground tracking-tight">
-            Oculo
+            Ochat
           </div>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />

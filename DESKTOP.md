@@ -1,4 +1,4 @@
-# Ollama Cowork — Desktop Setup
+# Ochat — Desktop Setup
 
 A Claude-style chat + computer-use agent that runs on **your local Ollama** and stores conversations in Lovable Cloud.
 
@@ -48,20 +48,20 @@ npm run electron:dev
 
 ```bash
 npm run electron:package
-# → ./electron-release/OllamaCowork-<platform>-<arch>/
+# → ./electron-release/Ochat-<platform>-<arch>/
 ```
 
 ### Cross-platform builds
 
 ```bash
 # macOS (zip)
-npx electron-packager . OllamaCowork --platform=darwin --arch=arm64 --out=electron-release --overwrite
+npx electron-packager . Ochat --platform=darwin --arch=arm64 --out=electron-release --overwrite
 
 # Windows
-npx electron-packager . OllamaCowork --platform=win32 --arch=x64 --out=electron-release --overwrite
+npx electron-packager . Ochat --platform=win32 --arch=x64 --out=electron-release --overwrite
 
 # Linux
-npx electron-packager . OllamaCowork --platform=linux --arch=x64 --out=electron-release --overwrite
+npx electron-packager . Ochat --platform=linux --arch=x64 --out=electron-release --overwrite
 ```
 
 ## Bridge surface — Anthropic Computer Use spec

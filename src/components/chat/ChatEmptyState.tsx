@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MessageSquare, Monitor, ChevronDown, Lightbulb, ArrowRight, WifiOff } from "lucide-react";
-import { OculoLogo } from "@/components/OculoLogo";
+import { OchatLogo } from "@/components/OchatLogo";
 import { AGENT_PRESETS, AgentPreset } from "@/lib/presets";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -90,7 +90,7 @@ export function ChatEmptyState({
       )}
 
       <div className="h-9 w-9 rounded-xl bg-[image:var(--gradient-primary)] flex items-center justify-center mb-3 shadow-[var(--shadow-soft)]">
-        <OculoLogo size={22} withGradient={false} className="text-primary-foreground" />
+        <OchatLogo size={22} withGradient={false} className="text-primary-foreground" />
       </div>
 
       <h2 className="text-xl md:text-2xl font-serif font-semibold tracking-tight text-foreground">

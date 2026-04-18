@@ -42,7 +42,7 @@ export async function notifyDone(title: string, body: string, opts: NotifyDoneOp
     const n = new Notification(title, {
       body: body.slice(0, 140),
       icon: "/favicon.svg",
-      tag: "oculo-done",
+      tag: "ochat-done",
     });
     n.onclick = () => {
       try { window.focus(); } catch { /* ignore */ }
