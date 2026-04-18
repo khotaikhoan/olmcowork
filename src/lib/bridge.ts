@@ -321,6 +321,9 @@ export async function executeTool(
   // observe_screen = screenshot + AX annotate (Phase 2 vision loop primary "eyes")
   if (name === "observe_screen") {
     const r = await b.visionAnnotate();
+    if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+      notifyScreenPermissionBlocked(r.output);
+    }
     const marks = r.marks ?? [];
     const summary = marks.length
       ? `Captured screen + ${marks.length} accessible controls. Marks (id · role · label):\n${marks
@@ -337,7 +340,11 @@ export async function executeTool(
   if (name === "vision_click") {
     const action = String(args.action ?? "");
     if (action === "annotate") {
-      return b.visionAnnotate();
+      const r = await b.visionAnnotate();
+      if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+        notifyScreenPermissionBlocked(r.output);
+      }
+      return r;
     }
     if (action === "click") {
       const id = Number(args.mark_id);
