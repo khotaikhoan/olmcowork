@@ -1340,6 +1340,21 @@ export function ChatView({
     void retrySingleCall(messageId, callId);
   };
 
+  /** Continue generating from a truncated assistant reply. */
+  const handleContinueGenerating = (messageId: string) => {
+    const msg = messages.find((m) => m.id === messageId);
+    if (!msg || msg.role !== "assistant" || !msg.content) {
+      toast.error("Không thể tiếp tục từ message này");
+      return;
+    }
+    if (isStreaming) {
+      toast.warning("Đang stream — đợi xong rồi tiếp tục");
+      return;
+    }
+    const prompt = buildContinuePrompt(msg.content);
+    void executeSend(prompt, []);
+  };
+
   /** Retry every failed tool call in a message, sequentially with progress feedback. */
   const handleRetryAllFailed = async (messageId: string) => {
     const msg = messages.find((m) => m.id === messageId);
