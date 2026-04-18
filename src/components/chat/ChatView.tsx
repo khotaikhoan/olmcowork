@@ -261,6 +261,47 @@ export function ChatView({
     }
   }, [title]);
 
+  // ── "New since you left" divider ────────────────────────────────────────
+  // Pin a separator above the first message that arrived while the tab was
+  // hidden. Auto-clears via IntersectionObserver inside <UnreadDivider/>
+  // once the user scrolls it into view, or when they send a new message /
+  // switch conversation.
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  const lastSeenIdRef = useRef<string | null>(null);
+  const tabHiddenRef = useRef<boolean>(
+    typeof document !== "undefined" ? document.visibilityState === "hidden" : false,
+  );
+  useEffect(() => {
+    setFirstUnreadId(null);
+    lastSeenIdRef.current = null;
+  }, [conversationId]);
+  useEffect(() => {
+    const onVis = () => {
+      const hidden = document.visibilityState === "hidden";
+      tabHiddenRef.current = hidden;
+      if (hidden) {
+        const last = messages[messages.length - 1];
+        lastSeenIdRef.current = last?.id ?? null;
+      } else {
+        const seen = lastSeenIdRef.current;
+        if (!seen) return;
+        const idx = messages.findIndex((m) => m.id === seen);
+        const firstNew = idx >= 0 ? messages[idx + 1] : null;
+        if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [messages]);
+  useEffect(() => {
+    if (!tabHiddenRef.current) return;
+    const seen = lastSeenIdRef.current;
+    if (!seen) return;
+    const idx = messages.findIndex((m) => m.id === seen);
+    const firstNew = idx >= 0 ? messages[idx + 1] : null;
+    if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+  }, [messages]);
+
 
   // Shared bypass toggle — used by both ControlBarFull and ControlBarCompact.
   const handleBypassToggle = (v: boolean) => {
