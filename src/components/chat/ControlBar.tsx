@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Wrench, ShieldOff, Minimize2, Maximize2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +12,37 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { isElectron } from "@/lib/bridge";
 import { toolsForMode } from "@/lib/tools";
+import { getBypassDefault, setBypassDefault } from "@/lib/bypassApprovals";
+
+/**
+ * Sub-row inside the Bypass card that toggles the GLOBAL default — when ON,
+ * every new conversation entering Control mode will auto-bypass without the
+ * user having to flip the per-conv switch first.
+ */
+function BypassDefaultRow() {
+  const [on, setOn] = useState<boolean>(() => getBypassDefault());
+  useEffect(() => { setOn(getBypassDefault()); }, []);
+  return (
+    <div className="flex items-center gap-2 pt-1.5 border-t border-border/50">
+      <div className="flex-1 min-w-0">
+        <Label
+          htmlFor="bypass-default-switch"
+          className="text-[11px] font-medium cursor-pointer select-none block text-foreground"
+        >
+          Mặc định cho hội thoại mới
+        </Label>
+        <div className="text-[10px] text-muted-foreground leading-tight">
+          Tự bật bypass mỗi khi vào Control — khỏi phải bấm lại
+        </div>
+      </div>
+      <Switch
+        id="bypass-default-switch"
+        checked={on}
+        onCheckedChange={(v) => { setBypassDefault(v); setOn(v); }}
+      />
+    </div>
+  );
+}
 
 interface ControlBarProps {
   toolsEnabled: boolean;
