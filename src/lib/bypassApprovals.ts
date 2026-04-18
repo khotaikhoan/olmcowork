@@ -29,15 +29,37 @@ function writeMap(m: Record<string, boolean>) {
   }
 }
 
+const DEFAULT_KEY = "chat.bypassApprovals.default";
+
+/** Global default: when ON, every new conversation entering control mode auto-bypasses. */
+export function getBypassDefault(): boolean {
+  try {
+    return localStorage.getItem(DEFAULT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setBypassDefault(v: boolean) {
+  try {
+    localStorage.setItem(DEFAULT_KEY, v ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
 export function getBypass(convId: string | null): boolean {
   if (!convId) return false;
-  return readMap()[convId] === true;
+  const m = readMap();
+  if (convId in m) return m[convId] === true;
+  // Fall back to global default for conversations that haven't been touched.
+  return getBypassDefault();
 }
 
 export function setBypass(convId: string, v: boolean) {
   const m = readMap();
-  if (v) m[convId] = true;
-  else delete m[convId];
+  // Always store explicit value so per-conv choice overrides the global default.
+  m[convId] = v;
   writeMap(m);
   listeners.forEach((fn) => fn(convId, v));
 }

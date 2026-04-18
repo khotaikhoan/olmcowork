@@ -55,7 +55,7 @@ import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap, ShieldOff, ArrowDown } from "lucide-react";
 import { configureOrchestrator, drainRootReports } from "@/lib/agentOrchestrator";
-import { getBypass, setBypass, subscribeBypass } from "@/lib/bypassApprovals";
+import { getBypass, setBypass, subscribeBypass, getBypassDefault } from "@/lib/bypassApprovals";
 
 interface DbMessage {
   id: string;
@@ -125,7 +125,16 @@ export function ChatView({
     try { localStorage.setItem("chat.control_bar_collapsed", v ? "1" : "0"); } catch { /* ignore */ }
   };
   const [mode, setMode] = useState<ConversationMode>("chat");
-  const [lockedApp, setLockedApp] = useState<string | null>(null);
+  // Default app-lock preference — persisted across sessions so user doesn't have
+  // to click "Mở khoá" every time. Values: "frontmost" (auto-lock to active app)
+  // or "unlocked" (no lock — AI may touch any window).
+  const [lockedApp, setLockedAppState] = useState<string | null>(null);
+  const setLockedApp = (v: string | null) => {
+    setLockedAppState(v);
+    try {
+      localStorage.setItem("chat.lockedAppDefault", v === null ? "unlocked" : "frontmost");
+    } catch { /* ignore */ }
+  };
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const [agentId, setAgentId] = useState<string>(() => {
     try { return localStorage.getItem("chat.agentId") || "default"; } catch { return "default"; }
@@ -510,13 +519,23 @@ export function ChatView({
         }
       } catch { /* ignore */ }
     }
-    // Default lock to frontmost app when entering Control mode (Electron only).
+    // Apply persisted app-lock preference when entering Control mode.
+    // Default is "unlocked" so users aren't forced to click "Mở khoá" every time.
     if (next === "control" && !lockedApp && isElectron()) {
-      try {
-        const b = (window as any).bridge;
-        const r = await b?.getFrontmostApp?.();
-        if (r?.app) setLockedApp(r.app);
-      } catch { /* ignore */ }
+      let pref = "unlocked";
+      try { pref = localStorage.getItem("chat.lockedAppDefault") || "unlocked"; } catch { /* ignore */ }
+      if (pref === "frontmost") {
+        try {
+          const b = (window as any).bridge;
+          const r = await b?.getFrontmostApp?.();
+          if (r?.app) setLockedAppState(r.app);
+        } catch { /* ignore */ }
+      }
+    }
+    // Auto-bypass on entering Control if user enabled the global default.
+    if (next === "control" && conversationId && getBypassDefault() && !getBypass(conversationId)) {
+      setBypass(conversationId, true);
+      arm();
     }
     // Phase 2: warn if entering Control with a non-vision Ollama model — observe_screen will be blind.
     if (

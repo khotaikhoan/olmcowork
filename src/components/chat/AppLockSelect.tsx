@@ -111,6 +111,13 @@ export function AppLockSelect({ value, onChange }: Props) {
               >
                 <Unlock className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                 Mở khoá — mọi app
+                {(() => {
+                  let pref = "unlocked";
+                  try { pref = localStorage.getItem("chat.lockedAppDefault") || "unlocked"; } catch { /* ignore */ }
+                  return pref === "unlocked" ? (
+                    <span className="ml-auto text-[10px] text-muted-foreground">mặc định</span>
+                  ) : null;
+                })()}
               </CommandItem>
               {frontmost && (
                 <CommandItem
