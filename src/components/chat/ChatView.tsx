@@ -1586,6 +1586,10 @@ export function ChatView({
                 !isStreaming &&
                 !pendingPlan &&
                 idx === messages.length - 1;
+              const truncation =
+                isLastAssistant && m.content
+                  ? detectTruncation(m.content)
+                  : { truncated: false, reason: undefined as string | undefined };
               return (
                 <div key={m.id}>
                   <MessageBubble
@@ -1601,6 +1605,10 @@ export function ChatView({
                     onRetryTool={(callId) => handleRetryTool(m.id, callId)}
                     onRetryAllFailed={() => handleRetryAllFailed(m.id)}
                     bulkRetryProgress={bulkRetry[m.id] ?? null}
+                    onContinue={
+                      truncation.truncated ? () => handleContinueGenerating(m.id) : undefined
+                    }
+                    continueReason={truncation.reason}
                   />
                   {isLastAssistant && (
                     <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
