@@ -43,6 +43,7 @@ export function ConversationItem({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(conversation.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (editing) {
@@ -52,6 +53,12 @@ export function ConversationItem({
       });
     }
   }, [editing]);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimer.current) clearTimeout(clickTimer.current);
+    };
+  }, []);
 
   const startEdit = () => {
     setDraft(conversation.title);
@@ -79,13 +86,36 @@ export function ConversationItem({
     }
   };
 
+  // Distinguish single-click (select) vs double-click (rename) on the SELECTED row.
+  // For an unselected row we always select immediately on first click.
+  const handleClick = (_e: ReactMouseEvent<HTMLDivElement>) => {
+    if (editing) return;
+    if (!selected) {
+      onSelect();
+      return;
+    }
+    // Already selected → wait briefly to see if a second click arrives.
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    clickTimer.current = setTimeout(() => {
+      clickTimer.current = null;
+      // single click on already-selected row: no-op (don't re-select)
+    }, 220);
+  };
+
+  const handleDoubleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
+    startEdit();
+  };
+
   return (
     <div
-      onClick={() => !editing && onSelect()}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        startEdit();
-      }}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       className={cn(
         "group flex items-start gap-2 px-2 py-2 rounded-lg cursor-pointer text-sm transition-all duration-150",
         selected
