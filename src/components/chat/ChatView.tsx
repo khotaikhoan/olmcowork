@@ -6,6 +6,8 @@ import { TopBar } from "./TopBar";
 import { ControlBarCompact, ControlBarFull } from "./ControlBar";
 import { BrowserActiveOverlay } from "./BrowserActiveOverlay";
 import { MessageBubble } from "./MessageBubble";
+import { SmartSuggestions } from "./SmartSuggestions";
+import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
