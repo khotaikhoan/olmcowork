@@ -929,6 +929,9 @@ export function ChatView({
     // User actively engaging — clear unread divider.
     setFirstUnreadId(null);
     lastSeenIdRef.current = null;
+    // First user gesture is a good time to ask for desktop notification
+    // permission (browsers block prompts without user interaction).
+    void primeNotificationPermission();
     // Behavior learning: track total user messages so the empty-state can hide
     // suggestions for power users (≥10 messages). Increment ONCE per send.
     try {
