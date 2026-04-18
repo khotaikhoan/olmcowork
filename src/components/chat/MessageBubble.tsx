@@ -58,6 +58,8 @@ export function MessageBubble({
   onRetryAllFailed,
   bulkRetryProgress,
   onSkipThinking,
+  onContinue,
+  continueReason,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
