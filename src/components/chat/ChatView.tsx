@@ -10,7 +10,6 @@ import { SmartSuggestions } from "./SmartSuggestions";
 import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ResumeBanner } from "./ResumeBanner";
 import { detectTruncation, buildContinuePrompt } from "@/lib/truncationDetect";
-import { playSound } from "@/lib/sounds";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import {
   saveResumeState,
@@ -819,8 +818,6 @@ export function ChatView({
 
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
-    // Subtle "send" blip — no-op when sound disabled
-    playSound("send");
     // Behavior learning: track total user messages so the empty-state can hide
     // suggestions for power users (≥10 messages). Increment ONCE per send.
     try {
@@ -1101,15 +1098,10 @@ export function ChatView({
       onTitleUpdated();
       // Native notification when tab is in background
       notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
-      // Sound: pleasant chime when reply finishes
-      playSound("ting");
     } catch (e: any) {
       setIsStreaming(false);
       setAgentStep(null);
-      if (e.name !== "AbortError") {
-        toast.error(e.message);
-        playSound("error");
-      }
+      if (e.name !== "AbortError") toast.error(e.message);
     }
   };
 

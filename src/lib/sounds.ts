@@ -11,6 +11,7 @@
 
 const LS_KEY = "chat.sound_enabled";
 const LS_VOLUME = "chat.sound_volume"; // 0..1
+const LS_BG_ONLY = "chat.sound_background_only"; // "1" = mute when tab visible
 
 let audioCtx: AudioContext | null = null;
 
@@ -23,7 +24,6 @@ function getCtx(): AudioContext | null {
       audioCtx = new Ctor();
     }
     if (audioCtx.state === "suspended") {
-      // best effort — will fully resume on next user gesture
       void audioCtx.resume();
     }
     return audioCtx;
@@ -66,6 +66,30 @@ export function setSoundVolume(v: number): void {
   } catch { /* ignore */ }
 }
 
+/** When true, sounds only play if tab is hidden/minimized (not actively focused). */
+export function isBackgroundOnly(): boolean {
+  try {
+    return localStorage.getItem(LS_BG_ONLY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setBackgroundOnly(v: boolean): void {
+  try {
+    localStorage.setItem(LS_BG_ONLY, v ? "1" : "0");
+    window.dispatchEvent(new CustomEvent("sound:changed", { detail: { backgroundOnly: v } }));
+  } catch { /* ignore */ }
+}
+
+/** True when the tab is currently visible AND focused (user is looking at it). */
+function isTabActive(): boolean {
+  if (typeof document === "undefined") return false;
+  const visible = document.visibilityState === "visible";
+  const focused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
+  return visible && focused;
+}
+
 /** Internal — play a tone with envelope. */
 function tone(opts: {
   freq: number;
@@ -103,12 +127,18 @@ function tone(opts: {
 
 export type SoundName = "ting" | "send" | "error" | "click";
 
-/** Play a named UI sound. No-op if disabled or audio unsupported. */
-export function playSound(name: SoundName): void {
+/**
+ * Play a named UI sound. No-op if disabled or audio unsupported.
+ * Options:
+ *   - force: bypass the "background only" gate (e.g. for the Test buttons).
+ */
+export function playSound(name: SoundName, opts?: { force?: boolean }): void {
   if (!isSoundEnabled()) return;
+  // Respect "background only" preference: skip when user is actively looking at the tab.
+  if (!opts?.force && isBackgroundOnly() && isTabActive()) return;
+
   switch (name) {
     case "ting":
-      // pleasant two-note chime: E5 → A5
       tone({ freq: 659.25, durationMs: 80, type: "sine", volume: 0.22, releaseMs: 240 });
       setTimeout(
         () => tone({ freq: 880, durationMs: 80, type: "sine", volume: 0.22, releaseMs: 320 }),
@@ -116,7 +146,6 @@ export function playSound(name: SoundName): void {
       );
       break;
     case "send":
-      // subtle ascending blip
       tone({
         freq: 520,
         freqEnd: 780,
@@ -127,7 +156,6 @@ export function playSound(name: SoundName): void {
       });
       break;
     case "error":
-      // low descending buzz
       tone({
         freq: 220,
         freqEnd: 110,

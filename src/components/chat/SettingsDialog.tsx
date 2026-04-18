@@ -47,9 +47,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
 import { isElectron } from "@/lib/bridge";
-import { Volume2 } from "lucide-react";
-import { isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume, playSound } from "@/lib/sounds";
-import { Slider } from "@/components/ui/slider";
+import {
+  isSoundEnabled, setSoundEnabled,
+  isBackgroundOnly, setBackgroundOnly,
+  playSound,
+} from "@/lib/sounds";
 
 export type Provider = "ollama" | "openai";
 
@@ -104,7 +106,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
   );
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => isSoundEnabled());
-  const [soundVolume, setSoundVolumeState] = useState<number>(() => getSoundVolume());
+  const [soundBgOnly, setSoundBgOnlyState] = useState<boolean>(() => isBackgroundOnly());
   const [openSections, setOpenSections] = useState<string[]>(() => {
     if (typeof localStorage === "undefined") return ["ai"];
     try {
@@ -391,65 +393,6 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                 </div>
                 {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
                 <FullAutoToggle />
-
-                {/* ── Sound effects ─────────────────────────────────── */}
-                <div className="border-t pt-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <Label className="flex items-center gap-1.5">
-                        <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        Hiệu ứng âm thanh
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Tiếng "ting" nhẹ khi AI trả lời xong, tiếng blip khi gửi.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={soundEnabled}
-                      onCheckedChange={(v) => {
-                        setSoundEnabledState(v);
-                        setSoundEnabled(v);
-                        if (v) setTimeout(() => playSound("ting"), 50);
-                      }}
-                    />
-                  </div>
-                  {soundEnabled && (
-                    <div className="space-y-2 pl-1 animate-fade-in">
-                      <div className="flex items-center justify-between text-xs">
-                        <Label className="text-xs text-muted-foreground">
-                          Âm lượng: {Math.round(soundVolume * 100)}%
-                        </Label>
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            className="text-xs px-2 py-0.5 rounded border border-border hover:bg-accent transition-colors"
-                            onClick={() => playSound("ting")}
-                          >
-                            Test ting
-                          </button>
-                          <button
-                            type="button"
-                            className="text-xs px-2 py-0.5 rounded border border-border hover:bg-accent transition-colors"
-                            onClick={() => playSound("send")}
-                          >
-                            Test send
-                          </button>
-                        </div>
-                      </div>
-                      <Slider
-                        value={[soundVolume * 100]}
-                        min={0}
-                        max={100}
-                        step={5}
-                        onValueChange={([v]) => {
-                          const f = (v ?? 50) / 100;
-                          setSoundVolumeState(f);
-                          setSoundVolume(f);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -513,6 +456,44 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                     </p>
                   </div>
                   <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
+                </div>
+
+                {/* ── Hiệu ứng âm thanh ───────────────────────────────── */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Hiệu ứng âm thanh</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Phát tiếng nhẹ khi gửi tin và khi AI trả lời xong.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button" size="sm" variant="ghost"
+                      onClick={() => playSound("ting", { force: true })}
+                    >
+                      Test
+                    </Button>
+                    <Switch
+                      checked={soundEnabled}
+                      onCheckedChange={(v) => { setSoundEnabledState(v); setSoundEnabled(v); }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-muted">
+                  <div className="min-w-0">
+                    <Label className={!soundEnabled ? "text-muted-foreground" : ""}>
+                      Chỉ phát khi tab ở chế độ nền
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Tự động im lặng khi bạn đang nhìn vào tab này — chỉ kêu khi tab bị ẩn,
+                      cửa sổ bị thu nhỏ, hoặc bạn đang ở app khác.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={soundBgOnly}
+                    disabled={!soundEnabled}
+                    onCheckedChange={(v) => { setSoundBgOnlyState(v); setBackgroundOnly(v); }}
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>
