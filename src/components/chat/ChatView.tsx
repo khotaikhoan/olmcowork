@@ -9,6 +9,16 @@ import { MessageBubble } from "./MessageBubble";
 import { SmartSuggestions } from "./SmartSuggestions";
 import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ChatInput, PendingAttachment } from "./ChatInput";
+import { ChatInput, PendingAttachment } from "./ChatInput";
+import {
+  saveResumeState,
+  loadResumeState,
+  clearResumeState,
+  buildContinuationPrompt,
+  makeThrottledSaver,
+  attachmentsToMeta,
+  type ResumeState,
+} from "@/lib/resumeStream";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
 import { streamOpenAI, chatOnceOpenAI, OpenAIMessage, OpenAITool } from "@/lib/openai";
