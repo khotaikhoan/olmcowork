@@ -40,6 +40,8 @@ export interface Conversation {
   system_prompt: string | null;
   updated_at: string;
   mode: ConversationMode;
+  last_message_preview?: string | null;
+  last_message_at?: string | null;
 }
 
 interface Props {
