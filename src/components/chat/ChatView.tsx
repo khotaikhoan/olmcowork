@@ -2066,6 +2066,12 @@ export function ChatView({
               planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
+              // In Control mode, a plan is meant to be executed with tools. If the user previously
+              // toggled tools off, auto-enable here to avoid "nothing happens" confusion.
+              if (!toolsEnabled) {
+                setToolsEnabled(true);
+                toast.info("Đã bật Công cụ để thực thi plan.", { duration: 2500 });
+              }
               if (wasLoading) {
                 toast.info(`Bắt đầu sớm với ${approvedSteps.length} bước.`);
               }
@@ -2093,6 +2099,10 @@ export function ChatView({
               planAbortRef.current?.abort();
               const { prompt, attachments } = pendingPlan;
               setPendingPlan(null);
+              if (!toolsEnabled) {
+                setToolsEnabled(true);
+                toast.info("Đã bật Công cụ để chạy Control mode.", { duration: 2500 });
+              }
               executeSend(prompt, attachments);
             }}
             onCancel={() => {
