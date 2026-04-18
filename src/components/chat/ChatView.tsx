@@ -1714,6 +1714,7 @@ export function ChatView({
             </div>
           </div>
         )}
+        <div className="relative h-full">
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
@@ -1828,6 +1829,22 @@ export function ChatView({
           </div>
         </div>
         </ScrollArea>
+        {!isAtBottom && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom("smooth")}
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full border border-border bg-background/95 backdrop-blur shadow-[var(--shadow-elevated)] px-3.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-all animate-fade-in"
+            aria-label={
+              newSinceScroll > 0
+                ? `Cuộn xuống ${newSinceScroll} tin nhắn mới`
+                : "Cuộn xuống cuối"
+            }
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+            {newSinceScroll > 0 ? `${newSinceScroll} tin mới` : "Cuộn xuống"}
+          </button>
+        )}
+        </div>
       </div>
 
       {pendingPlan && (
