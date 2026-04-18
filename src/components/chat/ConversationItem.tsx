@@ -21,6 +21,8 @@ interface Props {
   conversation: Conversation;
   selected: boolean;
   pinned: boolean;
+  preview?: string;
+  timeLabel?: string;
   onSelect: () => void;
   onPin: () => void;
   onRenameSubmit: (newTitle: string) => void;
@@ -31,6 +33,8 @@ export function ConversationItem({
   conversation,
   selected,
   pinned,
+  preview,
+  timeLabel,
   onSelect,
   onPin,
   onRenameSubmit,
