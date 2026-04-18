@@ -6,6 +6,14 @@ export interface Suggestion {
   icon?: string;
 }
 
+export interface SuggestionContext {
+  lastUserMessage?: string;
+  mode?: "chat" | "control";
+  provider?: "ollama" | "openai";
+  bridgeOnline?: boolean;
+  model?: string;
+}
+
 /**
  * Generate 3 context-aware next-step suggestions based on the AI's last reply
  * and the tool calls it made. Heuristic / pattern-based — instant & free.
@@ -13,9 +21,22 @@ export interface Suggestion {
 export function generateSuggestions(
   content: string,
   toolCalls: ToolCallRecord[] | null | undefined,
+  ctx?: SuggestionContext,
 ): Suggestion[] {
   const calls = toolCalls ?? [];
   const text = (content || "").toLowerCase();
+  const lastUser = (ctx?.lastUserMessage || "").trim();
+  const mode = ctx?.mode;
+
+  const summarizeUserIntent = () => {
+    if (!lastUser) return "";
+    const cleaned = lastUser
+      .replace(/\s+/g, " ")
+      .replace(/^["'“”]+|["'“”]+$/g, "")
+      .trim();
+    if (cleaned.length <= 80) return cleaned;
+    return cleaned.slice(0, 77) + "…";
+  };
 
   // ----- File creation / edit context -----
   const fileCalls = calls.filter(
@@ -107,6 +128,22 @@ export function generateSuggestions(
   }
 
   // ----- Default fallback -----
+  // If we know the user's last message, tailor the generic buttons to the current intent.
+  const intent = summarizeUserIntent();
+  if (intent) {
+    if (mode === "control") {
+      return [
+        { label: "Tiếp tục thực thi", prompt: `Tiếp tục thực thi yêu cầu này và trả về kết quả: ${intent}`, icon: "play" },
+        { label: "Bạn đang ở bước nào?", prompt: `Bạn đang ở bước nào của task này: ${intent}? Mô tả trạng thái hiện tại rồi làm tiếp.`, icon: "eye" },
+        { label: "Nếu bị kẹt", prompt: `Nếu đang bị kẹt khi thực thi: ${intent}, hãy nói rõ lỗi/điểm kẹt và đề xuất cách xử lý rồi tiếp tục.`, icon: "wrench" },
+      ];
+    }
+    return [
+      { label: "Trả lời đúng mục tiêu", prompt: `Trả lời đúng mục tiêu theo yêu cầu này: ${intent}`, icon: "arrow" },
+      { label: "Tóm tắt kết quả", prompt: `Tóm tắt kết quả cho yêu cầu này: ${intent} trong 3-5 gạch đầu dòng`, icon: "list" },
+      { label: "Làm rõ 1 điểm", prompt: `Dựa trên yêu cầu này: ${intent}, hãy hỏi tôi 1 câu để làm rõ giả định quan trọng nhất (nếu cần), rồi đề xuất hướng làm.`, icon: "info" },
+    ];
+  }
   return [
     { label: "Tiếp tục", prompt: "Tiếp tục", icon: "arrow" },
     { label: "Giải thích thêm", prompt: "Giải thích chi tiết hơn", icon: "info" },

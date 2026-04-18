@@ -1998,7 +1998,20 @@ export function ChatView({
                   {isLastAssistant && (
                     <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
                       <SmartSuggestions
-                        suggestions={generateSuggestions(m.content, m.tool_calls)}
+                        suggestions={generateSuggestions(m.content, m.tool_calls, {
+                          lastUserMessage: (() => {
+                            // Find the latest user message before this assistant reply.
+                            for (let j = idx - 1; j >= 0; j--) {
+                              const prev = messages[j];
+                              if (prev?.role === "user" && prev.content) return prev.content;
+                            }
+                            return "";
+                          })(),
+                          mode,
+                          provider,
+                          bridgeOnline,
+                          model,
+                        })}
                         onPick={(prompt) =>
                           window.dispatchEvent(
                             new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
