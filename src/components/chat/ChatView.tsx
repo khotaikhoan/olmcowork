@@ -125,7 +125,16 @@ export function ChatView({
     try { localStorage.setItem("chat.control_bar_collapsed", v ? "1" : "0"); } catch { /* ignore */ }
   };
   const [mode, setMode] = useState<ConversationMode>("chat");
-  const [lockedApp, setLockedApp] = useState<string | null>(null);
+  // Default app-lock preference — persisted across sessions so user doesn't have
+  // to click "Mở khoá" every time. Values: "frontmost" (auto-lock to active app)
+  // or "unlocked" (no lock — AI may touch any window).
+  const [lockedApp, setLockedAppState] = useState<string | null>(null);
+  const setLockedApp = (v: string | null) => {
+    setLockedAppState(v);
+    try {
+      localStorage.setItem("chat.lockedAppDefault", v === null ? "unlocked" : "frontmost");
+    } catch { /* ignore */ }
+  };
   const [autoApprove, setAutoApprove] = useState<Record<string, boolean>>({});
   const [agentId, setAgentId] = useState<string>(() => {
     try { return localStorage.getItem("chat.agentId") || "default"; } catch { return "default"; }
