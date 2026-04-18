@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
+import { MessageSkeletonList } from "./MessageSkeleton";
 import { ControlModeBlocker } from "./ControlModeBlocker";
 import { PlanCard } from "./PlanCard";
 import { streamPlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
@@ -106,6 +107,9 @@ export function ChatView({
   const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [messages, setMessages] = useState<DbMessage[]>([]);
+  /** True while the initial messages fetch for the selected conversation is in
+   * flight — drives the skeleton placeholder so users don't see a blank page. */
+  const [loadingConv, setLoadingConv] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCallRecord[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -410,6 +414,7 @@ export function ChatView({
     setSearchIndex(0);
     if (!conversationId) {
       setMessages([]);
+      setLoadingConv(false);
       setTitle("New chat");
       setSystemPrompt("");
       setMode("chat");
@@ -417,6 +422,7 @@ export function ChatView({
       if (defaultModel) setModel(defaultModel);
       return;
     }
+    setLoadingConv(true);
     (async () => {
       const [{ data: conv }, { data: msgs }] = await Promise.all([
         supabase.from("conversations").select("*").eq("id", conversationId).maybeSingle(),
@@ -436,6 +442,7 @@ export function ChatView({
         setToolsEnabled(m === "control");
       }
       setMessages((msgs ?? []) as unknown as DbMessage[]);
+      setLoadingConv(false);
 
       // Detect interrupted stream from previous session
       const saved = loadResumeState(conversationId);
@@ -1754,7 +1761,10 @@ export function ChatView({
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
-            {messages.length === 0 && !streamingText && !streamingToolCalls.length && (
+            {loadingConv && messages.length === 0 && (
+              <MessageSkeletonList />
+            )}
+            {!loadingConv && messages.length === 0 && !streamingText && !streamingToolCalls.length && (
               <ChatEmptyState
                 bridgeOnline={bridgeOnline}
                 ollamaUrl={ollamaUrl}
