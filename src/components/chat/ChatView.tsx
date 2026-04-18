@@ -1760,7 +1760,10 @@ export function ChatView({
         <ScrollArea className="h-full">
           <div ref={scrollRef} className="h-full">
           <div className="max-w-3xl mx-auto px-4">
-            {messages.length === 0 && !streamingText && !streamingToolCalls.length && (
+            {loadingConv && messages.length === 0 && (
+              <MessageSkeletonList />
+            )}
+            {!loadingConv && messages.length === 0 && !streamingText && !streamingToolCalls.length && (
               <ChatEmptyState
                 bridgeOnline={bridgeOnline}
                 ollamaUrl={ollamaUrl}
