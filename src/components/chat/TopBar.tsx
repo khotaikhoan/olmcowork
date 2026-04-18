@@ -404,21 +404,33 @@ export function TopBar({
               </DropdownMenuItem>
             </>
           )}
+
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={onKillSwitch}
+            disabled={!killArmed}
+            className="text-destructive focus:text-destructive focus:bg-destructive/10"
+          >
+            <OctagonX className="h-3.5 w-3.5 mr-2" />
+            Dừng khẩn
+            {killArmed && <span className="ml-auto text-[10px] opacity-70">Esc</span>}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Kill switch — keep prominent (safety critical) */}
-      <Button
-        variant="destructive"
-        size="sm"
-        onClick={onKillSwitch}
-        disabled={!killArmed}
-        title="Dừng tác nhân ngay lập tức và thu hồi mọi quyền tự duyệt"
-        className="h-8 font-semibold shadow-[var(--shadow-soft)] disabled:opacity-40"
-      >
-        <OctagonX className="h-4 w-4 sm:mr-1" />
-        <span className="hidden sm:inline">Dừng khẩn</span>
-      </Button>
+      {/* Inline kill switch — only when agent is armed, for instant access */}
+      {killArmed && (
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={onKillSwitch}
+          title="Dừng tác nhân ngay lập tức (Esc)"
+          className="h-8 font-semibold shadow-[var(--shadow-soft)] animate-fade-in"
+        >
+          <OctagonX className="h-4 w-4 sm:mr-1" />
+          <span className="hidden sm:inline">Dừng khẩn</span>
+        </Button>
+      )}
     </header>
   );
 }
