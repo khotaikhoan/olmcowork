@@ -391,6 +391,65 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                 </div>
                 {/* Full Auto — agent loop tối đa 20 bước, không hỏi xác nhận. Esc để dừng. */}
                 <FullAutoToggle />
+
+                {/* ── Sound effects ─────────────────────────────────── */}
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <Label className="flex items-center gap-1.5">
+                        <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        Hiệu ứng âm thanh
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Tiếng "ting" nhẹ khi AI trả lời xong, tiếng blip khi gửi.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={soundEnabled}
+                      onCheckedChange={(v) => {
+                        setSoundEnabledState(v);
+                        setSoundEnabled(v);
+                        if (v) setTimeout(() => playSound("ting"), 50);
+                      }}
+                    />
+                  </div>
+                  {soundEnabled && (
+                    <div className="space-y-2 pl-1 animate-fade-in">
+                      <div className="flex items-center justify-between text-xs">
+                        <Label className="text-xs text-muted-foreground">
+                          Âm lượng: {Math.round(soundVolume * 100)}%
+                        </Label>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            className="text-xs px-2 py-0.5 rounded border border-border hover:bg-accent transition-colors"
+                            onClick={() => playSound("ting")}
+                          >
+                            Test ting
+                          </button>
+                          <button
+                            type="button"
+                            className="text-xs px-2 py-0.5 rounded border border-border hover:bg-accent transition-colors"
+                            onClick={() => playSound("send")}
+                          >
+                            Test send
+                          </button>
+                        </div>
+                      </div>
+                      <Slider
+                        value={[soundVolume * 100]}
+                        min={0}
+                        max={100}
+                        step={5}
+                        onValueChange={([v]) => {
+                          const f = (v ?? 50) / 100;
+                          setSoundVolumeState(f);
+                          setSoundVolume(f);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </AccordionContent>
             </AccordionItem>
 
