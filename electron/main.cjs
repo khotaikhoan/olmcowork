@@ -350,6 +350,30 @@ ipcMain.handle("bridge:info", () => ({
   hasScreenshot: !!screenshotDesktop,
 }));
 
+// Renderer-triggered: clear screen-recording permission cache so the next
+// screenshot/observe call re-attempts immediately. Also returns the live
+// macOS TCC status so the UI can hint the user.
+ipcMain.handle("bridge:reset_screen_permission", () => {
+  macScreenCaptureBlocked = null;
+  const status = getMacScreenCaptureStatus();
+  return {
+    ok: true,
+    output: `Cleared screen-recording permission cache. macOS status: ${status ?? "unknown"}`,
+    status,
+  };
+});
+
+ipcMain.handle("bridge:screen_permission_status", () => {
+  const status = getMacScreenCaptureStatus();
+  const blocked = isPermissionCacheActive();
+  return {
+    ok: true,
+    output: `macOS screen-recording status: ${status ?? "unknown"}${blocked ? " (currently blocked in cache)" : ""}`,
+    status,
+    blocked,
+  };
+});
+
 ipcMain.handle("bridge:read_file", async (_e, { path: p }) => {
   if (!pathAllowed(p)) return { ok: false, output: `Denied: path ${p} is not allowed.` };
   try {
