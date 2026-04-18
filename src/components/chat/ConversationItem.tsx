@@ -164,38 +164,51 @@ export function ConversationItem({
         )}
       </div>
       {!editing && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-sidebar-border transition mt-0.5"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem onClick={onPin}>
-              {pinned ? (
-                <>
-                  <PinOff className="h-3.5 w-3.5 mr-2" /> Bỏ ghim
-                </>
-              ) : (
-                <>
-                  <Pin className="h-3.5 w-3.5 mr-2" /> Ghim
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={startEdit}>
-              <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={onRequestDelete}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-0.5 mt-0.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRequestDelete();
+            }}
+            title="Xoá hội thoại"
+            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                onClick={(e) => e.stopPropagation()}
+                title="Tuỳ chọn"
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-sidebar-border transition"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onPin}>
+                {pinned ? (
+                  <>
+                    <PinOff className="h-3.5 w-3.5 mr-2" /> Bỏ ghim
+                  </>
+                ) : (
+                  <>
+                    <Pin className="h-3.5 w-3.5 mr-2" /> Ghim
+                  </>
+                )}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={startEdit}>
+                <Pencil className="h-3.5 w-3.5 mr-2" /> Đổi tên
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onRequestDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Xoá
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
     </div>
   );
