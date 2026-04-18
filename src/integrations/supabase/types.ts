@@ -97,6 +97,8 @@ export type Database = {
           branch_of_message_id: string | null
           created_at: string
           id: string
+          last_message_at: string | null
+          last_message_preview: string | null
           mode: Database["public"]["Enums"]["conversation_mode"]
           model: string | null
           system_prompt: string | null
@@ -108,6 +110,8 @@ export type Database = {
           branch_of_message_id?: string | null
           created_at?: string
           id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
           mode?: Database["public"]["Enums"]["conversation_mode"]
           model?: string | null
           system_prompt?: string | null
@@ -119,6 +123,8 @@ export type Database = {
           branch_of_message_id?: string | null
           created_at?: string
           id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
           mode?: Database["public"]["Enums"]["conversation_mode"]
           model?: string | null
           system_prompt?: string | null
@@ -326,7 +332,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      clean_message_preview: { Args: { s: string }; Returns: string }
+      refresh_conversation_last_message: {
+        Args: { _cid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       conversation_mode: "chat" | "control"
