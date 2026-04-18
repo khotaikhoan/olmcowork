@@ -441,6 +441,7 @@ export function ChatView({
         setToolsEnabled(m === "control");
       }
       setMessages((msgs ?? []) as unknown as DbMessage[]);
+      setLoadingConv(false);
 
       // Detect interrupted stream from previous session
       const saved = loadResumeState(conversationId);
