@@ -47,6 +47,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
 import { isElectron } from "@/lib/bridge";
+import { Volume2 } from "lucide-react";
+import { isSoundEnabled, setSoundEnabled, getSoundVolume, setSoundVolume, playSound } from "@/lib/sounds";
+import { Slider } from "@/components/ui/slider";
 
 export type Provider = "ollama" | "openai";
 
