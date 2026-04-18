@@ -392,6 +392,9 @@ export async function executeTool(
     switch (action) {
       case "screenshot": {
         const r = await b.screenshot();
+        if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+          notifyScreenPermissionBlocked(r.output);
+        }
         return { ok: r.ok, output: r.output, image: r.image };
       }
       case "mouse_move":
