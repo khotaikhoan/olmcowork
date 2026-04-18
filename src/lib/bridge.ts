@@ -2,6 +2,40 @@
 // xuống Electron IPC, hoặc fallback mock trong browser.
 import { mockExecute, ExecResult } from "./tools";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+// ---------- macOS Screen-Recording permission UX ----------
+// When the main process reports `permissionBlocked`, surface a single toast
+// (debounced) with a "Đã cấp quyền – thử lại" action that clears the cooldown
+// cache so the next tool call re-attempts capture immediately.
+let lastPermissionToastTs = 0;
+function notifyScreenPermissionBlocked(message: string): void {
+  const now = Date.now();
+  if (now - lastPermissionToastTs < 4000) return; // debounce repeated tool failures
+  lastPermissionToastTs = now;
+  const b = typeof window !== "undefined" ? window.bridge : undefined;
+  toast.error("macOS chặn quay màn hình", {
+    description: message.slice(0, 220),
+    duration: 12000,
+    action: b?.resetScreenPermission
+      ? {
+          label: "Đã cấp quyền – thử lại",
+          onClick: async () => {
+            try {
+              const r = await b.resetScreenPermission!();
+              toast.success("Đã reset cache quyền", {
+                description: r.output,
+              });
+            } catch (e) {
+              toast.error("Reset thất bại", {
+                description: e instanceof Error ? e.message : String(e),
+              });
+            }
+          },
+        }
+      : undefined,
+  });
+}
 
 // ---------- Generic localStorage TTL cache (used by fetch_url + web_search) ----------
 const TOOL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
