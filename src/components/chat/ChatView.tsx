@@ -1992,7 +1992,6 @@ export function ChatView({
           onStop={stop}
           isStreaming={isStreaming || !!pendingPlan}
           disabled={!user || !!pendingPlan}
-          provider={provider}
         />
       )}
 

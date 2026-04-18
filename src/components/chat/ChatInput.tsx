@@ -21,12 +21,11 @@ interface Props {
   onStop?: () => void;
   isStreaming: boolean;
   disabled?: boolean;
-  provider?: "ollama" | "openai";
 }
 
 const URL_RE = /^https?:\/\/[^\s]+$/i;
 
-export function ChatInput({ onSend, onStop, isStreaming, disabled, provider = "ollama" }: Props) {
+export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [urlPreviews, setUrlPreviews] = useState<UrlMeta[]>([]);
@@ -320,13 +319,6 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, provider = "o
           )}
         </div>
       </div>
-      {provider === "ollama" && (
-        <p className="text-[11px] text-muted-foreground text-center mt-2">
-          Kết nối trực tiếp tới Ollama trên máy bạn. Đặt <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> khi dùng trong trình duyệt.
-          Nếu model cứ lỗi 500 trên macOS Apple Silicon (Homebrew Ollama), thử{" "}
-          <code className="px-1 bg-muted rounded">GGML_METAL_TENSOR_DISABLE=1</code> khi chạy <code className="px-1 bg-muted rounded">ollama serve</code>.
-        </p>
-      )}
       <ShortcutHints />
     </div>
   );
