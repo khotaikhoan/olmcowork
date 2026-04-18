@@ -413,6 +413,7 @@ export function ChatView({
     setSearchIndex(0);
     if (!conversationId) {
       setMessages([]);
+      setLoadingConv(false);
       setTitle("New chat");
       setSystemPrompt("");
       setMode("chat");
@@ -420,6 +421,7 @@ export function ChatView({
       if (defaultModel) setModel(defaultModel);
       return;
     }
+    setLoadingConv(true);
     (async () => {
       const [{ data: conv }, { data: msgs }] = await Promise.all([
         supabase.from("conversations").select("*").eq("id", conversationId).maybeSingle(),
