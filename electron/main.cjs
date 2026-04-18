@@ -621,7 +621,7 @@ ipcMain.handle("bridge:vision_annotate", async () => {
   try {
     const capture = await captureScreenPng();
     if (!capture.ok || !capture.image || !capture.display) {
-      return { ok: false, output: capture.output };
+      return { ok: false, output: capture.output, permissionBlocked: !!capture.permissionBlocked };
     }
     const display = capture.display;
     const { width, height } = display.size;
