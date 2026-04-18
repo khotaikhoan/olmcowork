@@ -131,6 +131,26 @@ export function ChatView({
   const [resumeOffer, setResumeOffer] = useState<ResumeState | null>(null);
   const resumeSavedAtThisSessionRef = useRef<boolean>(false);
   const throttledSaveRef = useRef(makeThrottledSaver(800));
+  const latestPartialRef = useRef<{ convId: string; text: string } | null>(null);
+
+  // Flush partial to localStorage synchronously on tab unload — bypasses
+  // throttle so we don't lose the last second of streaming.
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      const lp = latestPartialRef.current;
+      if (!lp || !isStreaming) return;
+      try {
+        const raw = localStorage.getItem("chat.resume.v1." + lp.convId);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        parsed.partial = lp.text;
+        parsed.updatedAt = Date.now();
+        localStorage.setItem("chat.resume.v1." + lp.convId, JSON.stringify(parsed));
+      } catch { /* ignore */ }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isStreaming]);
 
   // Cost tracking — accumulated input/output tokens for the conversation
   const [costInput, setCostInput] = useState(0);
