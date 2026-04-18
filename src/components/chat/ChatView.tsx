@@ -106,6 +106,9 @@ export function ChatView({
   const [running, setRunning] = useState<RunningModel[]>([]);
   const [bridgeOnline, setBridgeOnline] = useState(false);
   const [messages, setMessages] = useState<DbMessage[]>([]);
+  /** True while the initial messages fetch for the selected conversation is in
+   * flight — drives the skeleton placeholder so users don't see a blank page. */
+  const [loadingConv, setLoadingConv] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCallRecord[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
