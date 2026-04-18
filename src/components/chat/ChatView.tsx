@@ -9,6 +9,7 @@ import { MessageBubble } from "./MessageBubble";
 import { SmartSuggestions } from "./SmartSuggestions";
 import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ResumeBanner } from "./ResumeBanner";
+import { detectTruncation, buildContinuePrompt } from "@/lib/truncationDetect";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import {
   saveResumeState,
