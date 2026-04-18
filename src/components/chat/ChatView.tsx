@@ -46,7 +46,7 @@ import { ChatSearch } from "./ChatSearch";
 import { estimateCostUsd } from "@/lib/pricing";
 import { logActivity } from "@/lib/activityLog";
 import { toMarkdown, toJson, downloadFile, safeFilename } from "@/lib/exportConv";
-import { notifyDone } from "@/lib/notifications";
+import { notifyDone, primeNotificationPermission } from "@/lib/notifications";
 import type { CursorPoint } from "./CursorTrailOverlay";
 import { setOculoState } from "@/components/OculoLogo";
 import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
@@ -929,6 +929,9 @@ export function ChatView({
     // User actively engaging — clear unread divider.
     setFirstUnreadId(null);
     lastSeenIdRef.current = null;
+    // First user gesture is a good time to ask for desktop notification
+    // permission (browsers block prompts without user interaction).
+    void primeNotificationPermission();
     // Behavior learning: track total user messages so the empty-state can hide
     // suggestions for power users (≥10 messages). Increment ONCE per send.
     try {
@@ -1189,6 +1192,7 @@ export function ChatView({
       const replyTokens = estimateTokens(finalContent);
       setLastReplyStats({ tokens: replyTokens, tps: replyTokens / elapsedSec });
 
+      let savedAssistantId: string | undefined;
       if (finalContent || savedCalls.length) {
         const { data: aMsg } = await supabase
           .from("messages")
@@ -1201,14 +1205,20 @@ export function ChatView({
           })
           .select("id,role,content,attachments,tool_calls,created_at")
           .single();
-        if (aMsg) setMessages((p) => [...p, aMsg as unknown as DbMessage]);
+        if (aMsg) {
+          savedAssistantId = (aMsg as any).id as string;
+          setMessages((p) => [...p, aMsg as unknown as DbMessage]);
+        }
       }
       setStreamingText("");
       setStreamingToolCalls([]);
       await supabase.from("conversations").update({ updated_at: new Date().toISOString() }).eq("id", convId);
       onTitleUpdated();
-      // Native notification when tab is in background
-      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
+      // Native notification when tab is in background — clicking it focuses
+      // the tab and scrolls the new message into view.
+      notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ", {
+        messageId: savedAssistantId,
+      });
     } catch (e: any) {
       setIsStreaming(false);
       setAgentStep(null);
