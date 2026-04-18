@@ -1,5 +1,5 @@
 // Electron main process. CommonJS (.cjs) because package.json is "type": "module".
-const { app, BrowserWindow, ipcMain, screen, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, dialog, systemPreferences } = require("electron");
 const path = require("path");
 const fs = require("fs/promises");
 const fsSync = require("fs");
@@ -230,6 +230,93 @@ function tryRequire(name) {
 }
 const screenshotDesktop = tryRequire("screenshot-desktop");
 
+// macOS Screen Recording (TCC) can keep re-showing the permission dialog when
+// a capture command is retried while access is still denied or the app has not
+// been restarted after granting access. Cache the failure for the current app
+// session so repeated screenshot / observe_screen calls do not spam the popup.
+let macScreenCaptureBlocked = null;
+
+function getMacScreenCaptureStatus() {
+  if (process.platform !== "darwin") return null;
+  try {
+    return systemPreferences?.getMediaAccessStatus?.("screen") ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function isMacScreenCapturePermissionError(message) {
+  const msg = String(message || "").toLowerCase();
+  return (
+    msg.includes("could not create image from display") ||
+    msg.includes("not authorized") ||
+    msg.includes("permission") ||
+    msg.includes("screen recording") ||
+    msg.includes("screencapture")
+  );
+}
+
+function macScreenCaptureHelp(status, originalMessage) {
+  const appName = app.getName?.() || "ứng dụng này";
+  const base =
+    `macOS đang chặn chụp màn hình cho ${appName}. ` +
+    `Mở System Settings → Privacy & Security → Screen & System Audio Recording ` +
+    `(hoặc Screen Recording), bật quyền cho ${appName}, rồi QUIT hẳn app và mở lại.`;
+
+  if (status === "granted") {
+    return (
+      `macOS đã thấy quyền Screen Recording là granted nhưng tiến trình hiện tại chưa dùng được. ` +
+      `Thường cần quit hẳn ${appName} rồi mở lại để quyền mới có hiệu lực.` +
+      (originalMessage ? `\n\nChi tiết gốc: ${originalMessage}` : "")
+    );
+  }
+
+  if (status === "denied" || status === "restricted") {
+    return base + (originalMessage ? `\n\nChi tiết gốc: ${originalMessage}` : "");
+  }
+
+  return (
+    `Không chụp được màn hình trên macOS. Nếu popup quyền đang lặp lại, đừng retry liên tục. ` +
+    `Hãy kiểm tra Screen Recording cho ${appName} và mở lại app sau khi cấp quyền.` +
+    (originalMessage ? `\n\nChi tiết gốc: ${originalMessage}` : "")
+  );
+}
+
+async function captureScreenPng() {
+  if (!screenshotDesktop) {
+    return {
+      ok: false,
+      output: "screenshot-desktop module not installed. Run `npm i screenshot-desktop` to enable.",
+    };
+  }
+
+  if (process.platform === "darwin" && macScreenCaptureBlocked) {
+    return { ok: false, output: macScreenCaptureBlocked };
+  }
+
+  try {
+    const buf = await screenshotDesktop({ format: "png" });
+    const display = screen.getPrimaryDisplay();
+    macScreenCaptureBlocked = null;
+    return {
+      ok: true,
+      output: `Captured ${display.size.width}x${display.size.height} screenshot (${buf.length} bytes).`,
+      image: buf.toString("base64"),
+      display,
+      width: display.size.width,
+      height: display.size.height,
+    };
+  } catch (e) {
+    const message = String(e?.message || e);
+    if (process.platform === "darwin" && isMacScreenCapturePermissionError(message)) {
+      const help = macScreenCaptureHelp(getMacScreenCaptureStatus(), message);
+      macScreenCaptureBlocked = help;
+      return { ok: false, output: help };
+    }
+    return { ok: false, output: `Error: ${message}` };
+  }
+}
+
 // ----- IPC handlers -----
 ipcMain.handle("bridge:info", () => ({
   platform: process.platform,
@@ -289,23 +376,8 @@ ipcMain.handle("bridge:run_shell", async (_e, { command }) => {
 });
 
 ipcMain.handle("bridge:screenshot", async () => {
-  if (!screenshotDesktop) {
-    return {
-      ok: false,
-      output: "screenshot-desktop module not installed. Run `npm i screenshot-desktop` to enable.",
-    };
-  }
-  try {
-    const buf = await screenshotDesktop({ format: "png" });
-    const display = screen.getPrimaryDisplay();
-    return {
-      ok: true,
-      output: `Captured ${display.size.width}x${display.size.height} screenshot (${buf.length} bytes).`,
-      image: buf.toString("base64"),
-    };
-  } catch (e) {
-    return { ok: false, output: `Error: ${e.message}` };
-  }
+  const r = await captureScreenPng();
+  return r.ok ? { ok: true, output: r.output, image: r.image } : { ok: false, output: r.output };
 });
 
 // ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----
@@ -496,12 +568,12 @@ function detectMarksGrid(width, height) {
 }
 
 ipcMain.handle("bridge:vision_annotate", async () => {
-  if (!screenshotDesktop) {
-    return { ok: false, output: "screenshot-desktop not installed" };
-  }
   try {
-    const buf = await screenshotDesktop({ format: "png" });
-    const display = screen.getPrimaryDisplay();
+    const capture = await captureScreenPng();
+    if (!capture.ok || !capture.image || !capture.display) {
+      return { ok: false, output: capture.output };
+    }
+    const display = capture.display;
     const { width, height } = display.size;
 
     let marks = [];
@@ -544,7 +616,7 @@ ipcMain.handle("bridge:vision_annotate", async () => {
     return {
       ok: true,
       output: `Captured ${width}x${height}. ${appLine}${noteFallback}${lines}\nReply with vision_click(action='click', mark_id=N).`,
-      image: buf.toString("base64"),
+      image: capture.image,
       marks,
     };
   } catch (e) {
