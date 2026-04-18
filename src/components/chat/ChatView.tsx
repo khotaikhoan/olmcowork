@@ -1829,6 +1829,22 @@ export function ChatView({
                       truncation.truncated ? () => handleContinueGenerating(m.id) : undefined
                     }
                     continueReason={truncation.reason}
+                    pending={m.pending}
+                    failed={m.failed}
+                    onRetrySend={
+                      m.failed
+                        ? () => {
+                            const atts = (m.attachments ?? []).map((a) => ({
+                              file: new File([], a.name),
+                              dataUrl: a.dataUrl,
+                              base64: a.base64 ?? "",
+                            })) as PendingAttachment[];
+                            // Drop the failed bubble and re-send the same text.
+                            setMessages((p) => p.filter((x) => x.id !== m.id));
+                            executeSend(m.content, atts);
+                          }
+                        : undefined
+                    }
                   />
                   {isLastAssistant && (
                     <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
