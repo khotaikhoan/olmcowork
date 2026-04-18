@@ -10,6 +10,7 @@ import { SmartSuggestions } from "./SmartSuggestions";
 import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ResumeBanner } from "./ResumeBanner";
 import { detectTruncation, buildContinuePrompt } from "@/lib/truncationDetect";
+import { playSound } from "@/lib/sounds";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import {
   saveResumeState,
