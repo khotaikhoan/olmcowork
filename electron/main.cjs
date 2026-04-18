@@ -425,7 +425,9 @@ ipcMain.handle("bridge:run_shell", async (_e, { command }) => {
 
 ipcMain.handle("bridge:screenshot", async () => {
   const r = await captureScreenPng();
-  return r.ok ? { ok: true, output: r.output, image: r.image } : { ok: false, output: r.output };
+  return r.ok
+    ? { ok: true, output: r.output, image: r.image }
+    : { ok: false, output: r.output, permissionBlocked: !!r.permissionBlocked };
 });
 
 // ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----

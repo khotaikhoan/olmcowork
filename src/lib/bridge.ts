@@ -132,7 +132,11 @@ export interface BridgeAPI {
   listDir: (path: string) => Promise<ExecResult>;
   writeFile: (path: string, content: string) => Promise<ExecResult>;
   runShell: (command: string) => Promise<ExecResult>;
-  screenshot: () => Promise<ExecResult & { image?: string }>;
+  screenshot: () => Promise<ExecResult & { image?: string; permissionBlocked?: boolean }>;
+  /** macOS only: clear cached screen-recording permission failure so the next capture re-attempts immediately. */
+  resetScreenPermission?: () => Promise<ExecResult & { status?: string | null }>;
+  /** macOS only: read current TCC screen-recording status without triggering a capture. */
+  screenPermissionStatus?: () => Promise<ExecResult & { status?: string | null; blocked?: boolean }>;
   visionAnnotate: () => Promise<ExecResult & { image?: string; marks?: VisionMark[] }>;
   visionClick: (markId: number, button?: "left" | "right" | "middle") => Promise<ExecResult>;
   mouseMove: (x: number, y: number) => Promise<ExecResult>;
