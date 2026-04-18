@@ -1099,10 +1099,15 @@ export function ChatView({
       onTitleUpdated();
       // Native notification when tab is in background
       notifyDone(title || "Trả lời xong", finalContent || "Hoàn thành tác vụ");
+      // Sound: pleasant chime when reply finishes
+      playSound("ting");
     } catch (e: any) {
       setIsStreaming(false);
       setAgentStep(null);
-      if (e.name !== "AbortError") toast.error(e.message);
+      if (e.name !== "AbortError") {
+        toast.error(e.message);
+        playSound("error");
+      }
     }
   };
 
