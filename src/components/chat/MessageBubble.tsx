@@ -256,6 +256,26 @@ export function MessageBubble({
             )}
           </div>
         )}
+        {isUser && pending && (
+          <span className="self-end inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Đang gửi…
+          </span>
+        )}
+        {isUser && failed && (
+          <div className="self-end flex items-center gap-2 text-xs text-destructive animate-fade-in">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>Không gửi được</span>
+            {onRetrySend && (
+              <button
+                type="button"
+                onClick={onRetrySend}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 transition-colors font-medium"
+              >
+                <RotateCw className="h-3 w-3" /> Thử lại
+              </button>
+            )}
+          </div>
+        )}
         {!isUser && !streaming && onContinue && (
           <button
             onClick={onContinue}
