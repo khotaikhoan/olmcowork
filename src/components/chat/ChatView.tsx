@@ -1490,10 +1490,14 @@ export function ChatView({
                 role="assistant"
                 content={streamingText}
                 toolCalls={streamingToolCalls}
-                streaming={!streamingText && streamingToolCalls.length === 0}
+                streaming={true}
                 messageId="streaming"
                 onArtifactOpen={onArtifactOpen}
                 onReannotate={handleReannotate}
+                onSkipThinking={() => {
+                  stop();
+                  toast.message("Đã dừng phần suy nghĩ");
+                }}
               />
             )}
             <div className="h-4" />
