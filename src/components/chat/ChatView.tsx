@@ -1033,11 +1033,16 @@ export function ChatView({
           onToken: (chunk) => {
             acc += chunk;
             setStreamingText(acc);
+            persistPartial(acc);
           },
           onError: (err) => toast.error("Lỗi luồng: " + err.message),
         });
         finalContent = acc;
       }
+
+      // Stream completed normally — clear any saved resume state.
+      clearResumeState(convId);
+      setResumeOffer(null);
 
       setIsStreaming(false);
       setAgentStep(null);
