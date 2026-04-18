@@ -20,6 +20,7 @@ import {
   Settings,
   LogOut,
   PanelLeftClose,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +30,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { getPins, togglePin } from "@/lib/pins";
 import type { ConversationMode } from "@/lib/tools";
 import { ConversationItem } from "./ConversationItem";
+import { formatDistanceToNow } from "date-fns";
+import { vi } from "date-fns/locale";
 
 export interface Conversation {
   id: string;
@@ -48,6 +51,41 @@ interface Props {
   onCollapse?: () => void;
 }
 
+const EXAMPLE_PROMPTS = [
+  "Giải thích Transformer trong NLP cho người mới",
+  "Viết script Python in 10 số Fibonacci đầu tiên",
+  "Tóm tắt URL https://news.ycombinator.com",
+];
+
+type GroupKey = "today" | "week" | "month" | "older";
+const GROUP_LABEL: Record<GroupKey, string> = {
+  today: "Hôm nay",
+  week: "7 ngày qua",
+  month: "Tháng này",
+  older: "Cũ hơn",
+};
+const GROUP_ORDER: GroupKey[] = ["today", "week", "month", "older"];
+
+function bucketOf(iso: string): GroupKey {
+  const t = new Date(iso).getTime();
+  const now = Date.now();
+  const diffH = (now - t) / 36e5;
+  if (diffH < 24) return "today";
+  if (diffH < 24 * 7) return "week";
+  if (diffH < 24 * 30) return "month";
+  return "older";
+}
+
+function cleanPreview(s: string): string {
+  // Strip code fences, markdown headings, leading whitespace; collapse newlines.
+  return s
+    .replace(/```[\s\S]*?```/g, "[code]")
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function ConversationList({
   selectedId,
   onSelect,
@@ -59,6 +97,7 @@ export function ConversationList({
   const { signOut, user } = useAuth();
   const cp = useCommandPalette();
   const [items, setItems] = useState<Conversation[]>([]);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [pinSet, setPinSet] = useState<Set<string>>(new Set(getPins()));
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
@@ -68,8 +107,33 @@ export function ConversationList({
       .from("conversations")
       .select("id,title,model,system_prompt,updated_at,mode")
       .order("updated_at", { ascending: false });
-    if (error) toast.error(error.message);
-    else setItems((data ?? []) as unknown as Conversation[]);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const list = (data ?? []) as unknown as Conversation[];
+    setItems(list);
+    // Fetch last message per conversation (single query, dedupe client-side).
+    if (list.length === 0) {
+      setPreviews({});
+      return;
+    }
+    const ids = list.map((c) => c.id);
+    const { data: msgs } = await supabase
+      .from("messages")
+      .select("conversation_id,content,created_at,role")
+      .in("conversation_id", ids)
+      .order("created_at", { ascending: false })
+      .limit(800);
+    const map: Record<string, string> = {};
+    for (const m of msgs ?? []) {
+      const cid = (m as any).conversation_id as string;
+      if (map[cid]) continue;
+      const content = ((m as any).content as string) || "";
+      if (!content.trim()) continue;
+      map[cid] = cleanPreview(content).slice(0, 140);
+    }
+    setPreviews(map);
   };
 
   useEffect(() => {
@@ -100,17 +164,61 @@ export function ConversationList({
     setPinSet(new Set(getPins()));
   };
 
-  const { pinned, others, hasMatches } = useMemo(() => {
+  const fillPrompt = (prompt: string) => {
+    onNew();
+    // Defer so ChatInput is mounted, then fill via the existing event channel.
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
+      );
+    }, 50);
+  };
+
+  const { pinned, grouped, hasMatches } = useMemo(() => {
     const needle = q.toLowerCase();
     const filtered = needle
-      ? items.filter((i) => i.title.toLowerCase().includes(needle))
+      ? items.filter(
+          (i) =>
+            i.title.toLowerCase().includes(needle) ||
+            (previews[i.id] || "").toLowerCase().includes(needle),
+        )
       : items;
+    const pinnedList = filtered.filter((i) => pinSet.has(i.id));
+    const others = filtered.filter((i) => !pinSet.has(i.id));
+    const groups: Record<GroupKey, Conversation[]> = {
+      today: [],
+      week: [],
+      month: [],
+      older: [],
+    };
+    for (const c of others) groups[bucketOf(c.updated_at)].push(c);
     return {
-      pinned: filtered.filter((i) => pinSet.has(i.id)),
-      others: filtered.filter((i) => !pinSet.has(i.id)),
+      pinned: pinnedList,
+      grouped: groups,
       hasMatches: filtered.length > 0,
     };
-  }, [items, q, pinSet]);
+  }, [items, q, pinSet, previews]);
+
+  const renderItem = (c: Conversation) => (
+    <ConversationItem
+      key={c.id}
+      conversation={c}
+      selected={selectedId === c.id}
+      pinned={pinSet.has(c.id)}
+      preview={previews[c.id]}
+      timeLabel={formatDistanceToNow(new Date(c.updated_at), {
+        addSuffix: false,
+        locale: vi,
+      })}
+      onSelect={() => onSelect(c.id)}
+      onPin={() => handlePin(c.id)}
+      onRenameSubmit={(t) => rename(c.id, t)}
+      onRequestDelete={() => setPendingDelete(c)}
+    />
+  );
+
+  const isEmpty = items.length === 0;
+  const isFilteredEmpty = !isEmpty && !hasMatches;
 
   return (
     <aside className="w-72 shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen">
@@ -155,23 +263,49 @@ export function ConversationList({
         </button>
       </div>
 
-      <div className="p-3 pt-2">
-        <div className="relative">
-          <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Lọc nhanh…"
-            className="pl-8 h-8 text-sm bg-sidebar-accent/40 border-sidebar-border"
-          />
+      {!isEmpty && (
+        <div className="p-3 pt-2">
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Lọc theo tiêu đề hoặc nội dung…"
+              className="pl-8 h-8 text-sm bg-sidebar-accent/40 border-sidebar-border"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-0.5 pb-2">
-          {!hasMatches && (
+          {isEmpty && (
+            <div className="px-3 py-6 text-center animate-fade-in">
+              <div className="mx-auto h-12 w-12 rounded-2xl bg-[image:var(--gradient-primary)] flex items-center justify-center shadow-[var(--shadow-soft)] mb-3">
+                <Sparkles className="h-6 w-6 text-primary-foreground" />
+              </div>
+              <div className="text-sm font-medium text-sidebar-foreground mb-1">
+                Bắt đầu cuộc trò chuyện đầu tiên
+              </div>
+              <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                Gõ một câu hỏi, hoặc thử một gợi ý bên dưới.
+              </p>
+              <div className="space-y-1.5">
+                {EXAMPLE_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => fillPrompt(p)}
+                    className="w-full text-left text-[11px] px-2.5 py-1.5 rounded-md border border-sidebar-border bg-sidebar-accent/40 hover:bg-sidebar-accent hover:border-primary/40 text-sidebar-foreground transition-colors line-clamp-2"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {isFilteredEmpty && (
             <p className="text-xs text-muted-foreground text-center py-8 px-3">
-              Chưa có cuộc trò chuyện nào
+              Không tìm thấy cuộc trò chuyện nào khớp "{q}"
             </p>
           )}
           {pinned.length > 0 && (
@@ -179,33 +313,22 @@ export function ConversationList({
               <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Đã ghim
               </div>
-              {pinned.map((c) => (
-                <ConversationItem
-                  key={c.id}
-                  conversation={c}
-                  selected={selectedId === c.id}
-                  pinned
-                  onSelect={() => onSelect(c.id)}
-                  onPin={() => handlePin(c.id)}
-                  onRenameSubmit={(t) => rename(c.id, t)}
-                  onRequestDelete={() => setPendingDelete(c)}
-                />
-              ))}
-              {others.length > 0 && <div className="h-px bg-sidebar-border my-2 mx-2" />}
+              {pinned.map(renderItem)}
+              <div className="h-px bg-sidebar-border my-2 mx-2" />
             </>
           )}
-          {others.map((c) => (
-            <ConversationItem
-              key={c.id}
-              conversation={c}
-              selected={selectedId === c.id}
-              pinned={false}
-              onSelect={() => onSelect(c.id)}
-              onPin={() => handlePin(c.id)}
-              onRenameSubmit={(t) => rename(c.id, t)}
-              onRequestDelete={() => setPendingDelete(c)}
-            />
-          ))}
+          {GROUP_ORDER.map((key) => {
+            const list = grouped[key];
+            if (list.length === 0) return null;
+            return (
+              <div key={key}>
+                <div className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {GROUP_LABEL[key]}
+                </div>
+                {list.map(renderItem)}
+              </div>
+            );
+          })}
         </div>
       </ScrollArea>
 
