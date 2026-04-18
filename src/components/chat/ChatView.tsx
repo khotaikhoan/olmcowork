@@ -1524,6 +1524,21 @@ export function ChatView({
                 }}
               />
             )}
+            {resumeOffer && (
+              <ResumeBanner
+                state={resumeOffer}
+                onResume={() => {
+                  const cont = buildContinuationPrompt(resumeOffer);
+                  clearResumeState(conversationId);
+                  setResumeOffer(null);
+                  executeSend(cont, []);
+                }}
+                onDismiss={() => {
+                  clearResumeState(conversationId);
+                  setResumeOffer(null);
+                }}
+              />
+            )}
             {messages.map((m, idx) => {
               const isLastAssistant =
                 m.role === "assistant" &&
