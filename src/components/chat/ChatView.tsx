@@ -196,6 +196,72 @@ export function ChatView({
     });
   }, [conversationId]);
 
+  // ── Tab title badge ─────────────────────────────────────────────────────
+  // When the tab is hidden and new assistant messages arrive, prefix the
+  // browser tab title with "(N) " so the user sees a notification badge in
+  // their tab bar. Counter clears as soon as the tab becomes visible again.
+  const unreadCountRef = useRef(0);
+  const lastSeenAssistantIdRef = useRef<string | null>(null);
+  const baseTitleRef = useRef<string>(typeof document !== "undefined" ? document.title : "");
+  // Capture the original site title once.
+  useEffect(() => {
+    if (typeof document !== "undefined" && !baseTitleRef.current) {
+      baseTitleRef.current = document.title;
+    }
+  }, []);
+  // Reset on conversation change.
+  useEffect(() => {
+    unreadCountRef.current = 0;
+    lastSeenAssistantIdRef.current = null;
+    if (typeof document !== "undefined") {
+      document.title = baseTitleRef.current || "Chat";
+    }
+  }, [conversationId]);
+  // Track newly arrived assistant messages while the tab is hidden.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    const lastId = lastAssistant?.id ?? null;
+    // First load — just snapshot, don't count as unread.
+    if (lastSeenAssistantIdRef.current === null) {
+      lastSeenAssistantIdRef.current = lastId;
+      return;
+    }
+    if (lastId && lastId !== lastSeenAssistantIdRef.current) {
+      // Count how many new assistant messages since the last seen one.
+      const idx = messages.findIndex((m) => m.id === lastSeenAssistantIdRef.current);
+      const newOnes = messages
+        .slice(idx + 1)
+        .filter((m) => m.role === "assistant").length;
+      lastSeenAssistantIdRef.current = lastId;
+      if (document.visibilityState === "hidden" && newOnes > 0) {
+        unreadCountRef.current += newOnes;
+        const base = title || baseTitleRef.current || "Chat";
+        document.title = `(${unreadCountRef.current}) ${base}`;
+      }
+    }
+  }, [messages, title]);
+  // Clear the badge as soon as the user returns to the tab.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onVis = () => {
+      if (document.visibilityState === "visible" && unreadCountRef.current > 0) {
+        unreadCountRef.current = 0;
+        document.title = title || baseTitleRef.current || "Chat";
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [title]);
+  // Keep tab title in sync with conversation title when no badge is showing.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (unreadCountRef.current === 0 && title) {
+      document.title = title;
+    }
+  }, [title]);
+
+
   // Shared bypass toggle — used by both ControlBarFull and ControlBarCompact.
   const handleBypassToggle = (v: boolean) => {
     if (!conversationId) {
