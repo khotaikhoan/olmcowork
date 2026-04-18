@@ -255,6 +255,8 @@ export function MessageBubble({
             Tiếp tục từ đây
           </button>
         )}
+        {!streaming && content && !editing && (
+          <MessageActions
             content={content}
             onRegenerate={!isUser ? onRegenerate : undefined}
             onEdit={isUser && onEditSubmit ? () => setEditing(true) : undefined}
