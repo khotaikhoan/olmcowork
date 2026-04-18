@@ -20,11 +20,12 @@ interface Props {
   onStop?: () => void;
   isStreaming: boolean;
   disabled?: boolean;
+  provider?: "ollama" | "openai";
 }
 
 const URL_RE = /^https?:\/\/[^\s]+$/i;
 
-export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
+export function ChatInput({ onSend, onStop, isStreaming, disabled, provider = "ollama" }: Props) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<PendingAttachment[]>([]);
   const [urlPreviews, setUrlPreviews] = useState<UrlMeta[]>([]);
@@ -318,9 +319,11 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
           )}
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground text-center mt-2">
-        Kết nối trực tiếp tới Ollama trên máy bạn. Đặt <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> khi dùng trong trình duyệt.
-      </p>
+      {provider === "ollama" && (
+        <p className="text-[11px] text-muted-foreground text-center mt-2">
+          Kết nối trực tiếp tới Ollama trên máy bạn. Đặt <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> khi dùng trong trình duyệt.
+        </p>
+      )}
     </div>
   );
 }
