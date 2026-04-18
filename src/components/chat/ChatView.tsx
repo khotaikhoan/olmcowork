@@ -1745,7 +1745,8 @@ export function ChatView({
                   )}
                 </div>
               );
-            })}
+              });
+            })()}
             {isStreaming && (
               <MessageBubble
                 role="assistant"
