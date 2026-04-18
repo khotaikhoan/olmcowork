@@ -6,6 +6,8 @@ import { TopBar } from "./TopBar";
 import { ControlBarCompact, ControlBarFull } from "./ControlBar";
 import { BrowserActiveOverlay } from "./BrowserActiveOverlay";
 import { MessageBubble } from "./MessageBubble";
+import { SmartSuggestions } from "./SmartSuggestions";
+import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import { OllamaModel, RunningModel, listModels, listRunning, pingOllama, showModel, streamChat } from "@/lib/ollama";
 import { chatOnce, OllamaChatMessage } from "@/lib/ollamaTools";
@@ -1468,23 +1470,43 @@ export function ChatView({
                 }}
               />
             )}
-            {messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                role={m.role}
-                content={m.content}
-                attachments={m.attachments}
-                toolCalls={m.tool_calls}
-                messageId={m.id}
-                searchQuery={searchOpen ? searchQuery : undefined}
-                onArtifactOpen={onArtifactOpen}
-                onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
-                onBranch={() => handleBranch(m.id)}
-                onRetryTool={(callId) => handleRetryTool(m.id, callId)}
-                onRetryAllFailed={() => handleRetryAllFailed(m.id)}
-                bulkRetryProgress={bulkRetry[m.id] ?? null}
-              />
-            ))}
+            {messages.map((m, idx) => {
+              const isLastAssistant =
+                m.role === "assistant" &&
+                !isStreaming &&
+                !pendingPlan &&
+                idx === messages.length - 1;
+              return (
+                <div key={m.id}>
+                  <MessageBubble
+                    role={m.role}
+                    content={m.content}
+                    attachments={m.attachments}
+                    toolCalls={m.tool_calls}
+                    messageId={m.id}
+                    searchQuery={searchOpen ? searchQuery : undefined}
+                    onArtifactOpen={onArtifactOpen}
+                    onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
+                    onBranch={() => handleBranch(m.id)}
+                    onRetryTool={(callId) => handleRetryTool(m.id, callId)}
+                    onRetryAllFailed={() => handleRetryAllFailed(m.id)}
+                    bulkRetryProgress={bulkRetry[m.id] ?? null}
+                  />
+                  {isLastAssistant && (
+                    <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
+                      <SmartSuggestions
+                        suggestions={generateSuggestions(m.content, m.tool_calls)}
+                        onPick={(prompt) =>
+                          window.dispatchEvent(
+                            new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {isStreaming && (
               <MessageBubble
                 role="assistant"

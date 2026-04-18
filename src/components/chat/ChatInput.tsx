@@ -40,6 +40,24 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
     return () => voiceRef.current?.stop();
   }, []);
 
+  // Listen for "fill from suggestion chip" events
+  useEffect(() => {
+    const onFill = (e: Event) => {
+      const detail = (e as CustomEvent<{ text: string }>).detail;
+      if (!detail?.text) return;
+      setText(detail.text);
+      requestAnimationFrame(() => {
+        const ta = taRef.current;
+        if (ta) {
+          ta.focus();
+          ta.setSelectionRange(detail.text.length, detail.text.length);
+        }
+      });
+    };
+    window.addEventListener("chat-input:fill", onFill as EventListener);
+    return () => window.removeEventListener("chat-input:fill", onFill as EventListener);
+  }, []);
+
   const toggleVoice = () => {
     if (!voiceSupported) {
       toast.error("Trình duyệt không hỗ trợ nhận diện giọng nói");
