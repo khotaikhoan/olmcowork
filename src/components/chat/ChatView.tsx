@@ -1010,6 +1010,7 @@ export function ChatView({
             onToken: (chunk) => {
               acc += chunk;
               setStreamingText(acc);
+              persistPartial(acc);
             },
             onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
           });
