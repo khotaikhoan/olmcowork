@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, KeyboardEvent } from "react";
+import { useEffect, useRef, useState, KeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
