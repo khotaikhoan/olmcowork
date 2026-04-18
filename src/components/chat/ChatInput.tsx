@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { UrlPreviewChip, UrlMeta } from "./UrlPreviewChip";
 import { createVoiceController, isVoiceInputSupported, type VoiceController } from "@/lib/voiceInput";
 import { cn } from "@/lib/utils";
+import { ShortcutHints } from "./ShortcutHints";
 
 export interface PendingAttachment {
   file: File;
@@ -324,6 +325,7 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled, provider = "o
           Kết nối trực tiếp tới Ollama trên máy bạn. Đặt <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=*</code> khi dùng trong trình duyệt.
         </p>
       )}
+      <ShortcutHints />
     </div>
   );
 }
