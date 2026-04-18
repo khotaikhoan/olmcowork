@@ -9,7 +9,7 @@ import { MessageBubble } from "./MessageBubble";
 import { SmartSuggestions } from "./SmartSuggestions";
 import { generateSuggestions } from "@/lib/smartSuggestions";
 import { ResumeBanner } from "./ResumeBanner";
-import { detectTruncation, buildContinuePrompt } from "@/lib/truncationDetect";
+import { UnreadDivider } from "./UnreadDivider";
 import { ChatInput, PendingAttachment } from "./ChatInput";
 import {
   saveResumeState,
@@ -195,6 +195,50 @@ export function ChatView({
       if (cid === conversationId) setBypassState(v);
     });
   }, [conversationId]);
+
+  // ── "New since you left" divider ─────────────────────────────────────────
+  // Track the last message ID visible when the tab lost focus, so we can
+  // render an "↓ N tin nhắn mới" separator above messages that arrived while
+  // the user was away. Reset when the user clicks the chip, sends a new
+  // message, or switches conversations.
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  const lastSeenIdRef = useRef<string | null>(null);
+  const tabHiddenRef = useRef<boolean>(
+    typeof document !== "undefined" ? document.visibilityState === "hidden" : false,
+  );
+  useEffect(() => {
+    setFirstUnreadId(null);
+    lastSeenIdRef.current = null;
+  }, [conversationId]);
+  useEffect(() => {
+    const onVis = () => {
+      const hidden = document.visibilityState === "hidden";
+      if (hidden) {
+        const last = messages[messages.length - 1];
+        lastSeenIdRef.current = last?.id ?? null;
+        tabHiddenRef.current = true;
+      } else {
+        tabHiddenRef.current = false;
+        const seen = lastSeenIdRef.current;
+        if (!seen) return;
+        const idx = messages.findIndex((m) => m.id === seen);
+        const firstNew = idx >= 0 ? messages[idx + 1] : null;
+        if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [messages]);
+  // Catch new messages arriving in real time while the tab is hidden.
+  useEffect(() => {
+    if (!tabHiddenRef.current) return;
+    const seen = lastSeenIdRef.current;
+    if (!seen) return;
+    const idx = messages.findIndex((m) => m.id === seen);
+    const firstNew = idx >= 0 ? messages[idx + 1] : null;
+    if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+  }, [messages]);
+
 
   // Shared bypass toggle — used by both ControlBarFull and ControlBarCompact.
   const handleBypassToggle = (v: boolean) => {
@@ -818,6 +862,9 @@ export function ChatView({
 
   const send = async (text: string, attachments: PendingAttachment[]) => {
     if (!user) return;
+    // User actively engaging — clear the unread divider.
+    setFirstUnreadId(null);
+    lastSeenIdRef.current = null;
     // Behavior learning: track total user messages so the empty-state can hide
     // suggestions for power users (≥10 messages). Increment ONCE per send.
     try {
@@ -1340,21 +1387,6 @@ export function ChatView({
     void retrySingleCall(messageId, callId);
   };
 
-  /** Continue generating from a truncated assistant reply. */
-  const handleContinueGenerating = (messageId: string) => {
-    const msg = messages.find((m) => m.id === messageId);
-    if (!msg || msg.role !== "assistant" || !msg.content) {
-      toast.error("Không thể tiếp tục từ message này");
-      return;
-    }
-    if (isStreaming) {
-      toast.warning("Đang stream — đợi xong rồi tiếp tục");
-      return;
-    }
-    const prompt = buildContinuePrompt(msg.content);
-    void executeSend(prompt, []);
-  };
-
   /** Retry every failed tool call in a message, sequentially with progress feedback. */
   const handleRetryAllFailed = async (messageId: string) => {
     const msg = messages.find((m) => m.id === messageId);
@@ -1580,51 +1612,62 @@ export function ChatView({
                 }}
               />
             )}
-            {messages.map((m, idx) => {
-              const isLastAssistant =
-                m.role === "assistant" &&
-                !isStreaming &&
-                !pendingPlan &&
-                idx === messages.length - 1;
-              const truncation =
-                isLastAssistant && m.content
-                  ? detectTruncation(m.content)
-                  : { truncated: false, reason: undefined as string | undefined };
-              return (
-                <div key={m.id}>
-                  <MessageBubble
-                    role={m.role}
-                    content={m.content}
-                    attachments={m.attachments}
-                    toolCalls={m.tool_calls}
-                    messageId={m.id}
-                    searchQuery={searchOpen ? searchQuery : undefined}
-                    onArtifactOpen={onArtifactOpen}
-                    onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
-                    onBranch={() => handleBranch(m.id)}
-                    onRetryTool={(callId) => handleRetryTool(m.id, callId)}
-                    onRetryAllFailed={() => handleRetryAllFailed(m.id)}
-                    bulkRetryProgress={bulkRetry[m.id] ?? null}
-                    onContinue={
-                      truncation.truncated ? () => handleContinueGenerating(m.id) : undefined
-                    }
-                    continueReason={truncation.reason}
-                  />
-                  {isLastAssistant && (
-                    <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
-                      <SmartSuggestions
-                        suggestions={generateSuggestions(m.content, m.tool_calls)}
-                        onPick={(prompt) =>
-                          window.dispatchEvent(
-                            new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
-                          )
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {(() => {
+              const unreadIdx = firstUnreadId
+                ? messages.findIndex((m) => m.id === firstUnreadId)
+                : -1;
+              const unreadCount = unreadIdx >= 0 ? messages.length - unreadIdx : 0;
+              return messages.map((m, idx) => {
+                const isLastAssistant =
+                  m.role === "assistant" &&
+                  !isStreaming &&
+                  !pendingPlan &&
+                  idx === messages.length - 1;
+                const showDivider = unreadIdx >= 0 && idx === unreadIdx;
+                return (
+                  <div key={m.id}>
+                    {showDivider && (
+                      <div id={`unread-anchor-${m.id}`}>
+                        <UnreadDivider
+                          count={unreadCount}
+                          onJump={() => {
+                            const el = document.getElementById(`unread-anchor-${m.id}`);
+                            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            setFirstUnreadId(null);
+                          }}
+                        />
+                      </div>
+                    )}
+                    <MessageBubble
+                      role={m.role}
+                      content={m.content}
+                      attachments={m.attachments}
+                      toolCalls={m.tool_calls}
+                      messageId={m.id}
+                      searchQuery={searchOpen ? searchQuery : undefined}
+                      onArtifactOpen={onArtifactOpen}
+                      onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
+                      onBranch={() => handleBranch(m.id)}
+                      onRetryTool={(callId) => handleRetryTool(m.id, callId)}
+                      onRetryAllFailed={() => handleRetryAllFailed(m.id)}
+                      bulkRetryProgress={bulkRetry[m.id] ?? null}
+                    />
+                    {isLastAssistant && (
+                      <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
+                        <SmartSuggestions
+                          suggestions={generateSuggestions(m.content, m.tool_calls)}
+                          onPick={(prompt) =>
+                            window.dispatchEvent(
+                              new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
+                            )
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
             {isStreaming && (
               <MessageBubble
                 role="assistant"
