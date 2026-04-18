@@ -126,6 +126,11 @@ export function ChatView({
   const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
   const streamStartRef = useRef<number>(0);
 
+  // Auto-resume: detect interrupted streams from previous session
+  const [resumeOffer, setResumeOffer] = useState<ResumeState | null>(null);
+  const resumeSavedAtThisSessionRef = useRef<boolean>(false);
+  const throttledSaveRef = useRef(makeThrottledSaver(800));
+
   // Cost tracking — accumulated input/output tokens for the conversation
   const [costInput, setCostInput] = useState(0);
   const [costOutput, setCostOutput] = useState(0);
