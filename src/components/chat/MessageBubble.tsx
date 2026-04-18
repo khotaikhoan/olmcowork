@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Check, X, RotateCw, Loader2 } from "lucide-react";
+import { User, Check, X, RotateCw, Loader2, ArrowDownToLine } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -32,6 +32,9 @@ interface Props {
   bulkRetryProgress?: { current: number; total: number } | null;
   /** Optional — when streaming a thinking segment, allow user to skip reasoning. */
   onSkipThinking?: () => void;
+  /** Optional — show "Continue generating" button when reply looks truncated. */
+  onContinue?: () => void;
+  continueReason?: string;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -55,6 +58,8 @@ export function MessageBubble({
   onRetryAllFailed,
   bulkRetryProgress,
   onSkipThinking,
+  onContinue,
+  continueReason,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -239,6 +244,16 @@ export function MessageBubble({
               </>
             )}
           </div>
+        )}
+        {!isUser && !streaming && onContinue && (
+          <button
+            onClick={onContinue}
+            className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:border-primary/50 transition-colors animate-fade-in"
+            title={continueReason ? `Có vẻ bị cắt: ${continueReason}` : "Tiếp tục câu trả lời từ chỗ này"}
+          >
+            <ArrowDownToLine className="h-3 w-3" />
+            Tiếp tục từ đây
+          </button>
         )}
         {!streaming && content && !editing && (
           <MessageActions

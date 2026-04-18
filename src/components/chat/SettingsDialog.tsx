@@ -47,6 +47,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { FullAutoToggle } from "./FullAutoToggle";
 import { isElectron } from "@/lib/bridge";
+import {
+  isSoundEnabled, setSoundEnabled,
+  isBackgroundOnly, setBackgroundOnly,
+  playSound,
+} from "@/lib/sounds";
 
 export type Provider = "ollama" | "openai";
 
@@ -100,6 +105,8 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
   const [autoInstallUpdate, setAutoInstallUpdate] = useState<boolean>(
     () => (typeof localStorage !== "undefined" ? localStorage.getItem("chat.auto_install_update") === "1" : false),
   );
+  const [soundEnabled, setSoundEnabledState] = useState<boolean>(() => isSoundEnabled());
+  const [soundBgOnly, setSoundBgOnlyState] = useState<boolean>(() => isBackgroundOnly());
   const [openSections, setOpenSections] = useState<string[]>(() => {
     if (typeof localStorage === "undefined") return ["ai"];
     try {
@@ -449,6 +456,44 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                     </p>
                   </div>
                   <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
+                </div>
+
+                {/* ── Hiệu ứng âm thanh ───────────────────────────────── */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <Label>Hiệu ứng âm thanh</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Phát tiếng nhẹ khi gửi tin và khi AI trả lời xong.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button" size="sm" variant="ghost"
+                      onClick={() => playSound("ting", { force: true })}
+                    >
+                      Test
+                    </Button>
+                    <Switch
+                      checked={soundEnabled}
+                      onCheckedChange={(v) => { setSoundEnabledState(v); setSoundEnabled(v); }}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 pl-3 border-l-2 border-muted">
+                  <div className="min-w-0">
+                    <Label className={!soundEnabled ? "text-muted-foreground" : ""}>
+                      Chỉ phát khi tab ở chế độ nền
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Tự động im lặng khi bạn đang nhìn vào tab này — chỉ kêu khi tab bị ẩn,
+                      cửa sổ bị thu nhỏ, hoặc bạn đang ở app khác.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={soundBgOnly}
+                    disabled={!soundEnabled}
+                    onCheckedChange={(v) => { setSoundBgOnlyState(v); setBackgroundOnly(v); }}
+                  />
                 </div>
               </AccordionContent>
             </AccordionItem>
