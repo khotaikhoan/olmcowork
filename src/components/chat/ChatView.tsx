@@ -330,12 +330,12 @@ export function ChatView({
     setBypass(conversationId, v);
     if (v) {
       arm(); // auto-arm so deep tools also pass
-      toast.warning("Bypass BẬT — mọi tool sẽ tự chạy không hỏi", {
-        description: "Chỉ dùng cho hội thoại này. Tắt khi xong.",
+      toast.warning("Bypass BẬT — tool sẽ tự chạy không hỏi", {
+        description: "Chỉ áp dụng cho hội thoại này.",
+        duration: 3500,
       });
-    } else {
-      toast.success("Bypass đã tắt — quay lại chế độ duyệt thường");
     }
+    // Khi tắt: không toast, switch UI đã đủ feedback
   };
 
   // Sync user's headless preference to Electron bridge on mount.
