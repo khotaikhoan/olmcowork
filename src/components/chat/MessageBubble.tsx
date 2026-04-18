@@ -3,7 +3,7 @@ import { User, Check, X, RotateCw, Loader2 } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
-import { ToolTimeline } from "./ToolTimeline";
+import { InlineToolCall } from "./InlineToolCall";
 import { ThinkingBlock, splitThinking } from "./ThinkingBlock";
 import { ArtifactChip } from "./ArtifactsPanel";
 import { extractArtifacts } from "@/lib/artifacts";
@@ -30,6 +30,8 @@ interface Props {
   onRetryTool?: (callId: string) => void;
   onRetryAllFailed?: () => void;
   bulkRetryProgress?: { current: number; total: number } | null;
+  /** Optional — when streaming a thinking segment, allow user to skip reasoning. */
+  onSkipThinking?: () => void;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -52,6 +54,7 @@ export function MessageBubble({
   onRetryTool,
   onRetryAllFailed,
   bulkRetryProgress,
+  onSkipThinking,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -99,12 +102,17 @@ export function MessageBubble({
           </div>
         )}
         {toolCalls && toolCalls.length > 0 && (
-          <ToolTimeline
-            calls={toolCalls}
-            onReannotate={onReannotate}
-            precedingText={!isUser ? content : undefined}
-            onRetryTool={onRetryTool}
-          />
+          <div className="space-y-0.5 w-full">
+            {toolCalls.map((c) => (
+              <InlineToolCall
+                key={c.id}
+                call={c}
+                precedingText={!isUser ? content : undefined}
+                onReannotate={onReannotate}
+                onRetry={onRetryTool ? () => onRetryTool(c.id) : undefined}
+              />
+            ))}
+          </div>
         )}
         {toolCalls && toolCalls.length > 0 && (() => {
           const failedCount = toolCalls.filter((c) => c.status === "error").length;
@@ -198,7 +206,12 @@ export function MessageBubble({
               <>
                 {segments.map((seg, i) =>
                   seg.kind === "think" ? (
-                    <ThinkingBlock key={i} content={seg.content} />
+                    <ThinkingBlock
+                      key={i}
+                      content={seg.content}
+                      streaming={!!streaming && !!seg.open}
+                      onSkip={streaming && seg.open ? onSkipThinking : undefined}
+                    />
                   ) : (
                     <Markdown key={i} content={stripExtractedFences(seg.content, artifacts.length)} />
                   ),
