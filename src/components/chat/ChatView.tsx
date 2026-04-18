@@ -1609,43 +1609,62 @@ export function ChatView({
                 }}
               />
             )}
-            {messages.map((m, idx) => {
-              const isLastAssistant =
-                m.role === "assistant" &&
-                !isStreaming &&
-                !pendingPlan &&
-                idx === messages.length - 1;
-              return (
-                <div key={m.id}>
-                  <MessageBubble
-                    role={m.role}
-                    content={m.content}
-                    attachments={m.attachments}
-                    toolCalls={m.tool_calls}
-                    messageId={m.id}
-                    searchQuery={searchOpen ? searchQuery : undefined}
-                    onArtifactOpen={onArtifactOpen}
-                    onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
-                    onBranch={() => handleBranch(m.id)}
-                    onRetryTool={(callId) => handleRetryTool(m.id, callId)}
-                    onRetryAllFailed={() => handleRetryAllFailed(m.id)}
-                    bulkRetryProgress={bulkRetry[m.id] ?? null}
-                  />
-                  {isLastAssistant && (
-                    <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
-                      <SmartSuggestions
-                        suggestions={generateSuggestions(m.content, m.tool_calls)}
-                        onPick={(prompt) =>
-                          window.dispatchEvent(
-                            new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
-                          )
-                        }
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {(() => {
+              const unreadIdx = firstUnreadId
+                ? messages.findIndex((m) => m.id === firstUnreadId)
+                : -1;
+              const unreadCount = unreadIdx >= 0 ? messages.length - unreadIdx : 0;
+              return messages.map((m, idx) => {
+                const isLastAssistant =
+                  m.role === "assistant" &&
+                  !isStreaming &&
+                  !pendingPlan &&
+                  idx === messages.length - 1;
+                const showDivider = unreadIdx >= 0 && idx === unreadIdx;
+                return (
+                  <div key={m.id}>
+                    {showDivider && (
+                      <div id={`unread-anchor-${m.id}`}>
+                        <UnreadDivider
+                          count={unreadCount}
+                          onJump={() => {
+                            const el = document.getElementById(`unread-anchor-${m.id}`);
+                            el?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            setFirstUnreadId(null);
+                          }}
+                        />
+                      </div>
+                    )}
+                    <MessageBubble
+                      role={m.role}
+                      content={m.content}
+                      attachments={m.attachments}
+                      toolCalls={m.tool_calls}
+                      messageId={m.id}
+                      searchQuery={searchOpen ? searchQuery : undefined}
+                      onArtifactOpen={onArtifactOpen}
+                      onEditSubmit={m.role === "user" ? (c) => handleEditMessage(m.id, c) : undefined}
+                      onBranch={() => handleBranch(m.id)}
+                      onRetryTool={(callId) => handleRetryTool(m.id, callId)}
+                      onRetryAllFailed={() => handleRetryAllFailed(m.id)}
+                      bulkRetryProgress={bulkRetry[m.id] ?? null}
+                    />
+                    {isLastAssistant && (
+                      <div className="ml-11 -mt-2 mb-2 max-w-[80%]">
+                        <SmartSuggestions
+                          suggestions={generateSuggestions(m.content, m.tool_calls)}
+                          onPick={(prompt) =>
+                            window.dispatchEvent(
+                              new CustomEvent("chat-input:fill", { detail: { text: prompt } }),
+                            )
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
             {isStreaming && (
               <MessageBubble
                 role="assistant"
