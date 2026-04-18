@@ -236,12 +236,18 @@ export function ChatView({
 
   // Bypass Approvals — per-conversation auto-approve all tools (incl. armed/high-risk)
   const [bypass, setBypassState] = useState<boolean>(false);
+  // Important: tool loop runs async and may outlive renders; use refs so toggles
+  // (especially Bypass) take effect immediately during an in-flight run.
+  const bypassRef = useRef<boolean>(false);
   useEffect(() => {
     setBypassState(getBypass(conversationId));
     return subscribeBypass((cid, v) => {
       if (cid === conversationId) setBypassState(v);
     });
   }, [conversationId]);
+  useEffect(() => {
+    bypassRef.current = bypass;
+  }, [bypass]);
 
   // ── Tab title badge ─────────────────────────────────────────────────────
   // When the tab is hidden and new assistant messages arrive, prefix the
@@ -758,7 +764,7 @@ export function ChatView({
   const requestApproval = (tool: ToolDef, args: Record<string, any>) =>
     new Promise<{ approve: boolean; alwaysAllow: boolean }>(async (resolve) => {
       // Bypass: auto-arm + auto-approve everything
-      if (bypass) {
+      if (bypassRef.current) {
         if (requiresArmed(tool.name) && !isArmed()) arm();
         return resolve({ approve: true, alwaysAllow: false });
       }
