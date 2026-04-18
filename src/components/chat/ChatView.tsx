@@ -196,6 +196,50 @@ export function ChatView({
     });
   }, [conversationId]);
 
+  // ── "New since you left" divider ─────────────────────────────────────────
+  // Track the last message ID visible when the tab lost focus, so we can
+  // render an "↓ N tin nhắn mới" separator above messages that arrived while
+  // the user was away. Reset when the user clicks the chip, sends a new
+  // message, or switches conversations.
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  const lastSeenIdRef = useRef<string | null>(null);
+  const tabHiddenRef = useRef<boolean>(
+    typeof document !== "undefined" ? document.visibilityState === "hidden" : false,
+  );
+  useEffect(() => {
+    setFirstUnreadId(null);
+    lastSeenIdRef.current = null;
+  }, [conversationId]);
+  useEffect(() => {
+    const onVis = () => {
+      const hidden = document.visibilityState === "hidden";
+      if (hidden) {
+        const last = messages[messages.length - 1];
+        lastSeenIdRef.current = last?.id ?? null;
+        tabHiddenRef.current = true;
+      } else {
+        tabHiddenRef.current = false;
+        const seen = lastSeenIdRef.current;
+        if (!seen) return;
+        const idx = messages.findIndex((m) => m.id === seen);
+        const firstNew = idx >= 0 ? messages[idx + 1] : null;
+        if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [messages]);
+  // Catch new messages arriving in real time while the tab is hidden.
+  useEffect(() => {
+    if (!tabHiddenRef.current) return;
+    const seen = lastSeenIdRef.current;
+    if (!seen) return;
+    const idx = messages.findIndex((m) => m.id === seen);
+    const firstNew = idx >= 0 ? messages[idx + 1] : null;
+    if (firstNew) setFirstUnreadId((cur) => cur ?? firstNew.id);
+  }, [messages]);
+
+
   // Shared bypass toggle — used by both ControlBarFull and ControlBarCompact.
   const handleBypassToggle = (v: boolean) => {
     if (!conversationId) {
