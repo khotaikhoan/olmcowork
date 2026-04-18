@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Check, X, RotateCw, Loader2 } from "lucide-react";
+import { User, Check, X, RotateCw, Loader2, ArrowDownToLine } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -32,6 +32,9 @@ interface Props {
   bulkRetryProgress?: { current: number; total: number } | null;
   /** Optional — when streaming a thinking segment, allow user to skip reasoning. */
   onSkipThinking?: () => void;
+  /** Optional — show "Continue generating" button when reply looks truncated. */
+  onContinue?: () => void;
+  continueReason?: string;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
