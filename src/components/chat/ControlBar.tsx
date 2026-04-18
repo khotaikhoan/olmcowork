@@ -210,24 +210,36 @@ export function ControlBarFull(props: ControlBarProps) {
 
         <div className="ml-auto flex items-center gap-2">
           {toolsEnabled && (
-            <div
-              className={
-                "flex items-center gap-2 px-2.5 py-1 rounded-md border transition-colors " +
-                (bypass
-                  ? "bg-destructive/10 border-destructive/40 text-destructive"
-                  : "bg-background/60 border-border hover:bg-muted/50")
-              }
-            >
-              <ShieldOff className={"h-3.5 w-3.5 " + (bypass ? "" : "opacity-60")} />
-              <Label
-                htmlFor="bypass-switch"
-                className="text-xs font-medium cursor-pointer select-none"
-                title="Tự động duyệt MỌI tool call (kể cả high-risk + sudo) — chỉ dùng khi tin tưởng prompt"
-              >
-                Bypass duyệt
-              </Label>
-              <Switch id="bypass-switch" checked={bypass} onCheckedChange={onBypassChange} />
-            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className={
+                    "flex items-center gap-2 px-2.5 py-1 rounded-md border transition-colors " +
+                    (bypass
+                      ? "bg-destructive/10 border-destructive/40 text-destructive"
+                      : "bg-background/60 border-border hover:bg-muted/50")
+                  }
+                  title="Tự động duyệt MỌI tool call (kể cả high-risk + sudo) — chỉ dùng khi tin tưởng prompt. Bấm để mở tuỳ chọn mặc định."
+                >
+                  <ShieldOff className={"h-3.5 w-3.5 " + (bypass ? "" : "opacity-60")} />
+                  <Label
+                    htmlFor="bypass-switch"
+                    className="text-xs font-medium cursor-pointer select-none"
+                  >
+                    Bypass duyệt
+                  </Label>
+                  <Switch
+                    id="bypass-switch"
+                    checked={bypass}
+                    onCheckedChange={onBypassChange}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-3">
+                <BypassDefaultRow />
+              </PopoverContent>
+            </Popover>
           )}
 
           <Tooltip>
