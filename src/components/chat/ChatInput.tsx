@@ -59,6 +59,16 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
     return () => window.removeEventListener("chat-input:fill", onFill as EventListener);
   }, []);
 
+  useEffect(() => {
+    const onFocusEvt = () => {
+      const ta = taRef.current;
+      if (!ta || disabled) return;
+      ta.focus({ preventScroll: true });
+    };
+    window.addEventListener("chat-input:focus", onFocusEvt);
+    return () => window.removeEventListener("chat-input:focus", onFocusEvt);
+  }, [disabled]);
+
   const toggleVoice = () => {
     if (!voiceSupported) {
       toast.error("Trình duyệt không hỗ trợ nhận diện giọng nói");
@@ -308,15 +318,27 @@ export function ChatInput({ onSend, onStop, isStreaming, disabled }: Props) {
               </Button>
             )}
           </div>
-          {isStreaming ? (
-            <Button onClick={onStop} variant="destructive" size="sm">
-              <Square className="h-3.5 w-3.5 mr-1" /> Dừng
-            </Button>
-          ) : (
-            <Button onClick={submit} size="sm" disabled={disabled || (!text.trim() && attachments.length === 0)}>
-              <Send className="h-3.5 w-3.5 mr-1" /> Gửi
-            </Button>
-          )}
+          <div className="w-[92px] shrink-0 flex justify-end">
+            {isStreaming ? (
+              <Button
+                onClick={onStop}
+                variant="destructive"
+                size="sm"
+                className="min-w-[92px] transition-opacity duration-200"
+              >
+                <Square className="h-3.5 w-3.5 mr-1" /> Dừng
+              </Button>
+            ) : (
+              <Button
+                onClick={submit}
+                size="sm"
+                className="min-w-[92px] transition-opacity duration-200"
+                disabled={disabled || (!text.trim() && attachments.length === 0)}
+              >
+                <Send className="h-3.5 w-3.5 mr-1" /> Gửi
+              </Button>
+            )}
+          </div>
         </div>
       </div>
       <ShortcutHints />

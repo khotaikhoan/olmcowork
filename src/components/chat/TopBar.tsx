@@ -33,7 +33,7 @@ import {
   FileText,
   ChevronDown,
   MoreHorizontal,
-  Activity,
+  Settings2,
 } from "lucide-react";
 import { UpdateBadge } from "./UpdateBadge";
 import { ArmedBadge } from "./ArmedBadge";
@@ -80,6 +80,9 @@ interface Props {
   onAgentChange: (id: string) => void;
   /** Optional extra slot rendered after Mode/Model — used for the compact ControlBar pill. */
   extraSlot?: React.ReactNode;
+  provider: "ollama" | "openai";
+  openaiModel: string;
+  onOpenSettings?: () => void;
 }
 
 
@@ -125,13 +128,21 @@ export function TopBar({
   agentId,
   onAgentChange,
   extraSlot,
+  provider,
+  openaiModel,
+  onOpenSettings,
 }: Props) {
   const activeAgent = getAgent(agentId);
   const ActiveAgentIcon = activeAgent.icon;
   const totalRunningBytes = running.reduce((s, r) => s + r.size, 0);
 
+  const modelLabel =
+    provider === "openai"
+      ? (openaiModel?.split("/").pop() || openaiModel || "OpenAI")
+      : model || "Model";
+
   return (
-    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 shrink-0 relative z-20 min-w-0">
+    <header className="h-14 border-b border-border bg-background/80 backdrop-blur flex items-center gap-1.5 sm:gap-2 px-2 sm:px-4 shrink-0 relative z-20 min-w-0 font-sans text-sm">
       {onToggleSidebar && (
         <Button
           variant="ghost"
@@ -159,7 +170,10 @@ export function TopBar({
       )}
 
       <Select value={model} onValueChange={onModelChange}>
-        <SelectTrigger className="h-8 w-[110px] sm:w-[160px] lg:w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1 shrink min-w-0">
+        <SelectTrigger
+          title={provider === "ollama" ? `Model Ollama: ${model || "—"}` : `OpenAI: ${openaiModel}`}
+          className="h-8 w-[110px] sm:w-[160px] lg:w-[180px] text-sm border-0 bg-muted/50 hover:bg-muted focus:ring-1 shrink min-w-0"
+        >
           <SelectValue placeholder="Chọn model" />
         </SelectTrigger>
         <SelectContent>
@@ -180,24 +194,26 @@ export function TopBar({
 
       <div className="flex-1" />
 
-      {/* Subtle status pill — click for details (cost, tokens, running models, connection) */}
+      {/* Trạng thái một chỗ: kết nối + model + chi phí — bấm xem chi tiết */}
       <Popover>
         <PopoverTrigger asChild>
           <button
             title="Trạng thái phiên — bấm xem chi tiết"
             className={
-              "flex items-center gap-1.5 text-xs px-2 h-8 rounded-md transition-colors hover:bg-muted " +
+              "flex items-center gap-1.5 text-xs px-2 h-8 rounded-md transition-colors duration-200 hover:bg-muted max-w-[200px] sm:max-w-[240px] " +
               (bridgeOnline ? "text-foreground" : "text-muted-foreground")
             }
           >
             <span
               className={
-                "w-1.5 h-1.5 rounded-full " +
-                (bridgeOnline ? "bg-[hsl(var(--success))]" : "bg-muted-foreground/50")
+                "w-1.5 h-1.5 shrink-0 rounded-full " +
+                (bridgeOnline ? "bg-[hsl(var(--success))]" : "bg-destructive/70")
               }
             />
-            <Activity className="h-3 w-3 opacity-60" />
-            <span className="font-mono tabular-nums hidden sm:inline">
+            <span className="truncate text-[11px] font-medium text-foreground/90 min-w-0">
+              {provider === "openai" ? "OpenAI" : "Ollama"} · {modelLabel}
+            </span>
+            <span className="font-mono tabular-nums shrink-0 hidden sm:inline text-[11px] text-muted-foreground">
               ${totalCostUsd.toFixed(2)}
             </span>
           </button>
@@ -218,6 +234,25 @@ export function TopBar({
                 {bridgeOnline ? "Trực tuyến" : "Ngoại tuyến"}
               </span>
             </div>
+            <p className="text-[11px] text-muted-foreground mb-2 truncate" title={provider === "ollama" ? model : openaiModel}>
+              Đang dùng: <span className="font-mono text-foreground">{provider === "ollama" ? model || "—" : openaiModel}</span>
+            </p>
+            {!bridgeOnline && provider === "ollama" && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {canControlOllama && (
+                  <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={ollamaBusy} onClick={onToggleOllama}>
+                    {ollamaBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Power className="h-3 w-3" />}
+                    <span className="ml-1">Khởi động Ollama</span>
+                  </Button>
+                )}
+                {onOpenSettings && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={onOpenSettings}>
+                    <Settings2 className="h-3 w-3" />
+                    <span className="ml-1">Cài đặt</span>
+                  </Button>
+                )}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <CostMeter
                 model={costModel}

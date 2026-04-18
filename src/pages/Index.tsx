@@ -184,6 +184,7 @@ export default function Index() {
           requireConfirm={settings.require_confirm}
           autoStopMinutes={settings.auto_stop_minutes}
           autoStart={settings.auto_start}
+          onOpenSettings={() => setSettingsOpen(true)}
           onCreated={(id) => {
             setSelectedId(id);
             setRefreshKey((k) => k + 1);

@@ -4,6 +4,12 @@
 
 /* Claude-inspired theme: warm off-white bg, terracotta accent, generous radius. */
 @layer base {
+  /* App shell: sans body; headings dùng font-serif chỉ nơi component gán (vd. hero). */
+  #root {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
   :root {
     /* Warm off-white "Claude paper" */
     --background: 36 33% 97%;

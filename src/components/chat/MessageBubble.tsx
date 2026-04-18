@@ -169,10 +169,12 @@ export function MessageBubble({
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
-              "rounded-2xl px-4 py-2.5 transition-all w-full",
+              "rounded-2xl px-4 py-2.5 transition-[box-shadow,opacity,transform] duration-200 ease-out w-full",
               isUser
                 ? "bg-primary text-primary-foreground"
-                : "bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]",
+                : streaming
+                  ? "bg-card border border-border/90 shadow-none"
+                  : "bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]",
               pending && "opacity-70",
               failed && "ring-1 ring-destructive/60",
             )}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,8 +30,8 @@ import { applyContextWindow, getWindowConfig } from "@/lib/contextWindow";
 import { ToolApprovalDialog } from "./ToolApprovalDialog";
 import { ToolCallRecord } from "./ToolCallCard";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
 import { MessageSkeletonList } from "./MessageSkeleton";
@@ -53,9 +53,10 @@ import { setOculoState } from "@/components/OculoLogo";
 import { getFullAuto, subscribeFullAuto, FULL_AUTO_MAX_STEPS, NORMAL_MAX_STEPS } from "@/lib/fullAuto";
 import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
-import { Zap, ShieldOff, ArrowDown } from "lucide-react";
+import { MessageSquare, Zap, ShieldOff, ArrowDown, AlertTriangle, X } from "lucide-react";
 import { configureOrchestrator, drainRootReports } from "@/lib/agentOrchestrator";
 import { getBypass, setBypass, subscribeBypass, getBypassDefault } from "@/lib/bypassApprovals";
+import { toastStreamError } from "@/lib/chatToasts";
 
 interface DbMessage {
   id: string;
@@ -84,6 +85,16 @@ interface Props {
   onArtifactsChange?: (artifacts: Artifact[]) => void;
   onArtifactOpen?: (id: string) => void;
   onToggleSidebar?: () => void;
+  /** Mở hộp thoại Cài đặt (để toast lỗi Ollama/OpenAI có nút hành động). */
+  onOpenSettings?: () => void;
+}
+
+const CONTROL_SAFETY_SESSION_KEY = "oculo.controlSafety.dismissed";
+
+function focusChatInput() {
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new CustomEvent("chat-input:focus"));
+  });
 }
 
 export function ChatView({
@@ -100,6 +111,7 @@ export function ChatView({
   onArtifactsChange,
   onArtifactOpen,
   onToggleSidebar,
+  onOpenSettings,
 }: Props) {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -125,6 +137,21 @@ export function ChatView({
     try { localStorage.setItem("chat.control_bar_collapsed", v ? "1" : "0"); } catch { /* ignore */ }
   };
   const [mode, setMode] = useState<ConversationMode>("chat");
+  const [controlSafetyDismissed, setControlSafetyDismissed] = useState(() => {
+    try {
+      return sessionStorage.getItem(CONTROL_SAFETY_SESSION_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const dismissControlSafety = () => {
+    try {
+      sessionStorage.setItem(CONTROL_SAFETY_SESSION_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    setControlSafetyDismissed(true);
+  };
   // Default app-lock preference — persisted across sessions so user doesn't have
   // to click "Mở khoá" every time. Values: "frontmost" (auto-lock to active app)
   // or "unlocked" (no lock — AI may touch any window).
@@ -142,6 +169,8 @@ export function ChatView({
   const [memories, setMemories] = useState<UserMemory[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** Tránh setState sau khi unmount khi poll Ollama / refresh tay. */
+  const ollamaPollAliveRef = useRef(true);
   const lastActivityRef = useRef<number>(Date.now());
   const [lastReplyStats, setLastReplyStats] = useState<{ tokens: number; tps: number } | null>(null);
   const streamStartRef = useRef<number>(0);
@@ -345,31 +374,64 @@ export function ChatView({
     (window as any).bridge?.browserSetHeadless?.(headless).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    ollamaPollAliveRef.current = true;
+    return () => {
+      ollamaPollAliveRef.current = false;
+    };
+  }, []);
+
+  const refreshOllamaNow = useCallback(async () => {
+    const ok = await pingOllama(ollamaUrl);
+    if (!ollamaPollAliveRef.current) return;
+    setBridgeOnline(ok);
+    if (ok) {
+      try {
+        const m = await listModels(ollamaUrl);
+        if (!ollamaPollAliveRef.current) return;
+        setModels(m);
+        setModel((prev) => prev || defaultModel || m[0]?.name || "");
+      } catch {
+        /* ignore */
+      }
+    } else {
+      setRunning([]);
+    }
+  }, [ollamaUrl, defaultModel]);
+
+  const retryOllamaFromToast = useCallback(async () => {
+    if (provider !== "ollama") return;
+    if (!bridgeOnline && isElectron() && autoStart) {
+      const b = (window as any).bridge;
+      try {
+        const r = await b?.startOllama?.();
+        if (r && !r.ok) {
+          toast.error(r.output ?? "Không khởi động được Ollama");
+          return;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    await refreshOllamaNow();
+  }, [provider, bridgeOnline, autoStart, refreshOllamaNow]);
+
+  const streamErrorHandlers = useMemo(
+    () => ({
+      onOpenSettings,
+      onRetryConnection: provider === "ollama" ? retryOllamaFromToast : undefined,
+    }),
+    [onOpenSettings, provider, retryOllamaFromToast],
+  );
+
   // ----- Ollama health + models -----
   useEffect(() => {
-    let alive = true;
-    const refresh = async () => {
-      const ok = await pingOllama(ollamaUrl);
-      if (!alive) return;
-      setBridgeOnline(ok);
-      if (ok) {
-        try {
-          const m = await listModels(ollamaUrl);
-          if (!alive) return;
-          setModels(m);
-          setModel((prev) => prev || defaultModel || m[0]?.name || "");
-        } catch {}
-      } else {
-        setRunning([]);
-      }
-    };
-    refresh();
-    const interval = setInterval(refresh, 15000);
-    return () => {
-      alive = false;
-      clearInterval(interval);
-    };
-  }, [ollamaUrl, defaultModel]);
+    void refreshOllamaNow();
+    const interval = setInterval(() => {
+      void refreshOllamaNow();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [refreshOllamaNow]);
 
   // ----- Running models (RAM/VRAM) poll -----
   useEffect(() => {
@@ -557,6 +619,7 @@ export function ChatView({
         .eq("id", conversationId);
       onTitleUpdated();
     }
+    focusChatInput();
   };
 
   // ── Smart scroll: only auto-stick to bottom when user is already near it.
@@ -648,6 +711,7 @@ export function ChatView({
   const handleModelChange = async (m: string) => {
     setModel(m);
     if (conversationId) await persistConv(conversationId, { model: m });
+    focusChatInput();
   };
   const handleSystemChange = async (s: string) => {
     setSystemPrompt(s);
@@ -1050,23 +1114,29 @@ export function ChatView({
             const r = await b.startOllama();
             toast.dismiss(tid);
             if (!r.ok) {
-              toast.error(r.output);
+              toastStreamError(String(r.output ?? "Không khởi động được Ollama"), streamErrorHandlers);
               return;
             }
             const ok = await pingOllama(ollamaUrl);
             setBridgeOnline(ok);
-            if (!ok) return toast.error("Ollama không phản hồi sau khi khởi động.");
+            if (!ok) {
+              toastStreamError("Ollama không phản hồi sau khi khởi động.", streamErrorHandlers);
+              return;
+            }
             try {
               const m = await listModels(ollamaUrl);
               setModels(m);
               if (!model) setModel(defaultModel || m[0]?.name || "");
-            } catch {}
+            } catch {
+              /* ignore listModels errors */
+            }
             toast.success("Đã khởi động Ollama.");
           } finally {
             setOllamaBusy(false);
           }
         } else {
-          return toast.error("Ollama đang ngoại tuyến. Kiểm tra Cài đặt.");
+          toastStreamError("Ollama đang ngoại tuyến. Kiểm tra Cài đặt.", streamErrorHandlers);
+          return;
         }
       }
       if (!model) return toast.error("Hãy chọn model trước");
@@ -1263,7 +1333,11 @@ export function ChatView({
               setStreamingText(acc);
               persistPartial(acc);
             },
-            onError: (err) => toast.error("Lỗi OpenAI: " + err.message),
+            onError: (err) =>
+              toastStreamError(
+                "Lỗi OpenAI: " + err.message,
+                onOpenSettings ? { onOpenSettings } : undefined,
+              ),
           });
           finalContent = acc;
         }
@@ -1286,7 +1360,7 @@ export function ChatView({
             setStreamingText(acc);
             persistPartial(acc);
           },
-          onError: (err) => toast.error("Lỗi luồng: " + err.message),
+          onError: (err) => toastStreamError("Lỗi luồng: " + err.message, streamErrorHandlers),
         });
         finalContent = acc;
       }
@@ -1333,7 +1407,15 @@ export function ChatView({
     } catch (e: any) {
       setIsStreaming(false);
       setAgentStep(null);
-      if (e.name !== "AbortError") toast.error(e.message);
+      if (e.name !== "AbortError") {
+        if (provider === "ollama") {
+          toastStreamError(String(e.message || e), streamErrorHandlers);
+        } else if (provider === "openai" && onOpenSettings) {
+          toastStreamError(String(e.message || e), { onOpenSettings });
+        } else {
+          toast.error(String(e.message || e));
+        }
+      }
     }
   };
 
@@ -1632,7 +1714,9 @@ export function ChatView({
         try {
           const m = await listModels(ollamaUrl);
           setModels(m);
-        } catch {}
+        } catch {
+          /* ignore */
+        }
       } else {
         setModels([]);
       }
@@ -1665,6 +1749,9 @@ export function ChatView({
     return () => clearInterval(id);
   }, [canControlOllama, autoStopMinutes, bridgeOnline, isStreaming, ollamaBusy]);
 
+  const emptyChat =
+    !loadingConv && messages.length === 0 && !streamingText && !streamingToolCalls.length;
+
   return (
     <div className="flex-1 flex flex-col h-screen min-w-0">
       <BrowserActiveOverlay />
@@ -1675,6 +1762,9 @@ export function ChatView({
         onModelChange={handleModelChange}
         systemPrompt={systemPrompt}
         onSystemPromptChange={handleSystemChange}
+        provider={provider}
+        openaiModel={openaiModel}
+        onOpenSettings={onOpenSettings}
         bridgeOnline={bridgeOnline}
         onTitleChange={handleTitleChange}
         onKillSwitch={killSwitch}
@@ -1707,7 +1797,10 @@ export function ChatView({
           const a = getAgent(id);
           if (provider === "ollama" && a.preferOllama) {
             const m = models.find((x) => x.name.toLowerCase().includes(a.preferOllama!.toLowerCase()));
-            if (m && m.name !== model) handleModelChange(m.name);
+            if (m && m.name !== model) void handleModelChange(m.name);
+            else focusChatInput();
+          } else {
+            focusChatInput();
           }
           if (id !== "default") toast.success(`Đang dùng agent: ${a.name}`);
         }}
@@ -1726,6 +1819,25 @@ export function ChatView({
         }
       />
 
+      {mode === "control" && isElectron() && !controlSafetyDismissed && (
+        <div className="shrink-0 border-b border-warning/25 bg-warning/[0.08] px-3 py-2 flex items-start gap-2 text-xs text-foreground animate-fade-in transition-colors duration-200">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <p className="flex-1 min-w-0 leading-snug text-[12px]">
+            <span className="font-medium">Control:</span> AI có thể điều khiển chuột, bàn phím và ứng dụng trên máy bạn. Chỉ bật khi bạn tin tưởng nội dung đang chạy.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 shrink-0 px-2 text-[11px] gap-1"
+            onClick={dismissControlSafety}
+          >
+            Đã hiểu
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      )}
+
       {mode === "control" ? (
         controlBarCollapsed ? null : (
           <ControlBarFull
@@ -1739,9 +1851,9 @@ export function ChatView({
           />
         )
       ) : (
-        <div className="border-b border-border bg-muted/30 px-4 py-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <MessageSquare className="h-3.5 w-3.5" />
-          Chế độ Chat — chỉ trò chuyện, không thao tác máy. Có thể đọc file/URL khi cần.
+        <div className="border-b border-border/80 bg-muted/20 px-3 py-1 flex items-center gap-2 text-[11px] text-muted-foreground transition-colors duration-200">
+          <MessageSquare className="h-3 w-3 shrink-0 opacity-80" />
+          <span className="truncate">Chat — trò chuyện; không điều khiển máy.</span>
         </div>
       )}
 
@@ -1778,8 +1890,13 @@ export function ChatView({
         )}
         <div className="relative h-full">
         <ScrollArea className="h-full">
-          <div ref={scrollRef} className="h-full">
-          <div className="max-w-3xl mx-auto px-4">
+          <div ref={scrollRef} className="h-full flex flex-col min-h-0">
+          <div
+            className={
+              "max-w-3xl mx-auto px-4 w-full " +
+              (emptyChat ? "flex-1 flex flex-col justify-end pb-2 min-h-[min(52vh,420px)]" : "")
+            }
+          >
             {loadingConv && messages.length === 0 && (
               <MessageSkeletonList />
             )}
@@ -1795,7 +1912,10 @@ export function ChatView({
                   setToolsEnabled(preset.toolsEnabled && mode === "control");
                   if (provider === "ollama" && preset.preferOllama) {
                     const m = models.find((x) => x.name.includes(preset.preferOllama!));
-                    if (m) setModel(m.name);
+                    if (m) void handleModelChange(m.name);
+                    else focusChatInput();
+                  } else {
+                    focusChatInput();
                   }
                   toast.success(`Đã chọn preset: ${preset.name}`);
                 }}

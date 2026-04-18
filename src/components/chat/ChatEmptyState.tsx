@@ -77,7 +77,7 @@ export function ChatEmptyState({
   };
 
   return (
-    <div className="flex flex-col items-center text-center max-w-md mx-auto px-4 py-8 md:py-10 animate-fade-in">
+    <div className="flex flex-col items-center text-center max-w-md mx-auto px-4 py-5 md:py-6 animate-fade-in transition-opacity duration-200 ease-out">
       {!bridgeOnline && (
         <Alert variant="destructive" className="mb-6 w-full text-left py-2.5 px-3 border-destructive/35 bg-destructive/[0.06]">
           <WifiOff className="h-4 w-4" />
@@ -103,7 +103,7 @@ export function ChatEmptyState({
       <div
         role="tablist"
         aria-label="Chọn chế độ"
-        className="inline-flex w-full max-w-sm rounded-xl border border-border/80 bg-muted/30 p-0.5 mb-4"
+        className="inline-flex w-full max-w-sm rounded-xl border border-border/80 bg-muted/30 p-0.5 mb-4 transition-colors duration-200"
       >
         <button
           role="tab"
@@ -111,7 +111,7 @@ export function ChatEmptyState({
           title="Trò chuyện thuần; đọc file/URL khi cần; không thao tác máy."
           onClick={() => onModeChange("chat")}
           className={
-            "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors " +
+            "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-200 ease-out " +
             (mode === "chat"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground")
@@ -130,7 +130,7 @@ export function ChatEmptyState({
           }
           onClick={() => onModeChange("control")}
           className={
-            "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors " +
+            "flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium transition-colors duration-200 ease-out " +
             (mode === "control"
               ? "bg-background text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground")
@@ -156,7 +156,7 @@ export function ChatEmptyState({
                 type="button"
                 onClick={() => onPickPreset(p)}
                 title={p.description}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground/90 hover:bg-accent/50 hover:border-primary/25 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/80 px-2.5 py-1 text-xs font-medium text-foreground/90 hover:bg-accent/50 hover:border-primary/25 transition-colors duration-200 ease-out"
               >
                 <Icon className="h-3 w-3 opacity-70" />
                 {p.name}
