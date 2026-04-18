@@ -783,6 +783,22 @@ ipcMain.handle("bridge:list_apps", async () => {
 });
 
 // ----- Ollama process control -----
+function resolveOllamaBin() {
+  const candidates = [
+    process.env.OLLAMA_BIN,
+    "/opt/homebrew/bin/ollama",
+    "/usr/local/bin/ollama",
+    "ollama",
+  ].filter(Boolean);
+  return candidates;
+}
+
+function extendPath(env) {
+  const extra = ["/opt/homebrew/bin", "/usr/local/bin"].join(":" );
+  env.PATH = env.PATH ? `${env.PATH}:${extra}` : extra;
+  return env;
+}
+
 function buildOllamaServeEnv() {
   const env = { ...process.env, OLLAMA_ORIGINS: "*" };
   // Homebrew-built Ollama on Apple Silicon can fail Metal shader compilation inside
@@ -822,8 +838,21 @@ ipcMain.handle("bridge:start_ollama", async () => {
   const already = await checkOllamaUp();
   if (already) return { ok: true, output: "Ollama is already running.", running: true };
   try {
-    const env = buildOllamaServeEnv();
-    ollamaProc = spawn("ollama", ["serve"], { env, detached: false, stdio: "ignore" });
+    const env = extendPath(buildOllamaServeEnv());
+    const candidates = resolveOllamaBin();
+    let lastErr = null;
+    for (const cmd of candidates) {
+      try {
+        ollamaProc = spawn(cmd, ["serve"], { env, detached: false, stdio: "ignore" });
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (!ollamaProc) {
+      return { ok: false, output: `Failed to start Ollama: ${lastErr?.message || "ollama not found"}. Tried: ${candidates.join(", ")}` };
+    }
     ollamaProc.on("exit", () => { ollamaProc = null; });
     ollamaProc.on("error", () => { ollamaProc = null; });
     for (let i = 0; i < 20; i++) {
