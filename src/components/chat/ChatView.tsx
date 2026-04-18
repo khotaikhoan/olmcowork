@@ -519,13 +519,23 @@ export function ChatView({
         }
       } catch { /* ignore */ }
     }
-    // Default lock to frontmost app when entering Control mode (Electron only).
+    // Apply persisted app-lock preference when entering Control mode.
+    // Default is "unlocked" so users aren't forced to click "Mở khoá" every time.
     if (next === "control" && !lockedApp && isElectron()) {
-      try {
-        const b = (window as any).bridge;
-        const r = await b?.getFrontmostApp?.();
-        if (r?.app) setLockedApp(r.app);
-      } catch { /* ignore */ }
+      let pref = "unlocked";
+      try { pref = localStorage.getItem("chat.lockedAppDefault") || "unlocked"; } catch { /* ignore */ }
+      if (pref === "frontmost") {
+        try {
+          const b = (window as any).bridge;
+          const r = await b?.getFrontmostApp?.();
+          if (r?.app) setLockedAppState(r.app);
+        } catch { /* ignore */ }
+      }
+    }
+    // Auto-bypass on entering Control if user enabled the global default.
+    if (next === "control" && conversationId && getBypassDefault() && !getBypass(conversationId)) {
+      setBypass(conversationId, true);
+      arm();
     }
     // Phase 2: warn if entering Control with a non-vision Ollama model — observe_screen will be blind.
     if (
