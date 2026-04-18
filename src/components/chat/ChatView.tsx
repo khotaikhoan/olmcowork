@@ -1688,7 +1688,12 @@ export function ChatView({
                 }}
               />
             )}
-            {messages.map((m, idx) => {
+            {(() => {
+              const unreadIdx = firstUnreadId
+                ? messages.findIndex((m) => m.id === firstUnreadId)
+                : -1;
+              const unreadCount = unreadIdx >= 0 ? messages.length - unreadIdx : 0;
+              return messages.map((m, idx) => {
               const isLastAssistant =
                 m.role === "assistant" &&
                 !isStreaming &&
@@ -1698,8 +1703,16 @@ export function ChatView({
                 isLastAssistant && m.content
                   ? detectTruncation(m.content)
                   : { truncated: false, reason: undefined as string | undefined };
+              const showDivider = unreadIdx >= 0 && idx === unreadIdx;
               return (
                 <div key={m.id}>
+                  {showDivider && (
+                    <UnreadDivider
+                      count={unreadCount}
+                      onSeen={() => setFirstUnreadId(null)}
+                      onJump={() => setFirstUnreadId(null)}
+                    />
+                  )}
                   <MessageBubble
                     role={m.role}
                     content={m.content}
