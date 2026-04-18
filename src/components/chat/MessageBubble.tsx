@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Check, X, RotateCw, Loader2, ArrowDownToLine } from "lucide-react";
+import { User, Check, X, RotateCw, Loader2, ArrowDownToLine, AlertCircle } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -35,6 +35,12 @@ interface Props {
   /** Optional — show "Continue generating" button when reply looks truncated. */
   onContinue?: () => void;
   continueReason?: string;
+  /** Optimistic state — bubble is in-flight (renders dimmed). */
+  pending?: boolean;
+  /** Optimistic state — insert failed; renders an inline Retry control. */
+  failed?: boolean;
+  /** Called when the user clicks "Thử lại" on a failed user message. */
+  onRetrySend?: () => void;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -60,6 +66,9 @@ export function MessageBubble({
   onSkipThinking,
   onContinue,
   continueReason,
+  pending,
+  failed,
+  onRetrySend,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
