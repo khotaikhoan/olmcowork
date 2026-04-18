@@ -146,7 +146,7 @@ export function ConversationItem({
         ) : (
           <>
             <div className="flex items-baseline gap-2">
-              <span className="flex-1 truncate font-medium leading-tight" title="Bấm đôi để đổi tên">
+              <span className="flex-1 truncate font-medium leading-tight" title="Bấm đôi (sau khi chọn) để đổi tên">
                 {conversation.title}
               </span>
               {timeLabel && (
