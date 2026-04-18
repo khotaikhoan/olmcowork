@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Check, X, RotateCw, Loader2, ArrowDownToLine } from "lucide-react";
+import { User, Check, X, RotateCw, Loader2, ArrowDownToLine, AlertCircle } from "lucide-react";
 import { OculoLogo } from "@/components/OculoLogo";
 import { Markdown } from "./Markdown";
 import { ToolCallRecord } from "./ToolCallCard";
@@ -35,6 +35,12 @@ interface Props {
   /** Optional — show "Continue generating" button when reply looks truncated. */
   onContinue?: () => void;
   continueReason?: string;
+  /** Optimistic state — bubble is in-flight (renders dimmed). */
+  pending?: boolean;
+  /** Optimistic state — insert failed; renders an inline Retry control. */
+  failed?: boolean;
+  /** Called when the user clicks "Thử lại" on a failed user message. */
+  onRetrySend?: () => void;
 }
 
 function stripExtractedFences(content: string, _fenceCount: number): string {
@@ -60,6 +66,9 @@ export function MessageBubble({
   onSkipThinking,
   onContinue,
   continueReason,
+  pending,
+  failed,
+  onRetrySend,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(content);
@@ -160,10 +169,12 @@ export function MessageBubble({
         {(content || streaming || (!toolCalls?.length && !attachments?.length)) && (
           <div
             className={cn(
-              "rounded-2xl px-4 py-2.5 transition-shadow w-full",
+              "rounded-2xl px-4 py-2.5 transition-all w-full",
               isUser
                 ? "bg-primary text-primary-foreground"
                 : "bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elevated)]",
+              pending && "opacity-70",
+              failed && "ring-1 ring-destructive/60",
             )}
           >
             {editing && isUser && onEditSubmit ? (
@@ -242,6 +253,26 @@ export function MessageBubble({
                 )}
                 {streaming && content && <span className="stream-cursor" />}
               </>
+            )}
+          </div>
+        )}
+        {isUser && pending && (
+          <span className="self-end inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Đang gửi…
+          </span>
+        )}
+        {isUser && failed && (
+          <div className="self-end flex items-center gap-2 text-xs text-destructive animate-fade-in">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>Không gửi được</span>
+            {onRetrySend && (
+              <button
+                type="button"
+                onClick={onRetrySend}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-destructive/40 bg-destructive/10 hover:bg-destructive/20 transition-colors font-medium"
+              >
+                <RotateCw className="h-3 w-3" /> Thử lại
+              </button>
             )}
           </div>
         )}
