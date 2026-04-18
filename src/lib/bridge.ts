@@ -2,6 +2,40 @@
 // xuống Electron IPC, hoặc fallback mock trong browser.
 import { mockExecute, ExecResult } from "./tools";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+// ---------- macOS Screen-Recording permission UX ----------
+// When the main process reports `permissionBlocked`, surface a single toast
+// (debounced) with a "Đã cấp quyền – thử lại" action that clears the cooldown
+// cache so the next tool call re-attempts capture immediately.
+let lastPermissionToastTs = 0;
+function notifyScreenPermissionBlocked(message: string): void {
+  const now = Date.now();
+  if (now - lastPermissionToastTs < 4000) return; // debounce repeated tool failures
+  lastPermissionToastTs = now;
+  const b = typeof window !== "undefined" ? window.bridge : undefined;
+  toast.error("macOS chặn quay màn hình", {
+    description: message.slice(0, 220),
+    duration: 12000,
+    action: b?.resetScreenPermission
+      ? {
+          label: "Đã cấp quyền – thử lại",
+          onClick: async () => {
+            try {
+              const r = await b.resetScreenPermission!();
+              toast.success("Đã reset cache quyền", {
+                description: r.output,
+              });
+            } catch (e) {
+              toast.error("Reset thất bại", {
+                description: e instanceof Error ? e.message : String(e),
+              });
+            }
+          },
+        }
+      : undefined,
+  });
+}
 
 // ---------- Generic localStorage TTL cache (used by fetch_url + web_search) ----------
 const TOOL_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
@@ -132,7 +166,11 @@ export interface BridgeAPI {
   listDir: (path: string) => Promise<ExecResult>;
   writeFile: (path: string, content: string) => Promise<ExecResult>;
   runShell: (command: string) => Promise<ExecResult>;
-  screenshot: () => Promise<ExecResult & { image?: string }>;
+  screenshot: () => Promise<ExecResult & { image?: string; permissionBlocked?: boolean }>;
+  /** macOS only: clear cached screen-recording permission failure so the next capture re-attempts immediately. */
+  resetScreenPermission?: () => Promise<ExecResult & { status?: string | null }>;
+  /** macOS only: read current TCC screen-recording status without triggering a capture. */
+  screenPermissionStatus?: () => Promise<ExecResult & { status?: string | null; blocked?: boolean }>;
   visionAnnotate: () => Promise<ExecResult & { image?: string; marks?: VisionMark[] }>;
   visionClick: (markId: number, button?: "left" | "right" | "middle") => Promise<ExecResult>;
   mouseMove: (x: number, y: number) => Promise<ExecResult>;
@@ -283,6 +321,9 @@ export async function executeTool(
   // observe_screen = screenshot + AX annotate (Phase 2 vision loop primary "eyes")
   if (name === "observe_screen") {
     const r = await b.visionAnnotate();
+    if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+      notifyScreenPermissionBlocked(r.output);
+    }
     const marks = r.marks ?? [];
     const summary = marks.length
       ? `Captured screen + ${marks.length} accessible controls. Marks (id · role · label):\n${marks
@@ -299,7 +340,11 @@ export async function executeTool(
   if (name === "vision_click") {
     const action = String(args.action ?? "");
     if (action === "annotate") {
-      return b.visionAnnotate();
+      const r = await b.visionAnnotate();
+      if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+        notifyScreenPermissionBlocked(r.output);
+      }
+      return r;
     }
     if (action === "click") {
       const id = Number(args.mark_id);
@@ -347,6 +392,9 @@ export async function executeTool(
     switch (action) {
       case "screenshot": {
         const r = await b.screenshot();
+        if (!r.ok && (r as ExecResult & { permissionBlocked?: boolean }).permissionBlocked) {
+          notifyScreenPermissionBlocked(r.output);
+        }
         return { ok: r.ok, output: r.output, image: r.image };
       }
       case "mouse_move":

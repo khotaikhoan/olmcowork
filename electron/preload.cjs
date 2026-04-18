@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld("bridge", {
   writeFile: (path, content) => invoke("bridge:write_file", { path, content }),
   runShell: (command) => invoke("bridge:run_shell", { command }),
   screenshot: () => invoke("bridge:screenshot"),
+  resetScreenPermission: () => invoke("bridge:reset_screen_permission"),
+  screenPermissionStatus: () => invoke("bridge:screen_permission_status"),
   visionAnnotate: () => invoke("bridge:vision_annotate"),
   visionClick: (markId, button) => invoke("bridge:vision_click", { markId, button }),
   mouseMove: (x, y) => invoke("bridge:mouse_move", { x, y }),

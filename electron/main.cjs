@@ -235,10 +235,13 @@ function tryRequire(name) {
 const screenshotDesktop = tryRequire("screenshot-desktop");
 
 // macOS Screen Recording (TCC) can keep re-showing the permission dialog when
-// a capture command is retried while access is still denied or the app has not
-// been restarted after granting access. Cache the failure for the current app
-// session so repeated screenshot / observe_screen calls do not spam the popup.
-let macScreenCaptureBlocked = null;
+// a capture command is retried while access is still denied. We cache the
+// LAST failure with a short cooldown so repeated calls within a few seconds
+// don't spam the popup, but we still re-attempt automatically after the
+// cooldown OR immediately when the renderer calls `bridge:reset_screen_permission`
+// (e.g. user clicked "I just granted permission, try again").
+const SCREEN_PERMISSION_COOLDOWN_MS = 5000;
+let macScreenCaptureBlocked = null; // { message, until }
 
 function getMacScreenCaptureStatus() {
   if (process.platform !== "darwin") return null;
@@ -263,14 +266,15 @@ function isMacScreenCapturePermissionError(message) {
 function macScreenCaptureHelp(status, originalMessage) {
   const appName = app.getName?.() || "ứng dụng này";
   const base =
-    `macOS đang chặn chụp màn hình cho ${appName}. ` +
+    `macOS đang chặn chụp màn hình cho "${appName}". ` +
     `Mở System Settings → Privacy & Security → Screen & System Audio Recording ` +
-    `(hoặc Screen Recording), bật quyền cho ${appName}, rồi QUIT hẳn app và mở lại.`;
+    `(hoặc Screen Recording), bật quyền cho "${appName}", rồi QUIT hẳn app và mở lại. ` +
+    `Lưu ý: app dev có thể hiện tên "Electron" thay vì "${appName}".`;
 
   if (status === "granted") {
     return (
-      `macOS đã thấy quyền Screen Recording là granted nhưng tiến trình hiện tại chưa dùng được. ` +
-      `Thường cần quit hẳn ${appName} rồi mở lại để quyền mới có hiệu lực.` +
+      `macOS báo quyền Screen Recording là granted nhưng tiến trình hiện tại chưa dùng được. ` +
+      `Cần quit hẳn "${appName}" (Cmd+Q, không chỉ đóng cửa sổ) rồi mở lại.` +
       (originalMessage ? `\n\nChi tiết gốc: ${originalMessage}` : "")
     );
   }
@@ -280,10 +284,19 @@ function macScreenCaptureHelp(status, originalMessage) {
   }
 
   return (
-    `Không chụp được màn hình trên macOS. Nếu popup quyền đang lặp lại, đừng retry liên tục. ` +
-    `Hãy kiểm tra Screen Recording cho ${appName} và mở lại app sau khi cấp quyền.` +
+    base +
     (originalMessage ? `\n\nChi tiết gốc: ${originalMessage}` : "")
   );
+}
+
+function isPermissionCacheActive() {
+  if (process.platform !== "darwin") return false;
+  if (!macScreenCaptureBlocked) return false;
+  if (Date.now() >= macScreenCaptureBlocked.until) {
+    macScreenCaptureBlocked = null;
+    return false;
+  }
+  return true;
 }
 
 async function captureScreenPng() {
@@ -294,8 +307,12 @@ async function captureScreenPng() {
     };
   }
 
-  if (process.platform === "darwin" && macScreenCaptureBlocked) {
-    return { ok: false, output: macScreenCaptureBlocked };
+  if (isPermissionCacheActive()) {
+    return {
+      ok: false,
+      output: macScreenCaptureBlocked.message,
+      permissionBlocked: true,
+    };
   }
 
   try {
@@ -314,8 +331,11 @@ async function captureScreenPng() {
     const message = String(e?.message || e);
     if (process.platform === "darwin" && isMacScreenCapturePermissionError(message)) {
       const help = macScreenCaptureHelp(getMacScreenCaptureStatus(), message);
-      macScreenCaptureBlocked = help;
-      return { ok: false, output: help };
+      macScreenCaptureBlocked = {
+        message: help,
+        until: Date.now() + SCREEN_PERMISSION_COOLDOWN_MS,
+      };
+      return { ok: false, output: help, permissionBlocked: true };
     }
     return { ok: false, output: `Error: ${message}` };
   }
@@ -329,6 +349,30 @@ ipcMain.handle("bridge:info", () => ({
   version: app.getVersion(),
   hasScreenshot: !!screenshotDesktop,
 }));
+
+// Renderer-triggered: clear screen-recording permission cache so the next
+// screenshot/observe call re-attempts immediately. Also returns the live
+// macOS TCC status so the UI can hint the user.
+ipcMain.handle("bridge:reset_screen_permission", () => {
+  macScreenCaptureBlocked = null;
+  const status = getMacScreenCaptureStatus();
+  return {
+    ok: true,
+    output: `Cleared screen-recording permission cache. macOS status: ${status ?? "unknown"}`,
+    status,
+  };
+});
+
+ipcMain.handle("bridge:screen_permission_status", () => {
+  const status = getMacScreenCaptureStatus();
+  const blocked = isPermissionCacheActive();
+  return {
+    ok: true,
+    output: `macOS screen-recording status: ${status ?? "unknown"}${blocked ? " (currently blocked in cache)" : ""}`,
+    status,
+    blocked,
+  };
+});
 
 ipcMain.handle("bridge:read_file", async (_e, { path: p }) => {
   if (!pathAllowed(p)) return { ok: false, output: `Denied: path ${p} is not allowed.` };
@@ -381,7 +425,9 @@ ipcMain.handle("bridge:run_shell", async (_e, { command }) => {
 
 ipcMain.handle("bridge:screenshot", async () => {
   const r = await captureScreenPng();
-  return r.ok ? { ok: true, output: r.output, image: r.image } : { ok: false, output: r.output };
+  return r.ok
+    ? { ok: true, output: r.output, image: r.image }
+    : { ok: false, output: r.output, permissionBlocked: !!r.permissionBlocked };
 });
 
 // ----- Vision: Set-of-Marks annotation cache (last screenshot's marks) -----
@@ -575,7 +621,7 @@ ipcMain.handle("bridge:vision_annotate", async () => {
   try {
     const capture = await captureScreenPng();
     if (!capture.ok || !capture.image || !capture.display) {
-      return { ok: false, output: capture.output };
+      return { ok: false, output: capture.output, permissionBlocked: !!capture.permissionBlocked };
     }
     const display = capture.display;
     const { width, height } = display.size;
