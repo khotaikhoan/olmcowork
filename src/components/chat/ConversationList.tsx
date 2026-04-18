@@ -99,7 +99,6 @@ export function ConversationList({
   const { signOut, user } = useAuth();
   const cp = useCommandPalette();
   const [items, setItems] = useState<Conversation[]>([]);
-  const [previews, setPreviews] = useState<Record<string, string>>({});
   const [q, setQ] = useState("");
   const [pinSet, setPinSet] = useState<Set<string>>(new Set(getPins()));
   const [pendingDelete, setPendingDelete] = useState<Conversation | null>(null);
@@ -107,36 +106,26 @@ export function ConversationList({
   const load = async () => {
     const { data, error } = await supabase
       .from("conversations")
-      .select("id,title,model,system_prompt,updated_at,mode")
+      .select(
+        "id,title,model,system_prompt,updated_at,mode,last_message_preview,last_message_at",
+      )
       .order("updated_at", { ascending: false });
     if (error) {
       toast.error(error.message);
       return;
     }
-    const list = (data ?? []) as unknown as Conversation[];
-    setItems(list);
-    // Fetch last message per conversation (single query, dedupe client-side).
-    if (list.length === 0) {
-      setPreviews({});
-      return;
-    }
-    const ids = list.map((c) => c.id);
-    const { data: msgs } = await supabase
-      .from("messages")
-      .select("conversation_id,content,created_at,role")
-      .in("conversation_id", ids)
-      .order("created_at", { ascending: false })
-      .limit(800);
-    const map: Record<string, string> = {};
-    for (const m of msgs ?? []) {
-      const cid = (m as any).conversation_id as string;
-      if (map[cid]) continue;
-      const content = ((m as any).content as string) || "";
-      if (!content.trim()) continue;
-      map[cid] = cleanPreview(content).slice(0, 140);
-    }
-    setPreviews(map);
+    setItems((data ?? []) as unknown as Conversation[]);
   };
+
+  // Derived map for fast lookup; preview is now stored on the row itself.
+  const previews = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of items) {
+      const p = c.last_message_preview;
+      if (p && p.trim()) map[c.id] = p.slice(0, 140);
+    }
+    return map;
+  }, [items]);
 
   useEffect(() => {
     load();
