@@ -169,6 +169,7 @@ ipcMain.handle("bridge:install_update", async () => {
 });
 
 function createWindow() {
+  const devUrl = process.env.ELECTRON_DEV_URL;
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -181,10 +182,13 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      // Packaged builds load `dist/index.html` via `file://`, which makes renderer `fetch()` behave like `Origin: null`.
+      // Ollama can reject CORS preflight for `Origin: null` unless `OLLAMA_ORIGINS=*`.
+      // Disable web security for production/file loads so local Ollama chat works.
+      webSecurity: !!devUrl,
     },
   });
 
-  const devUrl = process.env.ELECTRON_DEV_URL;
   if (devUrl) {
     win.loadURL(devUrl);
     win.webContents.openDevTools({ mode: "detach" });
