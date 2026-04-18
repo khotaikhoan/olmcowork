@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { MessageSquare } from "lucide-react";
 import { Artifact, extractArtifacts } from "@/lib/artifacts";
 import { ChatEmptyState } from "./ChatEmptyState";
+import { MessageSkeletonList } from "./MessageSkeleton";
 import { ControlModeBlocker } from "./ControlModeBlocker";
 import { PlanCard } from "./PlanCard";
 import { streamPlan, shouldGeneratePlan, type PlanStep } from "@/lib/planGen";
