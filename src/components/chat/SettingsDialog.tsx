@@ -260,11 +260,7 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
         <DialogHeader>
           <DialogTitle>Cài đặt</DialogTitle>
           <DialogDescription>
-            Cấu hình kết nối tới Ollama trên máy bạn. Để cho phép trình duyệt truy cập, khởi động Ollama bằng{" "}
-            <code className="px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>. Nếu chat báo lỗi tải model
-            (HTTP 500) trên macOS Apple Silicon khi cài Ollama qua Homebrew, thử{" "}
-            <code className="px-1 bg-muted rounded">GGML_METAL_TENSOR_DISABLE=1 OLLAMA_ORIGINS=* ollama serve</code>{" "}
-            (bản Desktop có thể tự đặt biến này khi bấm khởi động Ollama trong app).
+            Thiết lập nhanh theo từng nhóm: AI, an toàn, desktop/control và trình duyệt.
           </DialogDescription>
         </DialogHeader>
         <div className="py-1 max-h-[70vh] overflow-y-auto pr-1">
@@ -317,6 +313,9 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                 </span>
               </AccordionTrigger>
               <AccordionContent className="space-y-4 pb-3">
+                <div className="text-xs text-muted-foreground">
+                  Chọn nhà cung cấp và model mặc định. Có thể đổi bất kỳ lúc nào trên TopBar.
+                </div>
                 <div className="space-y-2">
                   <Label>Nhà cung cấp AI</Label>
                   <Select value={provider} onValueChange={(v) => setProvider(v as Provider)}>
@@ -364,6 +363,24 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                       </div>
                       {status === "ok" && <p className="text-xs text-[hsl(var(--success))]">Đã kết nối ✓</p>}
                       {status === "fail" && <p className="text-xs text-destructive">Kết nối thất bại</p>}
+                      <details className="rounded-md border border-border bg-muted/20 p-2 text-xs text-muted-foreground">
+                        <summary className="cursor-pointer select-none font-medium text-foreground/80">
+                          Troubleshooting (ngắn gọn)
+                        </summary>
+                        <div className="mt-2 space-y-2 leading-relaxed">
+                          <div>
+                            - **Trình duyệt/web** cần CORS:
+                            <code className="ml-1 px-1 bg-muted rounded">OLLAMA_ORIGINS=* ollama serve</code>
+                          </div>
+                          <div>
+                            - **macOS Apple Silicon + Ollama Homebrew** lỗi HTTP 500 khi tải model:
+                            <code className="ml-1 px-1 bg-muted rounded">GGML_METAL_TENSOR_DISABLE=1</code>
+                            <span className="ml-1">khi chạy</span>
+                            <code className="ml-1 px-1 bg-muted rounded">ollama serve</code>
+                            <span className="ml-1">(Desktop app có thể tự đặt biến này khi bấm khởi động Ollama).</span>
+                          </div>
+                        </div>
+                      </details>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="model">Model mặc định (tuỳ chọn)</Label>
@@ -405,15 +422,21 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
             <AccordionItem value="desktop" className="border rounded-md px-3">
               <AccordionTrigger className="hover:no-underline py-3">
                 <span className="flex items-center gap-2 text-sm font-medium">
-                  <Laptop className="h-4 w-4 text-muted-foreground" /> Desktop app
-                  <span className="text-xs font-normal text-muted-foreground">
-                    · Ollama, trình duyệt, update
-                  </span>
+                  <Laptop className="h-4 w-4 text-muted-foreground" /> Desktop &amp; Control
+                  <span className="text-xs font-normal text-muted-foreground">· tự động hoá + cập nhật</span>
                 </span>
               </AccordionTrigger>
               <AccordionContent className="space-y-4 pb-3">
+                {!IS_DESKTOP && (
+                  <div className="text-xs text-muted-foreground">
+                    Một số mục chỉ hoạt động trên Desktop app (Ollama/control/browser automation).
+                  </div>
+                )}
+
+                <div className="rounded-md border border-border bg-muted/20 p-2">
+                  <div className="text-xs font-medium text-foreground/80 mb-1">Ollama (desktop)</div>
                 <div className="space-y-2">
-                  <Label htmlFor="auto-stop">Tự dừng Ollama sau khi nhàn rỗi (phút)</Label>
+                  <Label htmlFor="auto-stop">Tự dừng sau nhàn rỗi (phút)</Label>
                   <Input
                     id="auto-stop"
                     type="number"
@@ -423,44 +446,49 @@ export function SettingsDialog({ open, onOpenChange, onSaved }: Props) {
                     onChange={(e) => setAutoStopMinutes(Math.max(0, Number(e.target.value) || 0))}
                   />
                   <p className="text-xs text-muted-foreground">
-                    0 = tắt. Bộ đếm reset mỗi khi gửi tin nhắn.
+                    0 = tắt. Reset khi có hoạt động.
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Label>Tự khởi động Ollama khi gửi tin nhắn</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Nếu Ollama đang dừng, tự khởi động trước khi gửi.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Giúp “bấm là chạy” trong Control.</p>
                   </div>
                   <Switch checked={autoStart} onCheckedChange={setAutoStart} />
                 </div>
+                </div>
+
+                <div className="rounded-md border border-border bg-muted/20 p-2">
+                  <div className="text-xs font-medium text-foreground/80 mb-1">Browser automation</div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Label>Trình duyệt hiển thị (headful)</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Tắt = headless (ngầm, nhanh). Bật = mở cửa sổ Chrome để xem AI làm gì.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Bật để quan sát AI thao tác.</p>
                   </div>
                   <Switch checked={!browserHeadless} onCheckedChange={(v) => setBrowserHeadless(!v)} />
                 </div>
-                <div className="flex items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 p-2">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-warning/30 bg-warning/5 p-2 mt-2">
                   <div className="min-w-0">
                     <Label>Dùng profile Chrome thật của bạn</Label>
                     <p className="text-xs text-muted-foreground">
-                      AI dùng cookies & đăng nhập sẵn (Gmail, Facebook…). <strong>Phải đóng hoàn toàn Chrome (Cmd+Q)</strong> trước khi bật. Profile: <code>~/Library/Application Support/Google/Chrome</code> trên macOS.
+                      Dùng cookies/login sẵn. Cần đóng Chrome (Cmd+Q) khi bật lần đầu.
                     </p>
                   </div>
                   <Switch checked={browserUseRealProfile} onCheckedChange={handleToggleRealProfile} />
                 </div>
+                </div>
+
+                <div className="rounded-md border border-border bg-muted/20 p-2">
+                  <div className="text-xs font-medium text-foreground/80 mb-1">Cập nhật</div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <Label>Tự động cài bản update khi tải xong</Label>
                     <p className="text-xs text-muted-foreground">
-                      App tự khởi động lại để cài bản mới ngay sau khi tải. Có thông báo trước 5 giây để huỷ.
+                      Tải xong sẽ yêu cầu khởi động lại để áp dụng.
                     </p>
                   </div>
                   <Switch checked={autoInstallUpdate} onCheckedChange={setAutoInstallUpdate} />
+                </div>
                 </div>
 
                 {/* ── Hiệu ứng âm thanh ───────────────────────────────── */}
