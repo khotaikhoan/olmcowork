@@ -1068,6 +1068,7 @@ export function ChatView({
       // Stream completed normally — clear any saved resume state.
       clearResumeState(convId);
       setResumeOffer(null);
+      latestPartialRef.current = null;
 
       setIsStreaming(false);
       setAgentStep(null);
