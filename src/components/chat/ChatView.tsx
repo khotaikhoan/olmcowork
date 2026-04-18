@@ -55,7 +55,7 @@ import { isArmed, arm, requiresArmed } from "@/lib/armed";
 import { ArmRequestDialog } from "./ArmRequestDialog";
 import { Zap, ShieldOff, ArrowDown } from "lucide-react";
 import { configureOrchestrator, drainRootReports } from "@/lib/agentOrchestrator";
-import { getBypass, setBypass, subscribeBypass } from "@/lib/bypassApprovals";
+import { getBypass, setBypass, subscribeBypass, getBypassDefault } from "@/lib/bypassApprovals";
 
 interface DbMessage {
   id: string;
