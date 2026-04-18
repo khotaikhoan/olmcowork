@@ -302,8 +302,20 @@ export function ChatView({
         setToolsEnabled(m === "control");
       }
       setMessages((msgs ?? []) as unknown as DbMessage[]);
+
+      // Detect interrupted stream from previous session
+      const saved = loadResumeState(conversationId);
+      if (saved && saved.provider === provider) {
+        setResumeOffer(saved);
+      } else if (saved) {
+        // Provider changed — drop the stale state
+        clearResumeState(conversationId);
+        setResumeOffer(null);
+      } else {
+        setResumeOffer(null);
+      }
     })();
-  }, [conversationId, defaultModel]);
+  }, [conversationId, defaultModel, provider]);
 
   // Persist agent selection
   useEffect(() => {
